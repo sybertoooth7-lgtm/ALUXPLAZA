@@ -2,6 +2,7 @@
 // Pattern-based request inspection with evasion-resistant normalization.
 // Normalization runs BEFORE pattern matching so encoded/obfuscated
 // payloads still get caught.
+import { logger } from '../logger.js';
 
 // Upper bound on the raw text normalized and pattern-matched per request
 // part. express.json accepts 1mb, and normalization alone (three decode
@@ -26,9 +27,14 @@ const SQLI_PATTERNS = [
 
 const XSS_PATTERNS = [
   { name: 'xss_script_tag', regex: /<script[\s\S]{0,500}?<\/script>/i },
-  { name: 'xss_event_handler', regex: /on\w+\s*=/i },
+  // \w+ is capped: unbounded, it backtracks once per character from every
+  // 'on' in the input, so a 64KB body of "ononon..." cost ~2.6s. Real
+  // handler names top out well under 30 characters.
+  { name: 'xss_event_handler', regex: /on\w{0,30}\s*=/i },
   { name: 'xss_javascript_uri', regex: /javascript\s*:/i },
-  { name: 'xss_iframe', regex: /<iframe[\s\S]*?>[\s\S]*?<\/iframe>/i },
+  // Same nested-quantifier shape as xss_script_tag, and far worse: this hung
+  // outright at 16KB. Bounded the same way.
+  { name: 'xss_iframe', regex: /<iframe[\s\S]{0,500}?<\/iframe>/i },
   { name: 'xss_vbscript', regex: /vbscript\s*:/i },
   { name: 'xss_expression', regex: /expression\s*\(/i },
 ];
@@ -101,8 +107,16 @@ function normalizeInput(input) {
 
 // Truncates one request part to a bounded head+tail window. Runs before
 // normalizeInput so an oversized body is cheap to decode as well as to scan.
-function capForScan(content) {
+//
+// The cap is not free: content in the omitted middle is never inspected. That
+// is logged rather than left silent, so an oversized body shows up in the logs
+// instead of quietly going unscanned.
+function capForScan(content, part) {
   if (content.length <= MAX_SCAN_CHARS) return content;
+  logger.warn(
+    { part, originalChars: content.length, scannedChars: MAX_SCAN_CHARS },
+    'Shield truncated an oversized request part; content outside the scanned window was not inspected'
+  );
   const half = Math.floor(MAX_SCAN_CHARS / 2);
   return `${content.slice(0, half)}\n${content.slice(-half)}`;
 }
@@ -113,10 +127,12 @@ function capForScan(content) {
  */
 function extractScannableContent(req) {
   const parts = [];
-  if (req.query) parts.push(normalizeInput(capForScan(JSON.stringify(req.query))));
-  if (req.body) parts.push(normalizeInput(capForScan(JSON.stringify(req.body))));
-  if (req.params) parts.push(normalizeInput(capForScan(JSON.stringify(req.params))));
-  if (req.originalUrl) parts.push(normalizeInput(capForScan(req.originalUrl)));
+  if (req.query) parts.push(normalizeInput(capForScan(JSON.stringify(req.query), 'query')));
+  if (req.body) parts.push(normalizeInput(capForScan(JSON.stringify(req.body), 'body')));
+  if (req.params) parts.push(normalizeInput(capForScan(JSON.stringify(req.params), 'params')));
+  if (req.originalUrl) {
+    parts.push(normalizeInput(capForScan(req.originalUrl, 'originalUrl')));
+  }
   return parts.join(' ');
 }
 

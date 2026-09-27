@@ -116,6 +116,32 @@ describe('shield/detector.js — scanRequest', () => {
     scanRequest(fakeReq({ body: hostile }));
     expect(Date.now() - started).toBeLessThan(2000);
   });
+
+  // /on\w+\s*=/ backtracked once per character from every 'on' in the input:
+  // 2.6s inside a single 64KB window, so the input cap did not save it.
+  it('scans a 64kb body of "on" in well under a second', () => {
+    const started = Date.now();
+    scanRequest(fakeReq({ body: { blob: 'on'.repeat(32768) } }));
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  // Nested unbounded quantifiers. This hung outright at 16kb, long before
+  // reaching the input cap.
+  it('scans a 64kb body of iframe tags in well under a second', () => {
+    const started = Date.now();
+    scanRequest(fakeReq({ body: { blob: '<iframe>'.repeat(8000) } }));
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('still detects an iframe injection', () => {
+    const result = scanRequest(fakeReq({ body: { html: '<iframe src="//evil"></iframe>' } }));
+    expect(result.matchedPattern).toBe('xss_iframe');
+  });
+
+  it('still detects an inline event handler', () => {
+    const result = scanRequest(fakeReq({ body: { html: '<img src=x onerror=alert(1)>' } }));
+    expect(result.matchedPattern).toBe('xss_event_handler');
+  });
 });
 
 describe('shield/riskScore.js', () => {
