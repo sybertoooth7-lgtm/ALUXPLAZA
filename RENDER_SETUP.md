@@ -30,7 +30,7 @@ is what you want for this app.
 1. Sign up at [render.com](https://render.com) with GitHub (no card).
 2. Click this button:
 
-   [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sybertoooth7-lgtm/ALUXPLAZA.)
+   [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sybertoooth7-lgtm/ALUXPLAZA)
 
    (or: Render dashboard → New → Blueprint → pick this repo — it reads
    `render.yaml` from the repo root.)

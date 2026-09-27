@@ -1,9 +1,9 @@
 # Alux Plaza
 
-[![CI](https://github.com/sybertoooth7-lgtm/ALUXPLAZA./actions/workflows/ci.yml/badge.svg)](https://github.com/sybertoooth7-lgtm/ALUXPLAZA./actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/sybertoooth7-lgtm/ALUXPLAZA./branch/main/graph/badge.svg)](https://codecov.io/gh/sybertoooth7-lgtm/ALUXPLAZA.)
-[![CodeQL](https://github.com/sybertoooth7-lgtm/ALUXPLAZA./actions/workflows/codeql.yml/badge.svg)](https://github.com/sybertoooth7-lgtm/ALUXPLAZA./actions/workflows/codeql.yml)
-[![Secret scanning](https://github.com/sybertoooth7-lgtm/ALUXPLAZA./actions/workflows/gitleaks.yml/badge.svg)](https://github.com/sybertoooth7-lgtm/ALUXPLAZA./actions/workflows/gitleaks.yml)
+[![CI](https://github.com/sybertoooth7-lgtm/ALUXPLAZA/actions/workflows/ci.yml/badge.svg)](https://github.com/sybertoooth7-lgtm/ALUXPLAZA/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/sybertoooth7-lgtm/ALUXPLAZA/branch/main/graph/badge.svg)](https://codecov.io/gh/sybertoooth7-lgtm/ALUXPLAZA)
+[![CodeQL](https://github.com/sybertoooth7-lgtm/ALUXPLAZA/actions/workflows/codeql.yml/badge.svg)](https://github.com/sybertoooth7-lgtm/ALUXPLAZA/actions/workflows/codeql.yml)
+[![Secret scanning](https://github.com/sybertoooth7-lgtm/ALUXPLAZA/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/sybertoooth7-lgtm/ALUXPLAZA/actions/workflows/gitleaks.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A standards-based cybersecurity consultancy platform for SMEs in East
@@ -18,7 +18,7 @@ _Admin dashboard — compliance overview, client list, and security events. (Ren
   CSRF via double-submit cookie, Postgres-backed rate limiting (no
   Redis dependency).
 - **Frontend:** React 19 / Vite / TypeScript / Tailwind.
-- **Repo:** `github.com/sybertoooth7-lgtm/ALUXPLAZA.`
+- **Repo:** `github.com/sybertoooth7-lgtm/ALUXPLAZA`
 - **Deploy:** frontend on Vercel (`jinarous.vercel.app`), backend on
   Render (free) with a Neon Postgres — see [RENDER_SETUP.md](RENDER_SETUP.md).
 - **API reference:** [backend/openapi.yaml](backend/openapi.yaml) —

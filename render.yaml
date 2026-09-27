@@ -6,7 +6,7 @@
 # when prompted during the blueprint deploy.
 #
 # One-click entry point:
-#   https://render.com/deploy?repo=https://github.com/sybertoooth7-lgtm/ALUXPLAZA.
+#   https://render.com/deploy?repo=https://github.com/sybertoooth7-lgtm/ALUXPLAZA
 #
 # Migrations do NOT need a manual step: src/db.js runs
 # migrations/*.sql automatically on every boot, and the first admin
