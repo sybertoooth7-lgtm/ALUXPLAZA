@@ -28,6 +28,13 @@ jobs:
 
   test-backend:
     runs-on: ubuntu-latest
+    # test/setup.js reads TEST_DATABASE_URL, not DATABASE_URL, and it reads
+    # that before anything imports dotenv — so it has to be a real env var,
+    # not a line in .env. The password must match POSTGRES_PASSWORD below;
+    # setup.js's own fallback uses a different one, which is what silently
+    # failed this job with 28P01 auth_failed until it was set here.
+    env:
+      TEST_DATABASE_URL: postgresql://alux:password@localhost:5432/postgres
     services:
       postgres:
         image: postgres:16
@@ -49,8 +56,6 @@ jobs:
           node-version: 20
       - run: cd backend && npm ci
       - run: cd backend && cp .env.example .env
-      - run: cd backend && sed -i 's|DATABASE_URL=.*|DATABASE_URL=postgresql://alux:password@localhost:5432/alux_plaza|' .env
-      - run: cd backend && sed -i 's/JWT_SECRET=.*/JWT_SECRET=ci-test-secret-123456789012345678901234567890/' .env
       - run: cd backend && sed -i 's/NODE_ENV=.*/NODE_ENV=development/' .env
       - run: cd backend && npm run test:coverage
 
