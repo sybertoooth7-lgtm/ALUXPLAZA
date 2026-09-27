@@ -12,10 +12,9 @@
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 if (!API_BASE && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-  // eslint-disable-next-line no-console
   console.warn(
     '[Alux Plaza] VITE_API_BASE_URL was not set for this build. The contact form and ' +
-    'live Defense Matrix metrics will not be able to reach a backend unless this site is ' +
-    'served from the exact same origin as the API. See DEPLOYMENT.md.'
+      'live Defense Matrix metrics will not be able to reach a backend unless this site is ' +
+      'served from the exact same origin as the API. See DEPLOYMENT.md.'
   );
 }

@@ -34,4 +34,22 @@ export default defineConfig([
       'react-refresh/only-export-components': 'off',
     },
   },
+  {
+    // The two rules below are new in eslint-plugin-react-hooks v7 (the
+    // React Compiler-era correctness rules). v7 flags three patterns that
+    // ship verbatim in shadcn's own generated source:
+    //   - carousel.tsx calls onSelect(api) synchronously in an effect to
+    //     publish initial state to the parent,
+    //   - sidebar.tsx computes a decorative width from Math.random(),
+    //   - use-mobile.ts sets state from a matchMedia listener on mount.
+    // None are bugs here, and hand-patching them would be silently undone
+    // by the next `shadcn add`. Scoped to the shadcn-managed paths only
+    // (components.json aliases: ui -> @/components/ui, hooks -> @/hooks) so
+    // these rules stay enforced on the code we actually own.
+    files: ['src/components/ui/**/*.{ts,tsx}', 'src/hooks/use-mobile.{ts,tsx}'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+    },
+  },
 ])

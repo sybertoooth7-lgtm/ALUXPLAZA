@@ -12,6 +12,7 @@
     "dev": "node --watch src/index.js",
     "create-admin": "node src/scripts/create-admin.js",
     "migrate": "node src/migrate.js",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
