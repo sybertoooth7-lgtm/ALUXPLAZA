@@ -6,7 +6,7 @@
 # when prompted during the blueprint deploy.
 #
 # One-click entry point:
-#   https://render.com/deploy?repo=https://github.com/sybertoooth7-lgtm/jinarous
+#   https://render.com/deploy?repo=https://github.com/sybertoooth7-lgtm/ALUXPLAZA.
 #
 # Migrations do NOT need a manual step: src/db.js runs
 # migrations/*.sql automatically on every boot, and the first admin
@@ -29,13 +29,13 @@ services:
       - key: CORS_ORIGIN
         value: https://jinarous.vercel.app
       - key: DB_SSL
-        value: "true"
+        value: 'true'
       # Cluster mode stays off: each worker would open its own Postgres
       # pool and keep its own in-memory Shield counters — pointless at
       # free-tier size and harmful to both connection limits and the
       # accuracy of volume-based blocking.
       - key: CLUSTER_MODE
-        value: "false"
+        value: 'false'
       - key: JWT_EXPIRES_IN
         value: 8h
       # Render generates a random secret at first deploy. Rotating it

@@ -6,11 +6,11 @@ API sleeps and the next request takes up to ~50s to wake it.
 
 ## Architecture
 
-| Piece | Service | Plan |
-|---|---|---|
-| Frontend | Vercel (`jinarous.vercel.app`) | Free (unchanged) |
-| Backend API | Render web service | Free |
-| PostgreSQL | Neon | Free (0.5 GB) |
+| Piece       | Service                        | Plan             |
+| ----------- | ------------------------------ | ---------------- |
+| Frontend    | Vercel (`jinarous.vercel.app`) | Free (unchanged) |
+| Backend API | Render web service             | Free             |
+| PostgreSQL  | Neon                           | Free (0.5 GB)    |
 
 ## 1. Create the database (Neon)
 
@@ -30,10 +30,11 @@ is what you want for this app.
 1. Sign up at [render.com](https://render.com) with GitHub (no card).
 2. Click this button:
 
-   [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sybertoooth7-lgtm/jinarous)
+   [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sybertoooth7-lgtm/ALUXPLAZA.)
 
    (or: Render dashboard → New → Blueprint → pick this repo — it reads
    `render.yaml` from the repo root.)
+
 3. When prompted for environment variables, fill in:
    - **DATABASE_URL** — paste the Neon connection string from step 1.
    - **ADMIN_BOOTSTRAP_EMAIL** — your real email.
