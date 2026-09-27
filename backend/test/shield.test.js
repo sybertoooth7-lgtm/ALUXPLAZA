@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { scanRequest } from '../src/shield/detector.js';
-import { computeRiskScore, computeRiskScoreBulk, computeComplianceOverview, scoreLabel } from '../src/shield/riskScore.js';
+import {
+  computeRiskScore,
+  computeRiskScoreBulk,
+  computeComplianceOverview,
+  scoreLabel,
+} from '../src/shield/riskScore.js';
 import { isBlocked, blockIp, unblockIp, listActiveBlocks } from '../src/shield/blocklist.js';
 import { recordFailedLogin, recordRequest } from '../src/shield/bruteForceGuard.js';
 import { logSecurityEvent } from '../src/shield/eventLogger.js';
@@ -24,7 +29,9 @@ describe('shield/detector.js — scanRequest', () => {
   });
 
   it('detects a classic SQL injection UNION SELECT in a query param', () => {
-    const result = scanRequest(fakeReq({ query: { id: '1 UNION SELECT username, password FROM users' } }));
+    const result = scanRequest(
+      fakeReq({ query: { id: '1 UNION SELECT username, password FROM users' } })
+    );
     expect(result).not.toBeNull();
     expect(result.eventType).toBe('sqli');
     expect(result.matchedPattern).toBe('sql_union');
@@ -80,6 +87,34 @@ describe('shield/detector.js — scanRequest', () => {
       fakeReq({ body: { message: "Hi - I'd like a quote for Q3, please. Thanks!" } })
     );
     expect(result).toBeNull();
+  });
+
+  // The patterns used to be unbounded (/\bunion\b.*?\bselect\b/ and
+  // /<script[\s\S]*?>[\s\S]*?<\/script>/), so a 1mb body full of opening
+  // tokens blocked the event loop for minutes. They are now gap-bounded and
+  // each request part is capped before normalization.
+  it('scans a 1mb adversarial body in well under a second', () => {
+    const hostile = { blob: 'union '.repeat(200000) }; // ~1.2mb
+    const started = Date.now();
+    scanRequest(fakeReq({ body: hostile }));
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('still detects a payload at the start of an oversized body', () => {
+    const result = scanRequest(fakeReq({ body: { a: 'union select 1', b: 'x'.repeat(1000000) } }));
+    expect(result.matchedPattern).toBe('sql_union');
+  });
+
+  it('still detects a payload at the end of an oversized body', () => {
+    const result = scanRequest(fakeReq({ body: { a: 'x'.repeat(1000000), b: 'union select 1' } }));
+    expect(result.matchedPattern).toBe('sql_union');
+  });
+
+  it('scans a 1mb body of script tags in well under a second', () => {
+    const hostile = { blob: '<script>'.repeat(114000) }; // ~900kb
+    const started = Date.now();
+    scanRequest(fakeReq({ body: hostile }));
+    expect(Date.now() - started).toBeLessThan(2000);
   });
 });
 
@@ -146,7 +181,8 @@ describe('shield/riskScore.js', () => {
 
     // No client_compliance_status rows at all for this client.
     const { score, itemCount } = await computeRiskScore(clientId);
-    const totalItems = (await db.query('SELECT COUNT(*)::int AS c FROM compliance_items')).rows[0].c;
+    const totalItems = (await db.query('SELECT COUNT(*)::int AS c FROM compliance_items')).rows[0]
+      .c;
 
     expect(itemCount).toBe(totalItems);
     expect(score).toBe(0);
@@ -308,7 +344,10 @@ describe('shield/blocklist.js', () => {
     await blockIp(ip, 'first hit', 'low');
     await blockIp(ip, 'second hit', 'medium');
 
-    const { rows } = await db.query('SELECT hit_count, severity, reason FROM blocked_ips WHERE ip_address = $1', [ip]);
+    const { rows } = await db.query(
+      'SELECT hit_count, severity, reason FROM blocked_ips WHERE ip_address = $1',
+      [ip]
+    );
     expect(rows).toHaveLength(1); // one row, not two
     expect(rows[0].hit_count).toBe(2);
     expect(rows[0].severity).toBe('medium'); // latest reason/severity wins

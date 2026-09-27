@@ -3,8 +3,18 @@
 // Normalization runs BEFORE pattern matching so encoded/obfuscated
 // payloads still get caught.
 
+// Upper bound on the raw text normalized and pattern-matched per request
+// part. express.json accepts 1mb, and normalization alone (three decode
+// passes, NFKC, ~10 regex rewrites) plus multi-token patterns is enough to
+// block the event loop for minutes on a small instance. Applied BEFORE
+// normalization, which is also the cheap direction: percent- and
+// entity-decoding only ever shrink the string, so a 64KB window can never
+// grow past what it replaced. Head+tail is kept so payloads at either end
+// of an oversized part stay detectable.
+const MAX_SCAN_CHARS = 65536;
+
 const SQLI_PATTERNS = [
-  { name: 'sql_union', regex: /\bunion\b.*?\bselect\b/i },
+  { name: 'sql_union', regex: /\bunion\b[\s\S]{0,200}?\bselect\b/i },
   { name: 'sql_or_injection', regex: /\bor\b\s+['"]?\d+['"]?\s*=\s*['"]?\d+['"]?/i },
   { name: 'sql_comment', regex: /(--|#|\/\*)\s*$/ },
   { name: 'sql_stacked', regex: /;\s*(drop|delete|insert|update|alter|create)\s+/i },
@@ -15,7 +25,7 @@ const SQLI_PATTERNS = [
 ];
 
 const XSS_PATTERNS = [
-  { name: 'xss_script_tag', regex: /<script[\s\S]*?>[\s\S]*?<\/script>/i },
+  { name: 'xss_script_tag', regex: /<script[\s\S]{0,500}?<\/script>/i },
   { name: 'xss_event_handler', regex: /on\w+\s*=/i },
   { name: 'xss_javascript_uri', regex: /javascript\s*:/i },
   { name: 'xss_iframe', regex: /<iframe[\s\S]*?>[\s\S]*?<\/iframe>/i },
@@ -29,9 +39,9 @@ const PATH_TRAVERSAL_PATTERNS = [
 ];
 
 const ALL_PATTERNS = [
-  ...SQLI_PATTERNS.map(p => ({ ...p, category: 'sqli', severity: 'high' })),
-  ...XSS_PATTERNS.map(p => ({ ...p, category: 'xss', severity: 'high' })),
-  ...PATH_TRAVERSAL_PATTERNS.map(p => ({ ...p, category: 'path_traversal', severity: 'medium' })),
+  ...SQLI_PATTERNS.map((p) => ({ ...p, category: 'sqli', severity: 'high' })),
+  ...XSS_PATTERNS.map((p) => ({ ...p, category: 'xss', severity: 'high' })),
+  ...PATH_TRAVERSAL_PATTERNS.map((p) => ({ ...p, category: 'path_traversal', severity: 'medium' })),
 ];
 
 /**
@@ -73,18 +83,28 @@ function normalizeInput(input) {
   s = s.replace(/\0/g, '');
 
   // 6. Strip SQL comments
-  s = s.replace(/\/\*[\s\S]*?\*\//g, ' ')   // /* ... */
-       .replace(/--[^\n]*/g, ' ')            // -- ...
-       .replace(/#[^\n]*/g, ' ');            // # ...
+  s = s
+    .replace(/\/\*[\s\S]*?\*\//g, ' ') // /* ... */
+    .replace(/--[^\n]*/g, ' ') // -- ...
+    .replace(/#[^\n]*/g, ' '); // # ...
 
   // 7. Decode hex/unicode escapes commonly used in obfuscation
-  s = s.replace(/\\x([0-9a-f]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-       .replace(/\\u([0-9a-f]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  s = s
+    .replace(/\\x([0-9a-f]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/\\u([0-9a-f]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 
   // 8. Collapse all whitespace to single spaces
   s = s.replace(/\s+/g, ' ');
 
   return s.trim();
+}
+
+// Truncates one request part to a bounded head+tail window. Runs before
+// normalizeInput so an oversized body is cheap to decode as well as to scan.
+function capForScan(content) {
+  if (content.length <= MAX_SCAN_CHARS) return content;
+  const half = Math.floor(MAX_SCAN_CHARS / 2);
+  return `${content.slice(0, half)}\n${content.slice(-half)}`;
 }
 
 /**
@@ -93,10 +113,10 @@ function normalizeInput(input) {
  */
 function extractScannableContent(req) {
   const parts = [];
-  if (req.query) parts.push(normalizeInput(JSON.stringify(req.query)));
-  if (req.body) parts.push(normalizeInput(JSON.stringify(req.body)));
-  if (req.params) parts.push(normalizeInput(JSON.stringify(req.params)));
-  if (req.originalUrl) parts.push(normalizeInput(req.originalUrl));
+  if (req.query) parts.push(normalizeInput(capForScan(JSON.stringify(req.query))));
+  if (req.body) parts.push(normalizeInput(capForScan(JSON.stringify(req.body))));
+  if (req.params) parts.push(normalizeInput(capForScan(JSON.stringify(req.params))));
+  if (req.originalUrl) parts.push(normalizeInput(capForScan(req.originalUrl)));
   return parts.join(' ');
 }
 
