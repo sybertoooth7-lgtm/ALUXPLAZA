@@ -24,6 +24,17 @@
 -- or an over-tight threshold, not three separate attacks, and that address
 -- deserves a look before it is blocked a fourth time.
 --
+-- The signature key has to live ON the block row, not just be re-derived from
+-- `reason` at unblock time. The two are not the same value: blockIp is called
+-- with an explicit stable key ('sqli', 'brute_force') precisely because the
+-- reason text is unstable, so re-deriving at unblock time yields 'sqli: or
+-- 1=1--' and never matches the 'sqli' row the block was counted under. The
+-- false positive would then be recorded against a key with a block_count of
+-- zero, and no rate would ever roll up. Nullable because blocks that predate
+-- this column are attributed from `reason` as a fallback.
+ALTER TABLE blocked_ips
+  ADD COLUMN IF NOT EXISTS signature_key VARCHAR(255);
+
 -- Deliberately NOT used to auto-tune thresholds. Adjusting a security
 -- threshold from admin clicks would let anyone with a session learn to
 -- disable a detection by unblocking repeatedly, and would silently widen a

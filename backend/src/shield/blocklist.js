@@ -66,15 +66,16 @@ export async function blockIp(ip, reason, severity = 'medium', signature = null)
   const key = (signature ?? signatureKey(reason)).slice(0, 255);
 
   await db.query(
-    `INSERT INTO blocked_ips (ip_address, reason, severity, expires_at, auto_blocked, hit_count)
-     VALUES ($1, $2, $3, $4, TRUE, 1)
+    `INSERT INTO blocked_ips (ip_address, reason, severity, expires_at, auto_blocked, hit_count, signature_key)
+     VALUES ($1, $2, $3, $4, TRUE, 1, $5)
      ON CONFLICT (ip_address)
      DO UPDATE SET
        expires_at = EXCLUDED.expires_at,
        hit_count = blocked_ips.hit_count + 1,
        reason = EXCLUDED.reason,
-       severity = EXCLUDED.severity`,
-    [ip, reason, severity, expiresAt]
+       severity = EXCLUDED.severity,
+       signature_key = EXCLUDED.signature_key`,
+    [ip, reason, severity, expiresAt, key]
   );
 
   // Denominator for the false-positive rate. Best-effort: if this insert
@@ -126,7 +127,7 @@ export async function unblockIp(ip, { adminEmail = null, note = null } = {}) {
   let prior = null;
   try {
     const found = await db.query(
-      `SELECT reason, severity, auto_blocked FROM blocked_ips WHERE ip_address = $1`,
+      `SELECT reason, severity, auto_blocked, signature_key FROM blocked_ips WHERE ip_address = $1`,
       [ip]
     );
     prior = found.rows[0] ?? null;
@@ -138,7 +139,14 @@ export async function unblockIp(ip, { adminEmail = null, note = null } = {}) {
   await db.query(`UPDATE blocked_ips SET expires_at = NOW() WHERE ip_address = $1`, [ip]);
 
   try {
-    const key = prior ? signatureKey(prior.reason) : null;
+    // Prefer the key the block was WRITTEN WITH. Re-deriving it from `reason`
+    // produces a different value: blockIp takes an explicit stable key
+    // precisely because the reason text embeds live counts and the matched
+    // pattern, so the derived form ('sqli: or 1=1--') never matches the stats
+    // row the block was counted under ('sqli'). The false positive would land
+    // on a key with a block_count of zero and no rate would ever roll up.
+    // Fall back to the reason only for blocks predating the column.
+    const key = prior ? (prior.signature_key ?? signatureKey(prior.reason)) : null;
     await db.query(
       `INSERT INTO shield_unblock_feedback
          (ip_address, signature_key, severity, auto_blocked, admin_email, note)

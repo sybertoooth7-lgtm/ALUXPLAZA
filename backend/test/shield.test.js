@@ -592,7 +592,7 @@ describe('shield/blocklist.js', () => {
 
   it('records a block as false-positive feedback, attributed to the admin and the signature', async () => {
     const ip = testIp();
-    await blockIp(ip, 'sqli: OR 1=1--', 'high');
+    await blockIp(ip, 'sqli: OR 1=1--', 'high', 'sig_basic_feedback');
     await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com', note: 'false positive' });
 
     const { rows } = await db.query(
@@ -600,10 +600,35 @@ describe('shield/blocklist.js', () => {
       [ip]
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0].signature_key).toBe('sqli: or 1=1--');
+    expect(rows[0].signature_key).toBe('sig_basic_feedback');
     expect(rows[0].severity).toBe('high');
     expect(rows[0].admin_email).toBe('admin@aluxplaza.com');
     expect(rows[0].note).toBe('false positive');
+  });
+
+  it('attributes feedback to the same key the block was counted under', async () => {
+    // The bug this guards: blockIp takes an explicit stable key because the
+    // reason is unstable, so re-deriving the key from the reason at unblock
+    // time yields a different value. The numerator then lands on a row whose
+    // block_count is zero, and no rate ever rolls up. Catches exactly that,
+    // and it failed the first time round.
+    const ip = testIp();
+    await blockIp(ip, 'sqli: OR 1=1--', 'high', 'sig_attr_match');
+    await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
+
+    const stats = await db.query(
+      'SELECT block_count, false_positive_count FROM shield_signature_stats WHERE signature_key = $1',
+      ['sig_attr_match']
+    );
+    expect(Number(stats.rows[0].block_count)).toBe(1);
+    expect(Number(stats.rows[0].false_positive_count)).toBe(1);
+
+    // And nothing leaked into the reason-derived key.
+    const derived = await db.query(
+      'SELECT false_positive_count FROM shield_signature_stats WHERE signature_key = $1',
+      ['sqli: or 1=1--']
+    );
+    expect(derived.rows).toHaveLength(0);
   });
 
   it('attributes feedback to the signature that was blocked, not whatever fired most recently', async () => {
@@ -611,10 +636,10 @@ describe('shield/blocklist.js', () => {
     // overwrites the block's reason on every re-block, so reading it after an
     // unblock would credit the feedback to the wrong detection.
     const ip = testIp();
-    await blockIp(ip, 'sqli: OR 1=1--', 'high');
+    await blockIp(ip, 'sqli: OR 1=1--', 'high', 'sig_first_trip');
     await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
     // Same IP, different detection trips next.
-    await blockIp(ip, 'xss: <script>', 'high');
+    await blockIp(ip, 'xss: <script>', 'high', 'sig_second_trip');
     await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
 
     const { rows } = await db.query(
@@ -622,7 +647,7 @@ describe('shield/blocklist.js', () => {
        WHERE ip_address = $1 ORDER BY id ASC`,
       [ip]
     );
-    expect(rows.map((r) => r.signature_key)).toEqual(['sqli: or 1=1--', 'xss: <script>']);
+    expect(rows.map((r) => r.signature_key)).toEqual(['sig_first_trip', 'sig_second_trip']);
   });
 
   it('keys rate-limit blocks on a stable signature despite the count in the reason', async () => {
@@ -631,14 +656,19 @@ describe('shield/blocklist.js', () => {
     // stops that from fragmenting the history.
     const counts = [5, 6, 7];
     for (const total of counts) {
-      await blockIp(testIp(), `${total} failed login attempts in 5min`, 'high', 'brute_force');
+      await blockIp(
+        testIp(),
+        `${total} failed login attempts in 5min`,
+        'high',
+        'sig_count_varying'
+      );
     }
     const { rows } = await db.query(
       'SELECT block_count FROM shield_signature_stats WHERE signature_key = $1',
-      ['brute_force']
+      ['sig_count_varying']
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0].block_count).toBe(3);
+    expect(Number(rows[0].block_count)).toBe(3);
   });
 
   it('signatureKey strips the varying count and identity suffix from a reason', async () => {
@@ -655,13 +685,13 @@ describe('shield/blocklist.js', () => {
     // attacker's input. Without the explicit eventType key, each variation
     // would be a separate signature with no accumulated history.
     for (const payload of ['OR 1=1--', "OR '1'='1", 'OR 2>1--']) {
-      await blockIp(testIp(), `sqli: ${payload}`, 'high', 'sqli');
+      await blockIp(testIp(), `sqli: ${payload}`, 'high', 'sig_payload_variation');
     }
     const { rows } = await db.query(
       'SELECT block_count FROM shield_signature_stats WHERE signature_key = $1',
-      ['sqli']
+      ['sig_payload_variation']
     );
-    expect(rows[0].block_count).toBe(3);
+    expect(Number(rows[0].block_count)).toBe(3);
   });
 
   it('unblockIp still lifts the block when feedback recording is given no metadata', async () => {
@@ -669,7 +699,7 @@ describe('shield/blocklist.js', () => {
     // action: losing a tuning counter is never a reason to leave a customer
     // locked out.
     const ip = testIp();
-    await blockIp(ip, 'rate_abuse', 'medium');
+    await blockIp(ip, 'some detector', 'medium', 'sig_no_metadata');
     await unblockIp(ip);
     expect(await isBlocked(ip)).toBe(false);
     const { rows } = await db.query(
@@ -683,11 +713,14 @@ describe('shield/blocklist.js', () => {
     // A numerator alone is not interpretable: 3 false positives is alarming
     // for a signature that fires twice a month and irrelevant for one that
     // fires constantly. The rate is the signal.
-    // 10 blocks of the bad signature, 4 of which get reversed => 40%.
+    // Signature keys are per-test-unique. shield_signature_stats is a global
+    // per-signature counter and every test in this file shares one database,
+    // so reusing a key that another test also blocks against would make the
+    // counts order-dependent.
     const partial = [];
     for (let i = 0; i < 10; i++) {
       const ip = testIp();
-      await blockIp(ip, 'rate_abuse', 'medium', 'rate_abuse');
+      await blockIp(ip, 'flaky detector', 'medium', 'sig_flaky_report');
       partial.push(ip);
     }
     for (const ip of partial.slice(0, 4)) {
@@ -695,53 +728,54 @@ describe('shield/blocklist.js', () => {
     }
     // A signature that never misfires, at comparable volume.
     for (let i = 0; i < 5; i++) {
-      await blockIp(testIp(), 'clean_signature', 'low', 'clean_signature');
+      await blockIp(testIp(), 'stable detector', 'low', 'sig_clean_report');
     }
 
     const report = await getFalsePositiveReport({ minBlocks: 5 });
-    const rateAbuse = report.find((r) => r.signature_key === 'rate_abuse');
-    const clean = report.find((r) => r.signature_key === 'clean_signature');
+    const flaky = report.find((r) => r.signature_key === 'sig_flaky_report');
+    const clean = report.find((r) => r.signature_key === 'sig_clean_report');
 
-    expect(rateAbuse).toBeDefined();
-    expect(rateAbuse.block_count).toBe(10);
-    expect(rateAbuse.false_positive_count).toBe(4);
-    expect(parseFloat(rateAbuse.false_positive_pct)).toBeCloseTo(40, 1);
+    expect(flaky).toBeDefined();
+    expect(Number(flaky.block_count)).toBe(10);
+    expect(Number(flaky.false_positive_count)).toBe(4);
+    expect(parseFloat(flaky.false_positive_pct)).toBeCloseTo(40, 1);
     expect(parseFloat(clean.false_positive_pct)).toBeCloseTo(0, 1);
     // Worst rate first.
-    expect(report.indexOf(rateAbuse)).toBeLessThan(report.indexOf(clean));
+    expect(report.indexOf(flaky)).toBeLessThan(report.indexOf(clean));
   });
 
   it('false-positive report suppresses low-traffic signatures', async () => {
     // One false positive out of one block is a 100% rate and would otherwise
     // top the report, drowning the real findings.
-    await blockIp(testIp(), 'rare_sig', 'low', 'rare_signature');
-    const unblocked = await db.query(
-      "SELECT ip_address FROM blocked_ips WHERE reason = 'rare_sig'"
-    );
-    await unblockIp(unblocked.rows[0].ip_address, { adminEmail: 'admin@aluxplaza.com' });
+    const ip = testIp();
+    await blockIp(ip, 'rare detector', 'low', 'sig_low_traffic');
+    await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
 
     const report = await getFalsePositiveReport({ minBlocks: 5 });
-    expect(report.find((r) => r.signature_key === 'rare_signature')).toBeUndefined();
+    expect(report.find((r) => r.signature_key === 'sig_low_traffic')).toBeUndefined();
   });
 
   it('repeat-offender report lists addresses unblocked more than once, with their signatures', async () => {
     // Three unblocks of one address is usually a misfiring detection or a
     // too-tight threshold, not three separate attacks.
     const repeat = testIp();
-    await blockIp(repeat, 'sqli: x', 'high', 'sqli');
+    await blockIp(repeat, 'sqli: x', 'high', 'sig_repeat_ip');
     await unblockIp(repeat, { adminEmail: 'admin@aluxplaza.com', note: 'monitoring scanner' });
-    await blockIp(repeat, 'sqli: y', 'high', 'sqli');
+    await blockIp(repeat, 'sqli: y', 'high', 'sig_repeat_ip');
     await unblockIp(repeat, { adminEmail: 'admin@aluxplaza.com', note: 'monitoring scanner' });
 
     const once = testIp();
-    await blockIp(once, 'sqli: z', 'high', 'sqli');
+    await blockIp(once, 'sqli: z', 'high', 'sig_repeat_ip');
     await unblockIp(once, { adminEmail: 'admin@aluxplaza.com' });
 
     const rows = await getRepeatOffenders({ minUnblocks: 2 });
     const listed = rows.find((r) => r.ip_address === repeat);
     expect(listed).toBeDefined();
-    expect(listed.unblock_count).toBe(2);
-    expect(listed.signatures).toEqual(['sqli']);
+    // Postgres returns COUNT(*) and the array_agg elements from pg as JS
+    // strings, not numbers/arrays of their own. Comparing against a bare 2 or
+    // ['sqli'] fails on the type, not the value.
+    expect(Number(listed.unblock_count)).toBe(2);
+    expect(listed.signatures).toEqual(['sig_repeat_ip']);
     expect(listed.notes).toEqual(['monitoring scanner']);
     expect(rows.find((r) => r.ip_address === once)).toBeUndefined();
   });
