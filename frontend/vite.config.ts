@@ -1,8 +1,8 @@
-import path from "path"
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
-import { VitePWA } from "vite-plugin-pwa"
-import { sentryVitePlugin } from "@sentry/vite-plugin"
+import path from 'path';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -14,6 +14,26 @@ export default defineConfig({
     // to production and sit on the public CDN, since nothing would be
     // there to delete them afterward.
     sourcemap: Boolean(process.env.SENTRY_AUTH_TOKEN),
+    rollupOptions: {
+      output: {
+        // Split the large, rarely-changing libraries out of the app chunk.
+        // Route-level lazy() in App.tsx already stopped every visitor from
+        // downloading all 31 pages, but react-dom, the Sentry SDK and gsap
+        // still landed in one chunk that the build flagged as >500 kB. These
+        // change far less often than app code, so a separate chunk also means
+        // returning visitors re-download app code without re-downloading them.
+        //
+        // Order matters: manual chunks run before Rollup's own splitting, and
+        // the first matching entry wins. Sentry goes before react-dom because
+        // the Sentry SDK imports React itself, and putting react-dom first
+        // would leave Sentry's copy of React outside the react chunk.
+        manualChunks: {
+          sentry: ['@sentry/react'],
+          gsap: ['gsap'],
+          react: ['react', 'react-dom', 'react-router'],
+        },
+      },
+    },
   },
   plugins: [
     react(),
@@ -23,7 +43,8 @@ export default defineConfig({
       manifest: {
         name: 'Alux Plaza | Cybersecurity Consulting',
         short_name: 'Alux Plaza',
-        description: 'Cybersecurity consulting: incident response planning, vulnerability assessments, and compliance readiness (PCI DSS, Kenya DPA 2019) for Nairobi and East Africa.',
+        description:
+          'Cybersecurity consulting: incident response planning, vulnerability assessments, and compliance readiness (PCI DSS, Kenya DPA 2019) for Nairobi and East Africa.',
         theme_color: '#00d4ff',
         background_color: '#050a12',
         display: 'standalone',
@@ -32,7 +53,12 @@ export default defineConfig({
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          {
+            src: 'pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
         ],
       },
       workbox: {
@@ -85,7 +111,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
     },
   },
 });
