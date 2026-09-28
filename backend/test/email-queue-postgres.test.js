@@ -21,6 +21,11 @@ async function createFreshDb(prefix) {
   const pool = new pg.Pool({ connectionString: `${baseUrl}/${dbName}` });
   return {
     pool,
+    // pg-boss takes a connection string, not a pool. Handing it the fresh
+    // database explicitly matters: process.env.DATABASE_URL still points at
+    // the shared per-run database, so using that here would migrate one
+    // database and then queue against another.
+    connectionString: `${baseUrl}/${dbName}`,
     async cleanup() {
       await pool.end();
       const cleanupPool = new pg.Pool({ connectionString: `${baseUrl}/postgres` });
@@ -48,11 +53,13 @@ describe('email queue: pgboss schema', () => {
     // The whole reason the schema is created by a migration rather than by
     // pg-boss's createSchema option. If this fails in production, every email
     // silently degrades to the un-retried fallback.
-    const { pool, cleanup } = await createFreshDb('alux_pgboss_install');
+    const { pool, connectionString, cleanup } = await createFreshDb('alux_pgboss_install');
+    let boss = null;
     try {
       await runMigrations(pool);
-      const { getConstructionPlans } = await import('pg-boss');
-      await pool.query(getConstructionPlans('pgboss', { createSchema: false }));
+      const { default: PgBoss } = await import('pg-boss');
+      boss = new PgBoss({ connectionString, schema: 'pgboss', createSchema: false });
+      await boss.start();
 
       const { rows } = await pool.query(
         `SELECT count(*)::int AS n
@@ -61,6 +68,7 @@ describe('email queue: pgboss schema', () => {
       );
       expect(rows[0].n).toBeGreaterThan(0);
     } finally {
+      if (boss) await boss.stop().catch(() => {});
       await cleanup();
     }
   }, 60_000);
@@ -69,18 +77,12 @@ describe('email queue: pgboss schema', () => {
     // End-to-end against real Postgres: this is the durability claim. A send
     // that fails twice must still be delivered on the third attempt, and the
     // job must end 'completed' rather than 'failed'.
-    const { pool, cleanup } = await createFreshDb('alux_pgboss_e2e');
+    const { pool, connectionString, cleanup } = await createFreshDb('alux_pgboss_e2e');
     let boss = null;
     try {
       await runMigrations(pool);
       const { default: PgBoss } = await import('pg-boss');
-      const baseUrl = process.env.DATABASE_URL.replace(/\/[^/]+$/, '');
-      const dbName = new URL(process.env.DATABASE_URL).pathname.slice(1);
-      boss = new PgBoss({
-        connectionString: `${baseUrl}/${dbName}`,
-        schema: 'pgboss',
-        createSchema: false,
-      });
+      boss = new PgBoss({ connectionString, schema: 'pgboss', createSchema: false });
       await boss.start();
       await boss.createQueue('email', {
         retryLimit: 5,
