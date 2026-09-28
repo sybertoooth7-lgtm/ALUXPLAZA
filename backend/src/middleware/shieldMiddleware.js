@@ -108,7 +108,18 @@ export async function shield(req, res, next) {
         snippet: detection.snippet,
         blocked: true,
       });
-      await blockIp(ip, `${detection.eventType}: ${detection.matchedPattern}`, detection.severity);
+      await blockIp(
+        ip,
+        `${detection.eventType}: ${detection.matchedPattern}`,
+        detection.severity,
+        // Explicit key: the reason carries the matched pattern verbatim, which
+        // includes the attacker's own input. Without this, every variation of
+        // the same SQLi probe would register as a different signature and its
+        // false-positive history would never accumulate. eventType alone is
+        // the detection identity, which is also the granularity an admin
+        // reviewing a report can actually act on.
+        detection.eventType
+      );
       return res.status(403).json({ error: 'Request blocked.' });
     }
 

@@ -164,7 +164,12 @@ export async function recordFailedLogin(ip) {
       await blockIp(
         ip,
         `${total} failed login attempts in ${FAILED_LOGIN_WINDOW_MS / 60000}min`,
-        'high'
+        'high',
+        // Explicit key: `total` is interpolated into the human-readable reason
+        // and changes every trip, so without this the same attack would
+        // register as a new signature each time and its false-positive history
+        // could never accumulate.
+        'brute_force'
       );
       await clearCounters(METRIC_FAILED_LOGIN, ip);
       return true; // signal caller that this IP is now blocked
@@ -206,7 +211,13 @@ export async function recordRequest(countKey, blockTargetIp) {
       await blockIp(
         blockTargetIp,
         `${total} requests in ${REQUEST_RATE_WINDOW_MS / 1000}s (${countKey})`,
-        'medium'
+        'medium',
+        // Explicit key, and deliberately NOT keyed by countKey. countKey is the
+        // identity being counted ("admin:42", "ip:1.2.3.4"), so including it
+        // would give every user their own signature and a bad threshold would
+        // show up as a scattering of 100%-false-positive keys rather than one
+        // row saying "rate_abuse is misfiring".
+        'rate_abuse'
       );
       await clearCounters(METRIC_REQUEST, countKey);
       return true;

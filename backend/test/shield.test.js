@@ -6,7 +6,15 @@ import {
   computeComplianceOverview,
   scoreLabel,
 } from '../src/shield/riskScore.js';
-import { isBlocked, blockIp, unblockIp, listActiveBlocks } from '../src/shield/blocklist.js';
+import {
+  isBlocked,
+  blockIp,
+  unblockIp,
+  listActiveBlocks,
+  signatureKey,
+  getFalsePositiveReport,
+  getRepeatOffenders,
+} from '../src/shield/blocklist.js';
 import {
   recordFailedLogin,
   recordRequest,
@@ -574,6 +582,168 @@ describe('shield/blocklist.js', () => {
 
     await unblockIp(ip);
     expect(await isBlocked(ip)).toBe(false);
+  });
+
+  // ── False-positive feedback ───────────────────────────────────────────
+  //
+  // An admin unblocking is the only ground truth this system gets about
+  // whether a detection was wrong. These tests pin the property that makes it
+  // worth collecting: the history survives, keyed by something stable.
+
+  it('records a block as false-positive feedback, attributed to the admin and the signature', async () => {
+    const ip = testIp();
+    await blockIp(ip, 'sqli: OR 1=1--', 'high');
+    await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com', note: 'false positive' });
+
+    const { rows } = await db.query(
+      'SELECT ip_address, signature_key, severity, admin_email, note FROM shield_unblock_feedback WHERE ip_address = $1',
+      [ip]
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].signature_key).toBe('sqli: or 1=1--');
+    expect(rows[0].severity).toBe('high');
+    expect(rows[0].admin_email).toBe('admin@aluxplaza.com');
+    expect(rows[0].note).toBe('false positive');
+  });
+
+  it('attributes feedback to the signature that was blocked, not whatever fired most recently', async () => {
+    // The point of denormalising the signature onto the feedback row. blockIp
+    // overwrites the block's reason on every re-block, so reading it after an
+    // unblock would credit the feedback to the wrong detection.
+    const ip = testIp();
+    await blockIp(ip, 'sqli: OR 1=1--', 'high');
+    await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
+    // Same IP, different detection trips next.
+    await blockIp(ip, 'xss: <script>', 'high');
+    await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
+
+    const { rows } = await db.query(
+      `SELECT signature_key FROM shield_unblock_feedback
+       WHERE ip_address = $1 ORDER BY id ASC`,
+      [ip]
+    );
+    expect(rows.map((r) => r.signature_key)).toEqual(['sqli: or 1=1--', 'xss: <script>']);
+  });
+
+  it('keys rate-limit blocks on a stable signature despite the count in the reason', async () => {
+    // The reason is built with live counts ("5 failed login attempts in
+    // 5min"), so it differs on every trip. The explicit signature arg is what
+    // stops that from fragmenting the history.
+    const counts = [5, 6, 7];
+    for (const total of counts) {
+      await blockIp(testIp(), `${total} failed login attempts in 5min`, 'high', 'brute_force');
+    }
+    const { rows } = await db.query(
+      'SELECT block_count FROM shield_signature_stats WHERE signature_key = $1',
+      ['brute_force']
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].block_count).toBe(3);
+  });
+
+  it('signatureKey strips the varying count and identity suffix from a reason', async () => {
+    // The fallback for call sites that pass no explicit signature.
+    expect(signatureKey('5 failed login attempts in 5min')).toBe(
+      signatureKey('6 failed login attempts in 5min')
+    );
+    expect(signatureKey('100 requests in 60s (admin:42)')).toBe('requests in 60s');
+    expect(signatureKey(null)).toBe('unknown');
+  });
+
+  it('does not fragment one detection across keys when the attacker varies their payload', async () => {
+    // The reason carries the matched pattern verbatim, so it includes the
+    // attacker's input. Without the explicit eventType key, each variation
+    // would be a separate signature with no accumulated history.
+    for (const payload of ['OR 1=1--', "OR '1'='1", 'OR 2>1--']) {
+      await blockIp(testIp(), `sqli: ${payload}`, 'high', 'sqli');
+    }
+    const { rows } = await db.query(
+      'SELECT block_count FROM shield_signature_stats WHERE signature_key = $1',
+      ['sqli']
+    );
+    expect(rows[0].block_count).toBe(3);
+  });
+
+  it('unblockIp still lifts the block when feedback recording is given no metadata', async () => {
+    // Existing callers pass no metadata, and the unblock itself is a safety
+    // action: losing a tuning counter is never a reason to leave a customer
+    // locked out.
+    const ip = testIp();
+    await blockIp(ip, 'rate_abuse', 'medium');
+    await unblockIp(ip);
+    expect(await isBlocked(ip)).toBe(false);
+    const { rows } = await db.query(
+      'SELECT admin_email FROM shield_unblock_feedback WHERE ip_address = $1',
+      [ip]
+    );
+    expect(rows[0].admin_email).toBe('unknown'); // sentinel, not NULL
+  });
+
+  it('false-positive report ranks the worst signature and reports a real rate', async () => {
+    // A numerator alone is not interpretable: 3 false positives is alarming
+    // for a signature that fires twice a month and irrelevant for one that
+    // fires constantly. The rate is the signal.
+    // 10 blocks of the bad signature, 4 of which get reversed => 40%.
+    const partial = [];
+    for (let i = 0; i < 10; i++) {
+      const ip = testIp();
+      await blockIp(ip, 'rate_abuse', 'medium', 'rate_abuse');
+      partial.push(ip);
+    }
+    for (const ip of partial.slice(0, 4)) {
+      await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
+    }
+    // A signature that never misfires, at comparable volume.
+    for (let i = 0; i < 5; i++) {
+      await blockIp(testIp(), 'clean_signature', 'low', 'clean_signature');
+    }
+
+    const report = await getFalsePositiveReport({ minBlocks: 5 });
+    const rateAbuse = report.find((r) => r.signature_key === 'rate_abuse');
+    const clean = report.find((r) => r.signature_key === 'clean_signature');
+
+    expect(rateAbuse).toBeDefined();
+    expect(rateAbuse.block_count).toBe(10);
+    expect(rateAbuse.false_positive_count).toBe(4);
+    expect(parseFloat(rateAbuse.false_positive_pct)).toBeCloseTo(40, 1);
+    expect(parseFloat(clean.false_positive_pct)).toBeCloseTo(0, 1);
+    // Worst rate first.
+    expect(report.indexOf(rateAbuse)).toBeLessThan(report.indexOf(clean));
+  });
+
+  it('false-positive report suppresses low-traffic signatures', async () => {
+    // One false positive out of one block is a 100% rate and would otherwise
+    // top the report, drowning the real findings.
+    await blockIp(testIp(), 'rare_sig', 'low', 'rare_signature');
+    const unblocked = await db.query(
+      "SELECT ip_address FROM blocked_ips WHERE reason = 'rare_sig'"
+    );
+    await unblockIp(unblocked.rows[0].ip_address, { adminEmail: 'admin@aluxplaza.com' });
+
+    const report = await getFalsePositiveReport({ minBlocks: 5 });
+    expect(report.find((r) => r.signature_key === 'rare_signature')).toBeUndefined();
+  });
+
+  it('repeat-offender report lists addresses unblocked more than once, with their signatures', async () => {
+    // Three unblocks of one address is usually a misfiring detection or a
+    // too-tight threshold, not three separate attacks.
+    const repeat = testIp();
+    await blockIp(repeat, 'sqli: x', 'high', 'sqli');
+    await unblockIp(repeat, { adminEmail: 'admin@aluxplaza.com', note: 'monitoring scanner' });
+    await blockIp(repeat, 'sqli: y', 'high', 'sqli');
+    await unblockIp(repeat, { adminEmail: 'admin@aluxplaza.com', note: 'monitoring scanner' });
+
+    const once = testIp();
+    await blockIp(once, 'sqli: z', 'high', 'sqli');
+    await unblockIp(once, { adminEmail: 'admin@aluxplaza.com' });
+
+    const rows = await getRepeatOffenders({ minUnblocks: 2 });
+    const listed = rows.find((r) => r.ip_address === repeat);
+    expect(listed).toBeDefined();
+    expect(listed.unblock_count).toBe(2);
+    expect(listed.signatures).toEqual(['sqli']);
+    expect(listed.notes).toEqual(['monitoring scanner']);
+    expect(rows.find((r) => r.ip_address === once)).toBeUndefined();
   });
 
   it('blocking the same IP twice upserts and increments hit_count rather than erroring', async () => {

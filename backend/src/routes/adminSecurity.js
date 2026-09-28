@@ -7,7 +7,13 @@
 //   app.use('/admin/security', requireAdminAuth, adminSecurityRoutes);
 
 import { Router } from 'express';
-import { listActiveBlocks, countActiveBlocks, unblockIp } from '../shield/blocklist.js';
+import {
+  listActiveBlocks,
+  countActiveBlocks,
+  unblockIp,
+  getFalsePositiveReport,
+  getRepeatOffenders,
+} from '../shield/blocklist.js';
 import db from '../db.js';
 import { recordAuditLog } from '../middleware/auditLog.js';
 
@@ -44,19 +50,62 @@ router.get('/blocks', async (req, res) => {
  */
 router.post('/blocks/:ip/unblock', async (req, res) => {
   try {
-    await unblockIp(req.params.ip);
+    // An unblock is the only ground truth this system gets about whether a
+    // detection was wrong, so who did it and why is captured here rather than
+    // left in the discarded block row. The note is what makes the feedback
+    // actionable later: "shared office NAT" and "attacker, re-blocked" point
+    // at opposite responses, and a bare "false positive" does not.
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 1000) : null;
+
+    await unblockIp(req.params.ip, {
+      adminEmail: req.user?.email || 'unknown',
+      note: note || null,
+    });
     await recordAuditLog({
       adminEmail: req.user?.email || 'unknown',
       action: 'ip.unblock',
       targetTable: 'blocked_ips',
       targetId: req.params.ip,
       oldValue: { blocked: true },
-      newValue: { blocked: false },
+      newValue: { blocked: false, note: note || null },
     });
     res.json({ success: true, message: `${req.params.ip} unblocked.` });
   } catch (err) {
     console.error('[admin/security] failed to unblock:', err.message);
     res.status(500).json({ error: 'Failed to unblock IP.' });
+  }
+});
+
+/**
+ * GET /admin/security/feedback?minBlocks=5&minUnblocks=2
+ *
+ * Where the recorded unblocks come back out as something actionable: which
+ * signatures actually produce false positives, and which addresses keep
+ * getting reversed.
+ *
+ * A report, not an auto-tuner. Thresholds are deliberately not adjusted from
+ * these numbers: doing so would let anyone holding an admin session weaken a
+ * detection by unblocking it repeatedly, and would quietly widen a real
+ * protection the first time someone clicked through an alert they did not read.
+ * The aggregation is the input to a human decision.
+ */
+router.get('/feedback', async (req, res) => {
+  const minBlocks = Math.max(parseInt(req.query.minBlocks, 10) || 5, 1);
+  const minUnblocks = Math.max(parseInt(req.query.minUnblocks, 10) || 2, 1);
+
+  try {
+    const [signatures, repeatOffenders] = await Promise.all([
+      getFalsePositiveReport({ minBlocks }),
+      getRepeatOffenders({ minUnblocks }),
+    ]);
+    res.json({
+      signatures,
+      repeatOffenders,
+      thresholds: { minBlocks, minUnblocks },
+    });
+  } catch (err) {
+    console.error('[admin/security] failed to build feedback report:', err.message);
+    res.status(500).json({ error: 'Failed to fetch feedback report.' });
   }
 });
 
