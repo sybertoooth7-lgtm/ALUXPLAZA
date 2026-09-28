@@ -58,13 +58,16 @@ router.post(
       const result = await db.query('SELECT * FROM admin_users WHERE email = $1', [email]);
       const user = result.rows[0];
 
-      // === TIMING-SAFE: Always run bcrypt first ===
-      // This keeps response timing constant regardless of whether the email
-      // exists or the account is locked, preventing user enumeration.
+      // bcrypt first, unconditionally, and the lockout check only after the
+      // password is proven correct. Returning 423 for a locked account while
+      // returning 401 for a nonexistent one enumerates valid admin accounts:
+      // the attacker sends four wrong passwords and reads the status code.
+      // Disclosing the lockout only on a correct password keeps the useful
+      // message for whoever actually knows the password, and gives an
+      // attacker nothing to distinguish.
       const passwordMatches = await bcrypt.compare(password, user?.password_hash || DUMMY_HASH);
 
-      // NOW check lockout (after bcrypt, so timing is constant)
-      if (user?.locked_until && new Date(user.locked_until) > new Date()) {
+      if (user?.locked_until && new Date(user.locked_until) > new Date() && passwordMatches) {
         const remainingSec = Math.ceil((new Date(user.locked_until) - new Date()) / 1000);
         return res.status(423).json({
           error: 'Account temporarily locked due to repeated failed login attempts.',

@@ -109,14 +109,12 @@ describe('POST /api/client/signup', () => {
     const app = buildTestApp();
     const email = uniqueEmail();
 
-    const res = await request(app)
-      .post('/api/client/signup')
-      .send({
-        companyName: 'Acme Ltd',
-        email,
-        password: 'SuperSecret123!',
-        website_url: 'http://spam.example',
-      });
+    const res = await request(app).post('/api/client/signup').send({
+      companyName: 'Acme Ltd',
+      email,
+      password: 'SuperSecret123!',
+      website_url: 'http://spam.example',
+    });
 
     expect(res.status).toBe(400);
     const { rows } = await db.query('SELECT id FROM clients WHERE email = $1', [email]);
@@ -481,6 +479,115 @@ describe('POST /api/client/login', () => {
     expect(attemptWithCorrectPassword.body.error).toMatch(/try again in/i);
     // 15-minute lockout => a minute-denominated message, not seconds.
     expect(attemptWithCorrectPassword.body.error).toMatch(/15 minutes/i);
+  });
+
+  // ── User enumeration ──────────────────────────────────────────────────
+  //
+  // The lockout check used to run BEFORE bcrypt and returned 423
+  // unconditionally for a locked account. That was an oracle in two
+  // independent ways: a locked account got 423 where a nonexistent email got
+  // 401, so the status code alone enumerated valid accounts; and a locked
+  // account skipped bcrypt while a nonexistent email paid the full DUMMY_HASH
+  // cost, so response time enumerated them too.
+  //
+  // An attacker enumerates by sending four wrong passwords and reading the
+  // fifth response.
+
+  it('does not reveal that a locked account exists to someone who does not know the password', async () => {
+    const app = buildTestApp();
+    const { id: clientId, email } = await insertVerifiedClient();
+    const ip = testIp();
+
+    for (let i = 0; i < 4; i++) {
+      await request(app)
+        .post('/api/client/login')
+        .set('x-test-ip', ip)
+        .send({ email, password: 'wrong' });
+    }
+    const locked = await db.query('SELECT locked_until FROM clients WHERE id = $1', [clientId]);
+    expect(locked.rows[0].locked_until).not.toBeNull(); // precondition: it IS locked
+
+    // Wrong password against the now-locked REAL account.
+    const wrongOnLocked = await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', ip)
+      .send({ email, password: 'wrong' });
+
+    // Wrong password against an account that does not exist.
+    const wrongOnMissing = await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', ip)
+      .send({ email: uniqueEmail(), password: 'wrong' });
+
+    // Indistinguishable in every observable way.
+    expect(wrongOnLocked.status).toBe(401);
+    expect(wrongOnMissing.status).toBe(401);
+    expect(wrongOnLocked.body.code).toBe(wrongOnMissing.body.code);
+    expect(wrongOnLocked.body.error).toBe(wrongOnMissing.body.error);
+    expect(wrongOnLocked.body.code).not.toBe('ACCOUNT_LOCKED');
+  });
+
+  it('still returns 423 once the correct password is supplied to a locked account', async () => {
+    // The counterpart to the test above: closing the oracle must not close the
+    // feature. Whoever actually knows the password still learns they are
+    // locked and how long is left, which is the only disclosure that carries
+    // no information an attacker could not already have.
+    const app = buildTestApp();
+    const { email, password } = await insertVerifiedClient();
+    const ip = testIp();
+
+    for (let i = 0; i < 4; i++) {
+      await request(app)
+        .post('/api/client/login')
+        .set('x-test-ip', ip)
+        .send({ email, password: 'wrong' });
+    }
+    const withCorrectPassword = await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', ip)
+      .send({ email, password });
+    expect(withCorrectPassword.status).toBe(423);
+    expect(withCorrectPassword.body.code).toBe('ACCOUNT_LOCKED');
+  });
+
+  it('spends comparable time on a locked account and a nonexistent one', async () => {
+    // Guards the timing half of the oracle specifically. A status-code fix
+    // alone leaves this open, and it is the half that's invisible in a code
+    // review of the response handling.
+    const app = buildTestApp();
+    const { email } = await insertVerifiedClient();
+    const lockIp = testIp();
+    const probeIp = testIp();
+
+    for (let i = 0; i < 4; i++) {
+      await request(app)
+        .post('/api/client/login')
+        .set('x-test-ip', lockIp)
+        .send({ email, password: 'wrong' });
+    }
+
+    const timeIt = async (payload, ip) => {
+      const started = process.hrtime.bigint();
+      await request(app).post('/api/client/login').set('x-test-ip', ip).send(payload);
+      return Number(process.hrtime.bigint() - started) / 1e6;
+    };
+
+    // Warm both paths first so neither pays first-call JIT or pool-warmup cost.
+    await timeIt({ email, password: 'wrong' }, lockIp);
+    await timeIt({ email: uniqueEmail(), password: 'wrong' }, probeIp);
+
+    const lockedMs = await timeIt({ email, password: 'wrong' }, lockIp);
+    const missingMs = await timeIt({ email: uniqueEmail(), password: 'wrong' }, probeIp);
+
+    // bcrypt on this box is the dominant cost and is jittery, so this asserts
+    // the absence of the structural difference (a skipped hash), not equality.
+    // The old code was ~10x faster on the locked path, which is far outside
+    // any plausible jitter here.
+    const ratio = lockedMs / missingMs;
+    expect(ratio, `locked=${lockedMs}ms missing=${missingMs}ms ratio=${ratio}`).toBeGreaterThan(
+      0.5
+    );
+    expect(ratio).toBeLessThan(2);
   });
 });
 

@@ -7,7 +7,13 @@ import { body, validationResult } from 'express-validator';
 import db from '../db.js';
 import { config } from '../config.js';
 import { recordFailedLogin } from '../shield/bruteForceGuard.js';
-import { logLoginAttempt, isNewIp, alertNewDevice, DUMMY_HASH } from '../middleware/loginAudit.js';
+import {
+  logLoginAttempt,
+  isNewIp,
+  alertNewDevice,
+  detectDistributedFailure,
+  DUMMY_HASH,
+} from '../middleware/loginAudit.js';
 import { parseExpiryToMs } from '../lib/parseExpiry.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../lib/email.js';
 import { enqueueEmail } from '../lib/email-queue.js';
@@ -440,10 +446,26 @@ router.post(
     const client = await findClientByEmail(db, email);
 
     // 1. Lockout check first (saves bcrypt work + timing leak)
-    if (client?.locked_until && new Date(client.locked_until) > new Date()) {
-      // Tell the caller how long the lockout actually lasts. This value was
-      // computed but discarded, which left a 423 with no actionable detail -
-      // a user hitting this had no way to tell a 15-minute wait from a typo.
+    // 1. Password check FIRST, and unconditionally.
+    //
+    // This used to check the lockout before bcrypt, on the theory that it
+    // saved the hash work. That was a user-enumeration oracle in two
+    // independent ways: a locked account got a 423 where a nonexistent email
+    // got a 401 (status code alone enumerates valid accounts), AND a locked
+    // account skipped bcrypt entirely while a nonexistent email paid the full
+    // DUMMY_HASH cost (response time enumerated them too). Running bcrypt
+    // first makes both paths pay the same price.
+    const passwordMatches = await bcrypt.compare(password, client?.password_hash || DUMMY_HASH);
+
+    // 2. Lockout is only disclosed once the password is proven correct.
+    //
+    // The legitimate user who typed the right password learns their account
+    // is locked and how long is left; an attacker guessing passwords never
+    // gets past this line and so cannot distinguish a locked real account
+    // from one that does not exist. This is the only ordering that keeps
+    // both properties, and it is the reason the check sits after bcrypt
+    // rather than merely being wrapped in it.
+    if (client?.locked_until && new Date(client.locked_until) > new Date() && passwordMatches) {
       const remainingSec = Math.ceil((new Date(client.locked_until) - new Date()) / 1000);
       const minutes = Math.ceil(remainingSec / 60);
       const wait =
@@ -457,9 +479,6 @@ router.post(
       );
     }
 
-    // 2. Password check
-    const passwordMatches = await bcrypt.compare(password, client?.password_hash || DUMMY_HASH);
-
     if (!client || !passwordMatches) {
       await logLoginAttempt({
         clientId: client?.id ?? null,
@@ -469,6 +488,11 @@ router.post(
         userAgent: req.headers['user-agent'],
       });
       await recordFailedLogin(req.ip);
+
+      // Distributed-attack detection. Runs after the attempt is logged so it
+      // can see the attempt, and is observe-only — it must not itself cause a
+      // block, because on a heuristic that means locking out real customers.
+      await detectDistributedFailure(client?.id ?? null, email, req.ip);
 
       if (client) {
         const newCount = (client.failed_login_count || 0) + 1;
