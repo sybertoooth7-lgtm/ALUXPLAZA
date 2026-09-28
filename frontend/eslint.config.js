@@ -23,33 +23,12 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
-  {
-    // shadcn/ui-generated components (components.json) — these files pair a
-    // component export with a cva()/utility export in the same file by
-    // shadcn's own convention, which is exactly what react-refresh/only-
-    // export-components flags. Not app code we hand-edit; every shadcn
-    // project hits this on these same generated files.
-    files: ['src/components/ui/**/*.{ts,tsx}'],
-    rules: {
-      'react-refresh/only-export-components': 'off',
-    },
-  },
-  {
-    // The two rules below are new in eslint-plugin-react-hooks v7 (the
-    // React Compiler-era correctness rules). v7 flags three patterns that
-    // ship verbatim in shadcn's own generated source:
-    //   - carousel.tsx calls onSelect(api) synchronously in an effect to
-    //     publish initial state to the parent,
-    //   - sidebar.tsx computes a decorative width from Math.random(),
-    //   - use-mobile.ts sets state from a matchMedia listener on mount.
-    // None are bugs here, and hand-patching them would be silently undone
-    // by the next `shadcn add`. Scoped to the shadcn-managed paths only
-    // (components.json aliases: ui -> @/components/ui, hooks -> @/hooks) so
-    // these rules stay enforced on the code we actually own.
-    files: ['src/components/ui/**/*.{ts,tsx}', 'src/hooks/use-mobile.{ts,tsx}'],
-    rules: {
-      'react-hooks/set-state-in-effect': 'off',
-      'react-hooks/purity': 'off',
-    },
-  },
+  // The two override blocks that used to live here - one disabling
+  // react-refresh/only-export-components and one disabling the new v7
+  // react-hooks correctness rules - were scoped to src/components/ui/** and
+  // src/hooks/use-mobile.ts. Those files were shadcn scaffolding that nothing
+  // in the app imported, so the blocks are gone with them and the rules they
+  // suppressed are enforced across the whole frontend again. If shadcn
+  // components are added back, re-add the blocks; components.json is still
+  // present so `npx shadcn add <name>` works as before.
 ])

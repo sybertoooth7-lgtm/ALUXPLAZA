@@ -68,18 +68,18 @@ module.exports = {
         xs: "calc(var(--radius) - 6px)",
       },
       keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-        "caret-blink": {
-          "0%,70%,100%": { opacity: "1" },
-          "20%,50%": { opacity: "0" },
-        },
+        // Three keyframe pairs are intentionally absent.
+        //
+        // accordion-down/accordion-up went with the shadcn components:
+        // --radix-accordion-content-height is set at runtime by
+        // @radix-ui/react-accordion, so with that package gone they could
+        // never resolve to a real height.
+        //
+        // caret-blink was only ever used by the shadcn input-otp component.
+        //
+        // pulse-slow, shimmer and float were already unreferenced before this
+        // change and are left in place; they are config, not cost, and pruning
+        // them is unrelated to this commit.
         "fade-in-up": {
           "0%": { opacity: "0", transform: "translateY(30px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
@@ -118,9 +118,6 @@ module.exports = {
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "caret-blink": "caret-blink 1.25s ease-out infinite",
         "fade-in-up": "fade-in-up 0.8s ease-out forwards",
         "pulse-slow": "pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         shimmer: "shimmer 3s linear infinite",
