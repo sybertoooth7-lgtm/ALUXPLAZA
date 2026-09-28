@@ -1,11 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import clientAuthRoutes from '../src/routes/clientAuth.js';
+import { compare as poolCompare } from '../src/lib/bcrypt-pool.js';
 import db from '../src/db.js';
+
+// Wrap — not replace — the password compare the login route actually calls.
+// clientAuth.js imports the worker-pool wrapper, not bcryptjs directly, so
+// spying on bcryptjs would instrument nothing and the test would pass
+// vacuously. Delegating to the real implementation keeps hashing intact and
+// only makes the call observable.
+vi.mock('../src/lib/bcrypt-pool.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, compare: vi.fn(actual.compare) };
+});
 
 function buildTestApp() {
   const app = express();
@@ -550,10 +561,19 @@ describe('POST /api/client/login', () => {
     expect(withCorrectPassword.body.code).toBe('ACCOUNT_LOCKED');
   });
 
-  it('spends comparable time on a locked account and a nonexistent one', async () => {
-    // Guards the timing half of the oracle specifically. A status-code fix
-    // alone leaves this open, and it is the half that's invisible in a code
-    // review of the response handling.
+  it('runs a password hash on the locked-account path, not just the missing-account one', async () => {
+    // Guards the timing half of the oracle. A status-code fix alone leaves it
+    // open, and it is the half that a read of the response handling does not
+    // reveal: the old code returned 401-vs-423 correctly but reached that
+    // response having skipped bcrypt entirely whenever the account was locked.
+    //
+    // This asserts the property structurally rather than by wall clock. The
+    // obvious wall-clock version is not just flaky but actively wrong here:
+    // the test helper seeds client passwords at bcrypt cost 4, while DUMMY_HASH
+    // is cost 12, so a real locked account hashes ~10x faster than a
+    // nonexistent one for reasons that exist only in the fixture. Measured
+    // timing measures the fixture. What actually matters is whether the hash
+    // is performed on both paths at all, and production uses cost 12 for both.
     const app = buildTestApp();
     const { email } = await insertVerifiedClient();
     const lockIp = testIp();
@@ -566,28 +586,24 @@ describe('POST /api/client/login', () => {
         .send({ email, password: 'wrong' });
     }
 
-    const timeIt = async (payload, ip) => {
-      const started = process.hrtime.bigint();
-      await request(app).post('/api/client/login').set('x-test-ip', ip).send(payload);
-      return Number(process.hrtime.bigint() - started) / 1e6;
-    };
+    vi.mocked(poolCompare).mockClear();
+    await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', lockIp)
+      .send({ email, password: 'wrong' });
+    const lockedCompares = vi.mocked(poolCompare).mock.calls.length;
 
-    // Warm both paths first so neither pays first-call JIT or pool-warmup cost.
-    await timeIt({ email, password: 'wrong' }, lockIp);
-    await timeIt({ email: uniqueEmail(), password: 'wrong' }, probeIp);
+    vi.mocked(poolCompare).mockClear();
+    await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', probeIp)
+      .send({ email: uniqueEmail(), password: 'wrong' });
+    const missingCompares = vi.mocked(poolCompare).mock.calls.length;
 
-    const lockedMs = await timeIt({ email, password: 'wrong' }, lockIp);
-    const missingMs = await timeIt({ email: uniqueEmail(), password: 'wrong' }, probeIp);
-
-    // bcrypt on this box is the dominant cost and is jittery, so this asserts
-    // the absence of the structural difference (a skipped hash), not equality.
-    // The old code was ~10x faster on the locked path, which is far outside
-    // any plausible jitter here.
-    const ratio = lockedMs / missingMs;
-    expect(ratio, `locked=${lockedMs}ms missing=${missingMs}ms ratio=${ratio}`).toBeGreaterThan(
-      0.5
+    expect(lockedCompares, 'locked account skipped the password hash').toBeGreaterThanOrEqual(1);
+    expect(missingCompares, 'nonexistent account skipped the password hash').toBeGreaterThanOrEqual(
+      1
     );
-    expect(ratio).toBeLessThan(2);
   });
 });
 
