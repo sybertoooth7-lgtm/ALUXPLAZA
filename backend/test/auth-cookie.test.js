@@ -18,7 +18,13 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.join(__dirname, '..');
 
-const SECRET = 'kQ7mZx2Rp9LtVb4WnJf8CyU3HdEa6Ns1Mg5X';
+// A throwaway signing key for the child process, assembled rather than
+// hardcoded. config.js only checks that JWT_SECRET is present and at least 32
+// characters, so a fixed low-entropy filler is enough - and it keeps
+// gitleaks' generic-api-key rule off the file. A high-entropy literal named
+// like a secret reads as a real credential to a scanner, which is exactly the
+// signal that rule exists to catch, and it is never true here.
+const TEST_SIGNING_FILLER = 'x'.repeat(40);
 
 // config.js calls process.exit(1) on an incomplete production config, which
 // would kill the test runner if imported in-process - the same reason
@@ -44,7 +50,7 @@ function serializeCookie(nodeEnv) {
     env: {
       ...process.env,
       NODE_ENV: nodeEnv,
-      JWT_SECRET: SECRET,
+      JWT_SECRET: TEST_SIGNING_FILLER,
       CORS_ORIGIN: 'https://jinarous.vercel.app',
       FRONTEND_URL: 'https://jinarous.vercel.app',
     },
