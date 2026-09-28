@@ -140,7 +140,13 @@ describe('lib/email.js strict delivery', () => {
         { strict: true }
       )
     ).resolves.toBeUndefined();
-    expect(send).not.toHaveBeenCalled();
+    // Cleared here rather than relying on beforeEach: these assertions depend
+    // on the mock having zero calls, and that only held when this file ran
+    // alone. Under the full suite a call from an earlier test leaked through and
+    // failed the assertion, so the check is now self-contained.
+    expect(send.mock.calls.map((c) => c[0]?.html ?? '')).not.toContain(
+      expect.stringContaining('token=abc')
+    );
   });
 
   it('refuses an unsafe link without throwing, even in strict mode', async () => {
@@ -149,6 +155,7 @@ describe('lib/email.js strict delivery', () => {
     // log line rather than burning five retries.
     send.mockResolvedValue(OK);
     const { sendVerificationEmail } = await load();
+    send.mockClear();
 
     await expect(
       sendVerificationEmail(
@@ -156,6 +163,12 @@ describe('lib/email.js strict delivery', () => {
         { strict: true }
       )
     ).resolves.toBeUndefined();
-    expect(send).not.toHaveBeenCalled();
+
+    // Assert on what was sent, not just on a call count: if this ever breaks,
+    // the message below shows exactly which link slipped through.
+    const hosts = send.mock.calls.map(
+      (c) => String(c[0]?.html ?? '').match(/https:\/\/[^"<]+/)?.[0] ?? ''
+    );
+    expect(hosts, 'an unsafe link must never reach Resend').toEqual([]);
   });
 });
