@@ -63,26 +63,52 @@ function clampKey(key) {
  * Increments the rolling-window counter for (metric, key) and returns the
  * total across all buckets still inside `windowMs`.
  *
- * Atomic by construction: the bucket upsert and the window SUM are one
- * statement, so two concurrent requests can't both read a count that
- * excludes the other's increment and slip past a threshold. The alternative
- * — read, add one in JS, write back — would lose increments under
- * concurrency, which is precisely the case that matters near the threshold.
+ * The current bucket's post-increment count is taken from the CTE's
+ * RETURNING, and only the OLDER buckets are summed from the table. That split
+ * is not a style choice — it is forced by how PostgreSQL evaluates a
+ * data-modifying CTE: `bumped` and the main query share a single snapshot, so
+ * the main query cannot see the row `bumped` just inserted or updated.
+ * Reading the whole window from the table therefore returns the count as it
+ * stood *before* this request, and the threshold trips one hit late (the 5th
+ * failed login returning 4, the 100th request returning 99). RETURNING is the
+ * only channel that reports the CTE's own effect.
+ *
+ * The increment itself is still safe under concurrency: ON CONFLICT DO UPDATE
+ * with `count = shield_counters.count + 1` is atomic per row, so no two
+ * concurrent requests can lose an increment. The read is a snapshot, so two
+ * requests landing simultaneously on the threshold can both decide not to
+ * block — bounded by one missed trip, not a systematically-off counter.
  */
 async function incrementAndCount(metric, key, windowMs) {
   const result = await db.query(
-    `WITH bumped AS (
+    `     WITH b AS (
+       -- The cast to double precision is load-bearing, not decoration:
+       -- extract() returns numeric on PostgreSQL 14+ and double precision
+       -- before it, and to_timestamp() only accepts double precision, so
+       -- without the explicit cast this query works on PG13 and fails on
+       -- PG14. Pin the type instead of inheriting it from the server version.
+       SELECT to_timestamp(
+         (floor(extract(epoch from now()) / $3) * $3)::double precision
+       ) AS bucket_start
+     ),
+     bumped AS (
        INSERT INTO shield_counters (counter_key, metric, bucket_start, count)
-       VALUES ($1, $2, to_timestamp(floor(extract(epoch from now()) / $3) * $3), 1)
+       SELECT $1, $2, b.bucket_start, 1 FROM b
        ON CONFLICT (metric, counter_key, bucket_start)
        DO UPDATE SET count = shield_counters.count + 1, updated_at = now()
-       RETURNING 1
+       RETURNING count
      )
-     SELECT COALESCE(SUM(count), 0)::int AS total
-     FROM shield_counters
-     WHERE metric = $2
-       AND counter_key = $1
-       AND bucket_start > now() - ($4 || ' milliseconds')::interval`,
+     SELECT (
+       (SELECT count FROM bumped)
+       + COALESCE((
+           SELECT SUM(sc.count)
+           FROM shield_counters sc, b
+           WHERE sc.metric = $2
+             AND sc.counter_key = $1
+             AND sc.bucket_start > now() - ($4 || ' milliseconds')::interval
+             AND sc.bucket_start <> b.bucket_start
+         ), 0)
+     )::int AS total`,
     [clampKey(key), metric, BUCKET_SECONDS, String(windowMs)]
   );
   return result.rows[0].total;

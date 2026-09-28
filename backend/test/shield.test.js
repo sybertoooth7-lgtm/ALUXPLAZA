@@ -632,6 +632,29 @@ describe('shield/bruteForceGuard.js', () => {
     expect(rows[0].severity).toBe('high');
   });
 
+  // Regression test for a bug that shipped and was caught in CI: the rolling
+  // window was read entirely from the table in the same statement that
+  // incremented it. A PostgreSQL data-modifying CTE shares its snapshot with
+  // the main query, so the SUM saw the state *before* this request — the
+  // count was always one behind, and the 5th failed login returned 4. The
+  // counter row held the right number; only the decision read it too early.
+  // Asserting the stored total against the number of calls is what pins that
+  // down, since the boolean return hides an off-by-one of exactly one.
+  it('counts every recorded hit, with no off-by-one between the counter and the decision', async () => {
+    const ip = testIp();
+    for (let i = 1; i <= 4; i++) {
+      expect(await recordFailedLogin(ip), `call ${i} should not block yet`).toBe(false);
+      const { rows } = await db.query(
+        `SELECT COALESCE(SUM(count), 0)::int AS total
+         FROM shield_counters WHERE metric = 'failed_login' AND counter_key = $1`,
+        [ip]
+      );
+      expect(rows[0].total, `after ${i} calls`).toBe(i);
+    }
+    // The 5th is the one that must flip, and it must flip now, not on the 6th.
+    expect(await recordFailedLogin(ip)).toBe(true);
+  });
+
   // The old 100-iteration loops were in-memory and cost nothing. Each call is
   // now a Postgres round trip, so these assert against the stored counter
   // directly where a full threshold walk isn't needed.
@@ -641,6 +664,13 @@ describe('shield/bruteForceGuard.js', () => {
       expect(await recordRequest(key, key)).toBe(false);
     }
     expect(await isBlocked(key)).toBe(false);
+
+    const { rows } = await db.query(
+      `SELECT COALESCE(SUM(count), 0)::int AS total
+       FROM shield_counters WHERE metric = 'request_volume' AND counter_key = $1`,
+      [key]
+    );
+    expect(rows[0].total).toBe(5);
   });
 
   it('recordRequest blocks once the rate threshold (100) is reached within the window', async () => {
