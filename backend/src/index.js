@@ -3,7 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import cluster from 'cluster';
 import os from 'os';
-import bcrypt from 'bcryptjs';
+import * as bcrypt from './lib/bcrypt-pool.js';
 import pinoHttp from 'pino-http';
 
 import { config } from './config.js';
@@ -16,7 +16,7 @@ import { startCleanupScheduler } from './jobs/cleanup.js';
 import { attachCspNonce, helmetMiddleware } from './middleware/helmetConfig.js';
 import { setCsrfCookie, verifyCsrfToken } from './middleware/csrf.js';
 import { shield } from './middleware/shieldMiddleware.js';
-import { limiter, authLimiter, signupLimiter } from './middleware/rate-limit.js';
+import { limiter, statusLimiter, authLimiter, signupLimiter } from './middleware/rate-limit.js';
 import { verifyLimiter } from './middleware/verify-rate-limit.js';
 import { requireAuth } from './middleware/auth.js';
 import { requireClientAuth } from './middleware/clientAuth.js';
@@ -54,28 +54,30 @@ async function startServer() {
   app.use(attachCspNonce);
   app.use(helmetMiddleware);
 
-  const allowedOrigins = config.corsOrigins.length > 0
-    ? config.corsOrigins
-    : ['http://localhost:3000'];
+  const allowedOrigins =
+    config.corsOrigins.length > 0 ? config.corsOrigins : ['http://localhost:3000'];
 
   // Vercel gives every preview deployment a unique, unpredictable hostname
   // (jinarous-<hash>-sybertoooth7-lgtms-projects.vercel.app), so it can
   // never be fully enumerated in a static CORS_ORIGIN allowlist. Match the
   // pattern instead, scoped to this exact Vercel project/org so it can't
   // accidentally allow someone else's Vercel-hosted site.
-  const VERCEL_PREVIEW_ORIGIN_RE = /^https:\/\/jinarous-[a-z0-9]+-sybertoooth7-lgtms-projects\.vercel\.app$/;
+  const VERCEL_PREVIEW_ORIGIN_RE =
+    /^https:\/\/jinarous-[a-z0-9]+-sybertoooth7-lgtms-projects\.vercel\.app$/;
 
-  app.use(cors({
-    origin(origin, callback) {
-      // No Origin header (curl, server-to-server, same-origin) — allow.
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin) || VERCEL_PREVIEW_ORIGIN_RE.test(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error(`Not allowed by CORS: ${origin}`));
-    },
-    credentials: true,
-  }));
+  app.use(
+    cors({
+      origin(origin, callback) {
+        // No Origin header (curl, server-to-server, same-origin) — allow.
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin) || VERCEL_PREVIEW_ORIGIN_RE.test(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Not allowed by CORS: ${origin}`));
+      },
+      credentials: true,
+    })
+  );
 
   app.use(cookieParser());
   app.use(setCsrfCookie);
@@ -92,12 +94,14 @@ async function startServer() {
     next();
   });
 
-  app.use(pinoHttp({
-    logger,
-    autoLogging: {
-      ignore: (req) => req.url === '/api/health',
-    },
-  }));
+  app.use(
+    pinoHttp({
+      logger,
+      autoLogging: {
+        ignore: (req) => req.url === '/api/health',
+      },
+    })
+  );
 
   app.use(verifyCsrfToken);
 
@@ -116,6 +120,9 @@ async function startServer() {
   app.use('/api', healthRoutes);
 
   app.use('/api', limiter);
+  // Must come after `limiter` so status still gets its own budget on top of
+  // being skipped by the general one. See middleware/rate-limit.js.
+  app.use('/api/status', statusLimiter);
   app.use('/api/admin/login', authLimiter);
   app.use('/api/client/login', authLimiter);
   app.use('/api/verify', verifyLimiter);
@@ -131,7 +138,12 @@ async function startServer() {
   // Admin-only routes (readonly blocked)
   app.use('/api/admin/security', requireAuth, requireAdmin, adminSecurityRoutes);
   app.use('/api/admin/clients', requireAuth, requireAdmin, adminClientsRoutes);
-  app.use('/api/admin/clients/:id/risk-score-shares', requireAuth, requireAdmin, adminRiskScoreRoutes);
+  app.use(
+    '/api/admin/clients/:id/risk-score-shares',
+    requireAuth,
+    requireAdmin,
+    adminRiskScoreRoutes
+  );
   app.use('/api/admin/tools', requireAuth, requireAdmin, toolsRoutes);
 
   // Superadmin-only routes
@@ -176,6 +188,8 @@ async function startServer() {
     clearInterval(cleanupInterval);
     await persistStats();
     server.close(async () => {
+      // Release bcrypt workers so they don't keep the event loop alive.
+      await bcrypt.shutdown().catch(() => {});
       await db.end().catch(() => {});
       process.exit(0);
     });
@@ -204,9 +218,13 @@ async function main() {
 
       if (bootstrapEmail && bootstrapPassword) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bootstrapEmail)) {
-          logger.error('ADMIN_BOOTSTRAP_EMAIL is not a valid email address — admin bootstrap skipped.');
+          logger.error(
+            'ADMIN_BOOTSTRAP_EMAIL is not a valid email address — admin bootstrap skipped.'
+          );
         } else if (bootstrapPassword.length < 8) {
-          logger.error('ADMIN_BOOTSTRAP_PASSWORD is shorter than 8 characters — admin bootstrap skipped.');
+          logger.error(
+            'ADMIN_BOOTSTRAP_PASSWORD is shorter than 8 characters — admin bootstrap skipped.'
+          );
         } else {
           const hash = await bcrypt.hash(bootstrapPassword, 12);
           await db.query(
@@ -214,10 +232,14 @@ async function main() {
             [bootstrapEmail, hash]
           );
           logger.warn(`Bootstrapped initial admin account: ${bootstrapEmail}`);
-          logger.warn('Remove ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD from the host env vars now.');
+          logger.warn(
+            'Remove ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD from the host env vars now.'
+          );
         }
       } else {
-        logger.warn('No admin users exist yet. Run `npm run create-admin` once, or set ADMIN_BOOTSTRAP_EMAIL + ADMIN_BOOTSTRAP_PASSWORD to create the first admin automatically on boot.');
+        logger.warn(
+          'No admin users exist yet. Run `npm run create-admin` once, or set ADMIN_BOOTSTRAP_EMAIL + ADMIN_BOOTSTRAP_PASSWORD to create the first admin automatically on boot.'
+        );
       }
     } else if (process.env.ADMIN_BOOTSTRAP_EMAIL || process.env.ADMIN_BOOTSTRAP_PASSWORD) {
       // Admin(s) already exist, so these vars have no further effect on

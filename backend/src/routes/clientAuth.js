@@ -1,6 +1,6 @@
 // backend/src/routes/clientAuth.js
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
+import * as bcrypt from '../lib/bcrypt-pool.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { body, validationResult } from 'express-validator';
@@ -303,7 +303,8 @@ router.post(
 
       if (!row) throw new AuthError('Invalid or expired verification link.', 400);
       if (row.used_at) throw new AuthError('This verification link has already been used.', 400);
-      if (new Date(row.expires_at) < new Date()) throw new AuthError('Verification link has expired.', 400);
+      if (new Date(row.expires_at) < new Date())
+        throw new AuthError('Verification link has expired.', 400);
 
       // Single-use: burn every outstanding token for this client
       await client.query(
@@ -358,10 +359,9 @@ router.post(
     const { email } = req.body;
 
     await withTransaction(async (client) => {
-      const result = await client.query(
-        `SELECT id FROM clients WHERE email = $1 FOR UPDATE`,
-        [email]
-      );
+      const result = await client.query(`SELECT id FROM clients WHERE email = $1 FOR UPDATE`, [
+        email,
+      ]);
       if (result.rows.length === 0) return;
 
       const clientId = result.rows[0].id;
@@ -396,15 +396,15 @@ router.post(
 
       if (!row) throw new AuthError('Invalid or expired reset link.', 400);
       if (row.used_at) throw new AuthError('This reset link has already been used.', 400);
-      if (new Date(row.expires_at) < new Date()) throw new AuthError('Reset link has expired.', 400);
+      if (new Date(row.expires_at) < new Date())
+        throw new AuthError('Reset link has expired.', 400);
 
       const newHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
       await revokeAllSessions(client, row.client_id);
-      await client.query(
-        `UPDATE client_password_resets SET used_at = NOW() WHERE id = $1`,
-        [row.id]
-      );
+      await client.query(`UPDATE client_password_resets SET used_at = NOW() WHERE id = $1`, [
+        row.id,
+      ]);
       await updatePassword(client, row.client_id, newHash);
     });
 
@@ -450,7 +450,8 @@ router.post(
       if (client) {
         const newCount = (client.failed_login_count || 0) + 1;
         const lockoutMinutes = computeLockoutMinutes(newCount);
-        const lockedUntil = lockoutMinutes > 0 ? new Date(Date.now() + lockoutMinutes * 60 * 1000) : null;
+        const lockedUntil =
+          lockoutMinutes > 0 ? new Date(Date.now() + lockoutMinutes * 60 * 1000) : null;
         await db.query(
           `UPDATE clients SET failed_login_count = $1, locked_until = $2 WHERE id = $3`,
           [newCount, lockedUntil, client.id]
@@ -470,10 +471,9 @@ router.post(
     }
 
     // 4. Success
-    await db.query(
-      `UPDATE clients SET failed_login_count = 0, locked_until = NULL WHERE id = $1`,
-      [client.id]
-    );
+    await db.query(`UPDATE clients SET failed_login_count = 0, locked_until = NULL WHERE id = $1`, [
+      client.id,
+    ]);
 
     const newDevice = await isNewIp(client.id, req.ip);
     await logLoginAttempt({
@@ -553,10 +553,9 @@ router.get(
   '/me',
   requireClientAuth,
   asyncHandler(async (req, res) => {
-    const result = await db.query(
-      'SELECT id, company_name, email FROM clients WHERE id = $1',
-      [req.client.sub]
-    );
+    const result = await db.query('SELECT id, company_name, email FROM clients WHERE id = $1', [
+      req.client.sub,
+    ]);
     const client = result.rows[0];
     if (!client) {
       return res.status(404).json({ error: 'Client not found' });

@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import readline from 'node:readline';
-import bcrypt from 'bcryptjs';
+import * as bcrypt from '../lib/bcrypt-pool.js';
 import db, { initDb } from '../db.js';
 
 // Created at module load, synchronously, with no async gap before the

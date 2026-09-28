@@ -6,6 +6,11 @@ import { API_BASE } from '@/lib/api';
 
 gsap.registerPlugin(ScrollTrigger);
 
+// Cumulative counters and uptime are not worth 8s freshness on a 0.1-CPU
+// instance; 15s keeps the section feeling live at a third less request load.
+const POLL_INTERVAL_MS = 15_000;
+const MAX_BACKOFF_MS = 5 * 60_000;
+
 interface StatusResponse {
   requestCount: number;
   errorCount: number;
@@ -32,8 +37,12 @@ export default function DefenseMatrix() {
 
   useEffect(() => {
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+    let backoffMs = POLL_INTERVAL_MS;
 
     async function fetchStatus() {
+      inFlight = true;
       try {
         const res = await fetch(`${API_BASE}/api/status/defense-matrix`);
         if (!res.ok) throw new Error('Status endpoint unavailable');
@@ -41,16 +50,47 @@ export default function DefenseMatrix() {
         if (cancelled) return;
         setStatus(data);
         setIsLive(true);
+        backoffMs = POLL_INTERVAL_MS;
       } catch {
         if (!cancelled) setIsLive(false);
+        // Back off while the endpoint is unhealthy instead of retrying on a
+        // fixed interval, so a struggling backend isn't kept busy by clients.
+        backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
+      } finally {
+        // Recursive setTimeout rather than setInterval: a fetch slower than the
+        // interval would otherwise have requests pile up concurrently. Paused
+        // while hidden, since a backgrounded tab still runs timers and would
+        // otherwise poll with nobody watching.
+        inFlight = false;
+        if (!cancelled && !document.hidden) {
+          timer = setTimeout(fetchStatus, backoffMs);
+        }
+      }
+    }
+
+    // Resume promptly on tab focus so the metrics don't sit stale up to a full
+    // backoff interval after the user comes back.
+    function onVisibilityChange() {
+      if (cancelled) return;
+      if (document.hidden) {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        return;
+      }
+      if (!timer && !inFlight) {
+        backoffMs = POLL_INTERVAL_MS;
+        fetchStatus();
       }
     }
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 8000);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
@@ -125,8 +165,8 @@ export default function DefenseMatrix() {
         isLive && status && status.contactSuccessRate !== null
           ? `${status.contactSuccessRate.toFixed(0)}%`
           : isLive
-          ? 'No submissions yet'
-          : '—',
+            ? 'No submissions yet'
+            : '—',
       description: 'Share of contact form attempts that saved successfully.',
     },
     {
@@ -158,8 +198,8 @@ export default function DefenseMatrix() {
             Live <span className="gradient-text-cyan">System Status</span>
           </h2>
           <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
-            These numbers come straight from our production backend, refreshed every 8 seconds —
-            not a mockup. This is the same infrastructure we run for client work.
+            These numbers come straight from our production backend, refreshed every 8 seconds — not
+            a mockup. This is the same infrastructure we run for client work.
           </p>
         </div>
 
