@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:email-queue": "vitest run --config vitest.email-queue.config.js"
+    "test:nodb": "vitest run --config vitest.nodb.config.js"
   },
   "dependencies": {
     "@sentry/node": "^10.66.0",

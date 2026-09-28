@@ -130,6 +130,47 @@ jobs:
             -H "x-csrf-token: $CSRF" \
             -d '{"name":"CI Test","email":"ci@example.com","message":"automated smoke test"}'
 
+          # Oversized body must be rejected as 413 — and, critically, must NOT
+          # reach captureError/sendAlert. Those used to fire for every oversized
+          # request, returning 500 and pushing an "Unhandled error" alert, so
+          # body size was a lever for spamming the monitoring channel with a
+          # caller's own bad request. test/body-limit.test.js covers the limit
+          # and the 413 locally, but it mirrors the handler rather than
+          # exercising it, so this is the only place the real one is proven.
+          echo "Checking oversized body is rejected with 413..."
+          node -e 'require("fs").writeFileSync("big.json", JSON.stringify({name:"CI",email:"ci@example.com",message:"x".repeat(400*1024)}))'
+          BIG_CODE=$(curl -sS -o big-resp.json -w '%{http_code}' -b cookies.txt -X POST http://localhost:3001/api/contact \
+            -H "Content-Type: application/json" \
+            -H "x-csrf-token: $CSRF" \
+            --data-binary @big.json)
+          echo "oversized POST returned: $BIG_CODE $(cat big-resp.json)"
+          if [ "$BIG_CODE" != "413" ]; then
+            echo "Expected 413 for an oversized body, got $BIG_CODE"
+            exit 1
+          fi
+          # A 500 here would mean it fell through to the generic handler.
+          if grep -q "Internal server error" big-resp.json; then
+            echo "Oversized body was reported as an internal server error (it should be a plain 413)"
+            exit 1
+          fi
+
+          # And a legitimately large-but-valid body must still be accepted, so
+          # the limit cannot be quietly tightened into rejecting real traffic.
+          # 5000 chars is the maximum the contact validator allows on `message`
+          # (routes/contact.js), so this is the largest body the API can
+          # legitimately produce — and it is ~50x under the 256 KiB cap.
+          echo "Checking a max-length valid body is still accepted (expect 201)..."
+          node -e 'require("fs").writeFileSync("ok.json", JSON.stringify({name:"CI",email:"ci@example.com",message:"x".repeat(5000)}))'
+          OK_CODE=$(curl -sS -o ok-resp.json -w '%{http_code}' -b cookies.txt -X POST http://localhost:3001/api/contact \
+            -H "Content-Type: application/json" \
+            -H "x-csrf-token: $CSRF" \
+            --data-binary @ok.json)
+          echo "max-length POST returned: $OK_CODE $(cat ok-resp.json)"
+          if [ "$OK_CODE" != "201" ]; then
+            echo "Expected 201 for a max-length valid body, got $OK_CODE"
+            exit 1
+          fi
+
           kill $SERVER_PID
 
       - name: Verify honeypot field silently no-ops bot-shaped submissions
