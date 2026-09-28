@@ -20,7 +20,10 @@ async function checkDb() {
     await db.query('SELECT 1');
     cache = { healthy: true, expiresAt: now + CACHE_TTL_MS };
     return true;
-  } catch (err) {
+  } catch {
+    // The error is intentionally not inspected: /api/health reports reachability
+    // as a boolean, and the query failure is logged by the db layer already.
+    // Using an optional catch binding keeps it explicit that this is deliberate.
     cache = { healthy: false, expiresAt: now + CACHE_TTL_MS };
     return false;
   }

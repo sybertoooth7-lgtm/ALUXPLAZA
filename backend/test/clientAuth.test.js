@@ -52,7 +52,10 @@ async function insertVerifiedClient({ email = uniqueEmail(), password = 'SuperSe
   return { id: result.rows[0].id, email, password };
 }
 
-async function insertUnverifiedClient({ email = uniqueEmail(), password = 'SuperSecret123!' } = {}) {
+async function insertUnverifiedClient({
+  email = uniqueEmail(),
+  password = 'SuperSecret123!',
+} = {}) {
   const passwordHash = await bcrypt.hash(password, 4);
   const result = await db.query(
     `INSERT INTO clients (company_name, email, password_hash, email_verified)
@@ -108,7 +111,12 @@ describe('POST /api/client/signup', () => {
 
     const res = await request(app)
       .post('/api/client/signup')
-      .send({ companyName: 'Acme Ltd', email, password: 'SuperSecret123!', website_url: 'http://spam.example' });
+      .send({
+        companyName: 'Acme Ltd',
+        email,
+        password: 'SuperSecret123!',
+        website_url: 'http://spam.example',
+      });
 
     expect(res.status).toBe(400);
     const { rows } = await db.query('SELECT id FROM clients WHERE email = $1', [email]);
@@ -261,10 +269,9 @@ describe('POST /api/client/password-reset/request + /confirm', () => {
     const res = await request(app).post('/api/client/password-reset/request').send({ email });
     expect(res.status).toBe(200);
 
-    const { rows } = await db.query(
-      'SELECT id FROM client_password_resets WHERE client_id = $1',
-      [clientId]
-    );
+    const { rows } = await db.query('SELECT id FROM client_password_resets WHERE client_id = $1', [
+      clientId,
+    ]);
     expect(rows).toHaveLength(1);
   });
 
@@ -303,9 +310,13 @@ describe('POST /api/client/password-reset/request + /confirm', () => {
     expect(res.body.success).toBe(true);
 
     // Session revoked
-    const sessions = await db.query('SELECT id FROM client_sessions WHERE client_id = $1', [clientId]);
+    const sessions = await db.query('SELECT id FROM client_sessions WHERE client_id = $1', [
+      clientId,
+    ]);
     expect(sessions.rows).toHaveLength(0);
-    const blocklisted = await db.query('SELECT jti FROM token_blocklist WHERE jti = $1', [sessionJti]);
+    const blocklisted = await db.query('SELECT jti FROM token_blocklist WHERE jti = $1', [
+      sessionJti,
+    ]);
     expect(blocklisted.rows).toHaveLength(1);
 
     // Password actually changed — old password no longer works, new one does
@@ -364,7 +375,9 @@ describe('POST /api/client/login', () => {
 
     expect(res.status).toBe(401);
 
-    const { rows } = await db.query('SELECT failed_login_count FROM clients WHERE id = $1', [clientId]);
+    const { rows } = await db.query('SELECT failed_login_count FROM clients WHERE id = $1', [
+      clientId,
+    ]);
     expect(rows[0].failed_login_count).toBe(1);
   });
 
@@ -390,7 +403,9 @@ describe('POST /api/client/login', () => {
     expect(res.body.success).toBe(true);
     expect(res.headers['set-cookie'].some((c) => c.startsWith('clientToken='))).toBe(true);
 
-    const { rows } = await db.query('SELECT id FROM client_sessions WHERE client_id = $1', [clientId]);
+    const { rows } = await db.query('SELECT id FROM client_sessions WHERE client_id = $1', [
+      clientId,
+    ]);
     expect(rows).toHaveLength(1);
   });
 
@@ -399,16 +414,30 @@ describe('POST /api/client/login', () => {
     const { id: clientId, email, password } = await insertVerifiedClient();
     const ip = testIp();
 
-    await request(app).post('/api/client/login').set('x-test-ip', ip).send({ email, password: 'wrong' });
-    await request(app).post('/api/client/login').set('x-test-ip', ip).send({ email, password: 'wrong' });
+    await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', ip)
+      .send({ email, password: 'wrong' });
+    await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', ip)
+      .send({ email, password: 'wrong' });
 
-    let row = (await db.query('SELECT failed_login_count FROM clients WHERE id = $1', [clientId])).rows[0];
+    let row = (await db.query('SELECT failed_login_count FROM clients WHERE id = $1', [clientId]))
+      .rows[0];
     expect(row.failed_login_count).toBe(2);
 
-    const success = await request(app).post('/api/client/login').set('x-test-ip', ip).send({ email, password });
+    const success = await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', ip)
+      .send({ email, password });
     expect(success.status).toBe(200);
 
-    row = (await db.query('SELECT failed_login_count, locked_until FROM clients WHERE id = $1', [clientId])).rows[0];
+    row = (
+      await db.query('SELECT failed_login_count, locked_until FROM clients WHERE id = $1', [
+        clientId,
+      ])
+    ).rows[0];
     expect(row.failed_login_count).toBe(0);
     expect(row.locked_until).toBeNull();
   });
@@ -421,13 +450,20 @@ describe('POST /api/client/login', () => {
     // computeLockoutMinutes: counts 1-3 => no lock, count 4 => first
     // nonzero lockout (15 min). Confirm the boundary precisely.
     for (let i = 0; i < 3; i++) {
-      const res = await request(app).post('/api/client/login').set('x-test-ip', ip).send({ email, password: 'wrong' });
+      const res = await request(app)
+        .post('/api/client/login')
+        .set('x-test-ip', ip)
+        .send({ email, password: 'wrong' });
       expect(res.status).toBe(401);
     }
-    let row = (await db.query('SELECT locked_until FROM clients WHERE id = $1', [clientId])).rows[0];
+    let row = (await db.query('SELECT locked_until FROM clients WHERE id = $1', [clientId]))
+      .rows[0];
     expect(row.locked_until).toBeNull(); // still unlocked after 3
 
-    const fourth = await request(app).post('/api/client/login').set('x-test-ip', ip).send({ email, password: 'wrong' });
+    const fourth = await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', ip)
+      .send({ email, password: 'wrong' });
     expect(fourth.status).toBe(401);
     row = (await db.query('SELECT locked_until FROM clients WHERE id = $1', [clientId])).rows[0];
     expect(row.locked_until).not.toBeNull(); // locked as of the 4th failure
@@ -439,16 +475,25 @@ describe('POST /api/client/login', () => {
       .send({ email, password });
     expect(attemptWithCorrectPassword.status).toBe(423);
     expect(attemptWithCorrectPassword.body.code).toBe('ACCOUNT_LOCKED');
+    // The 423 must tell the caller how long the lockout lasts. The wait was
+    // computed and then discarded, which left the response with no actionable
+    // detail at all.
+    expect(attemptWithCorrectPassword.body.error).toMatch(/try again in/i);
+    // 15-minute lockout => a minute-denominated message, not seconds.
+    expect(attemptWithCorrectPassword.body.error).toMatch(/15 minutes/i);
   });
 });
 
 describe('GET /api/client/me', () => {
-  it('returns the authenticated client\'s own account info', async () => {
+  it("returns the authenticated client's own account info", async () => {
     const app = buildTestApp();
     const { id: clientId, email, password } = await insertVerifiedClient({ email: uniqueEmail() });
     const ip = testIp();
 
-    const loginRes = await request(app).post('/api/client/login').set('x-test-ip', ip).send({ email, password });
+    const loginRes = await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', ip)
+      .send({ email, password });
     const cookie = loginRes.headers['set-cookie'].find((c) => c.startsWith('clientToken='));
 
     const res = await request(app).get('/api/client/me').set('Cookie', [cookie]);
@@ -473,7 +518,10 @@ describe('POST /api/client/logout', () => {
     const { email, password } = await insertVerifiedClient();
     const ip = testIp();
 
-    const loginRes = await request(app).post('/api/client/login').set('x-test-ip', ip).send({ email, password });
+    const loginRes = await request(app)
+      .post('/api/client/login')
+      .set('x-test-ip', ip)
+      .send({ email, password });
     const cookie = loginRes.headers['set-cookie'].find((c) => c.startsWith('clientToken='));
     expect(cookie).toBeTruthy();
 

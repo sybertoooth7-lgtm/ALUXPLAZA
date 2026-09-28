@@ -8,7 +8,6 @@
 // once per test run, then dropped at the end.
 import { afterAll } from 'vitest';
 import pg from 'pg';
-import { execSync } from 'node:child_process';
 
 const adminUrl = process.env.TEST_DATABASE_URL || 'postgresql://alux:test@localhost:5432/postgres';
 const testDbName = `alux_test_${Date.now()}_${Math.floor(Math.random() * 10000)}`;

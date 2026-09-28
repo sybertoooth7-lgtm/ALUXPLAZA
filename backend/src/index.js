@@ -170,7 +170,11 @@ async function startServer() {
   app.use('/api/verify', verifyScoreRoutes);
   app.use('/admin', express.static('public/admin'));
 
-  app.use((err, req, res, next) => {
+  // _next must stay in the signature: Express identifies error-handling
+  // middleware by arity (fn.length === 4), so removing the parameter would
+  // silently reclassify this as ordinary middleware and every error would
+  // fall through to the default handler as a bare 500.
+  app.use((err, req, res, _next) => {
     if (err.type === 'entity.parse.failed') {
       return res.status(400).json({ error: 'Malformed request body' });
     }

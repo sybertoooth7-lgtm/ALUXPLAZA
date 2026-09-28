@@ -441,9 +441,17 @@ router.post(
 
     // 1. Lockout check first (saves bcrypt work + timing leak)
     if (client?.locked_until && new Date(client.locked_until) > new Date()) {
+      // Tell the caller how long the lockout actually lasts. This value was
+      // computed but discarded, which left a 423 with no actionable detail -
+      // a user hitting this had no way to tell a 15-minute wait from a typo.
       const remainingSec = Math.ceil((new Date(client.locked_until) - new Date()) / 1000);
+      const minutes = Math.ceil(remainingSec / 60);
+      const wait =
+        remainingSec < 60
+          ? `${remainingSec} second${remainingSec === 1 ? '' : 's'}`
+          : `${minutes} minute${minutes === 1 ? '' : 's'}`;
       throw new AuthError(
-        'Account temporarily locked due to repeated failed login attempts.',
+        `Account temporarily locked due to repeated failed login attempts. Try again in ${wait}.`,
         423,
         'ACCOUNT_LOCKED'
       );
@@ -582,7 +590,10 @@ router.get(
 // ── Router-level Error Handler ────────────────────────────────────────────
 // If you already have a global error handler in app.js, you can remove this
 // and let AuthError bubble up to it instead.
-router.use((err, req, res, next) => {
+// _next must stay in the signature: Express identifies error-handling
+// middleware by arity (fn.length === 4), so dropping the parameter would
+// silently reclassify this as ordinary middleware and stop it ever running.
+router.use((err, req, res, _next) => {
   if (err instanceof AuthError) {
     return res.status(err.statusCode).json({
       error: err.message,
