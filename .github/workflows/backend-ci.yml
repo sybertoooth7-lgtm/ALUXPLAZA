@@ -17,7 +17,7 @@ jobs:
     # config.js's default — pinned explicitly at job level so it's not
     # silently dependent on that default staying put.
     env:
-      PORT: "3001"
+      PORT: '3001'
     defaults:
       run:
         working-directory: backend
@@ -84,21 +84,48 @@ jobs:
             sleep 0.5
           done
 
-          echo "Checking /api/health/deep..."
-          curl -sf http://localhost:3001/api/health/deep
+          # Was: curl -sf http://localhost:3001/api/health/deep
+          # 5696b87 removed the /health/deep route when it replaced it with the
+          # cached /health, but this step was never updated — so it has been
+          # curling a 404 ever since, and `curl -f` turns 404 into exit 22.
+          # That is why this job has never once passed (0 successes in 64 runs
+          # back to 2026-08-30) while every other job was green.
+          #
+          # Asserting on /api/health preserves the original intent (prove the
+          # server can actually reach Postgres, not just that the port is open)
+          # because that route returns 503 when the DB is down. Deliberately
+          # NOT reintroducing a cache-bypassing /deep endpoint: the 5s cache on
+          # /health exists to stop unauthenticated polling from exhausting the
+          # connection pool, and this smoke test should not reopen that.
+          echo "Checking /api/health (asserts db:up)..."
+          HEALTH=$(curl -sS -f http://localhost:3001/api/health) || {
+            echo "GET /api/health failed:"; curl -sS -i http://localhost:3001/api/health; exit 1;
+          }
+          echo "$HEALTH"
+          echo "$HEALTH" | grep -q '"db":"up"' || {
+            echo "Expected db:up from /api/health, got: $HEALTH"; exit 1;
+          }
 
+          # Every curl below uses -sS (capital S) so transport-level errors are
+          # printed instead of silently swallowed. Plain -sf discarded the
+          # response body on failure, which is why a month of 404s produced no
+          # usable diagnosis.
           echo "Checking /api/status/defense-matrix..."
-          curl -sf http://localhost:3001/api/status/defense-matrix
+          curl -sS -f http://localhost:3001/api/status/defense-matrix
 
           # CSRF is enforced globally on all non-GET requests — a bare curl
           # POST with no prior GET (to receive the csrfToken cookie) and no
           # x-csrf-token header gets rejected with 403, not a real response.
           echo "Seeding CSRF cookie..."
-          curl -sf -c cookies.txt http://localhost:3001/api/health > /dev/null
+          curl -sS -f -c cookies.txt http://localhost:3001/api/health > /dev/null
           CSRF=$(grep csrfToken cookies.txt | awk '{print $7}')
+          if [ -z "$CSRF" ]; then
+            echo "No csrfToken cookie was set — cannot exercise the CSRF-guarded POST"
+            cat cookies.txt; exit 1
+          fi
 
           echo "Submitting a test contact form entry..."
-          curl -sf -b cookies.txt -X POST http://localhost:3001/api/contact \
+          curl -sS -f -b cookies.txt -X POST http://localhost:3001/api/contact \
             -H "Content-Type: application/json" \
             -H "x-csrf-token: $CSRF" \
             -d '{"name":"CI Test","email":"ci@example.com","message":"automated smoke test"}'
@@ -129,13 +156,22 @@ jobs:
             sleep 0.5
           done
 
-          curl -sf -c cookies.txt http://localhost:3001/api/health > /dev/null
+          curl -sS -f -c cookies.txt http://localhost:3001/api/health > /dev/null
           CSRF=$(grep csrfToken cookies.txt | awk '{print $7}')
+          if [ -z "$CSRF" ]; then
+            echo "No csrfToken cookie was set — cannot exercise the CSRF-guarded POST"
+            cat cookies.txt; exit 1
+          fi
 
-          RESPONSE=$(curl -s -b cookies.txt -X POST http://localhost:3001/api/contact \
+          RESPONSE=$(curl -sS -f -b cookies.txt -X POST http://localhost:3001/api/contact \
             -H "Content-Type: application/json" \
             -H "x-csrf-token: $CSRF" \
-            -d '{"name":"Bot","email":"bot@spam.com","message":"spam message","honeypot":"filled-by-bot"}')
+            -d '{"name":"Bot","email":"bot@spam.com","message":"spam message","honeypot":"filled-by-bot"}') || {
+              echo "Honeypot POST failed:"; curl -sS -i -b cookies.txt -X POST http://localhost:3001/api/contact \
+                -H "Content-Type: application/json" \
+                -H "x-csrf-token: $CSRF" \
+                -d '{"name":"Bot","email":"bot@spam.com","message":"spam message","honeypot":"filled-by-bot"}'; exit 1;
+            }
           kill $SERVER_PID
           if ! echo "$RESPONSE" | grep -q '"success":true'; then
             echo "Expected honeypot submission to get a fake-success response, got: $RESPONSE"
