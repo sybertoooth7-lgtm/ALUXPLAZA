@@ -211,8 +211,22 @@ function pinnedGet(url, { addresses, timeoutMs = 15000, maxBytes = 5 * 1024 * 10
         // The pin. `lookup` replaces name resolution entirely, so the socket
         // cannot end up somewhere other than an address that passed
         // isBlockedAddress() moments ago.
-        lookup: (_hostname, _options, callback) => {
-          callback(null, candidate.address, candidate.family);
+        lookup: (_hostname, options, callback) => {
+          const done = typeof options === 'function' ? options : callback;
+          const opts = typeof options === 'function' ? {} : options;
+          // Node 20+ enables autoSelectFamily by default, and it calls lookup
+          // with all: true expecting an ARRAY of {address, family}. Returning
+          // the single-address form when asked for the list form makes it treat
+          // a string as an iterable and fail with ERR_INVALID_IP_ADDRESS, so
+          // both shapes have to be honoured. Every entry returned here is
+          // already validated; nothing unvalidated ever reaches this list.
+          if (opts && opts.all) {
+            const list = addresses.filter((a) => a.family === 6);
+            if (list.length > 0) done(null, list);
+            else done(null, [{ address: candidate.address, family: candidate.family }]);
+            return;
+          }
+          done(null, candidate.address, candidate.family);
         },
         // SNI + cert validation still use the real hostname.
         ...(isHttps ? { servername: url.hostname } : {}),
