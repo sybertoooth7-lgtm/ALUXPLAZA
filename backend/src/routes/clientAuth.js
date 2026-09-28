@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { body, validationResult } from 'express-validator';
 import db from '../db.js';
 import { config } from '../config.js';
+import { authCookieOptions, authCookieClearOptions } from '../lib/auth-cookie.js';
 import { recordFailedLogin } from '../shield/bruteForceGuard.js';
 import {
   logLoginAttempt,
@@ -112,20 +113,11 @@ function computeLockoutMinutes(count) {
 }
 
 function setAuthCookie(res, token) {
-  res.cookie('clientToken', token, {
-    httpOnly: true,
-    secure: config.isProduction,
-    sameSite: 'strict',
-    maxAge: COOKIE_MAX_AGE_MS,
-  });
+  res.cookie('clientToken', token, authCookieOptions(COOKIE_MAX_AGE_MS));
 }
 
 function clearAuthCookie(res) {
-  res.clearCookie('clientToken', {
-    httpOnly: true,
-    secure: config.isProduction,
-    sameSite: 'strict',
-  });
+  res.clearCookie('clientToken', authCookieClearOptions());
 }
 
 const ENUM_MSG = Object.freeze({

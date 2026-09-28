@@ -10,6 +10,7 @@ import { requireAdmin } from '../middleware/rbac.js';
 import { recordFailedLogin } from '../shield/bruteForceGuard.js';
 import { recordAuditLog } from '../middleware/auditLog.js';
 import { parseExpiryToMs } from '../lib/parseExpiry.js';
+import { authCookieOptions, authCookieClearOptions } from '../lib/auth-cookie.js';
 import { computeComplianceOverview } from '../shield/riskScore.js';
 
 const router = Router();
@@ -119,12 +120,7 @@ router.post(
         { expiresIn: config.jwtExpiresIn }
       );
 
-      res.cookie('adminToken', token, {
-        httpOnly: true,
-        secure: config.isProduction,
-        sameSite: 'strict',
-        maxAge: COOKIE_MAX_AGE_MS,
-      });
+      res.cookie('adminToken', token, authCookieOptions(COOKIE_MAX_AGE_MS));
 
       res.json({ success: true, email: user.email });
     } catch (err) {
@@ -222,12 +218,7 @@ router.post(
         { expiresIn: config.jwtExpiresIn }
       );
 
-      res.cookie('adminToken', token, {
-        httpOnly: true,
-        secure: config.isProduction,
-        sameSite: 'strict',
-        maxAge: COOKIE_MAX_AGE_MS,
-      });
+      res.cookie('adminToken', token, authCookieOptions(COOKIE_MAX_AGE_MS));
 
       res.json({
         success: true,
@@ -254,7 +245,7 @@ router.post('/logout', requireAuth, async (req, res) => {
       : new Date(Date.now() + COOKIE_MAX_AGE_MS);
     await blocklistToken(req.user.jti, expiresAt);
   }
-  res.clearCookie('adminToken');
+  res.clearCookie('adminToken', authCookieClearOptions());
   res.json({ success: true });
 });
 

@@ -21,6 +21,10 @@ export default defineConfig({
       // blocklist can be tested honestly only without a live server bound to
       // a private address, so it belongs in the set that runs everywhere.
       'test/authAudit.test.js',
+      // Cookie attribute helpers. Pure functions of config, and the SSRF-style
+      // caveat applies here too: the wrong Path is only observable in the raw
+      // Set-Cookie header, never through supertest's path-less .set('Cookie').
+      'test/auth-cookie.test.js',
     ],
     fileParallelism: false,
   },

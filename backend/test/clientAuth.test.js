@@ -412,6 +412,16 @@ describe('POST /api/client/login', () => {
     expect(res.body.success).toBe(true);
     expect(res.headers['set-cookie'].some((c) => c.startsWith('clientToken='))).toBe(true);
 
+    // Assert the attributes on the real route, not just on the helper in
+    // auth-cookie.test.js. The helper being correct proves nothing if a call
+    // site stops using it - and the call sites are exactly where these drifted
+    // before. Path=/ is the load-bearing one: without it the browser derives
+    // the scope from the request URI, which is how the MFA route once minted a
+    // cookie that worked for nothing else.
+    const setCookie = res.headers['set-cookie'].find((c) => c.startsWith('clientToken='));
+    expect(setCookie).toContain('Path=/');
+    expect(setCookie).toContain('HttpOnly');
+
     const { rows } = await db.query('SELECT id FROM client_sessions WHERE client_id = $1', [
       clientId,
     ]);
