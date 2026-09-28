@@ -15,7 +15,8 @@ const start = vi.fn();
 const constructorArgs = [];
 
 vi.mock('pg-boss', () => ({
-  default: class PgBoss {
+  // Named export only — pg-boss has no default export.
+  PgBoss: class PgBoss {
     constructor(options) {
       constructorArgs.push(options);
       this.start = start;

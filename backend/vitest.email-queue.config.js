@@ -9,7 +9,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['test/email-queue.test.js'],
+    include: ['test/email-queue.test.js', 'test/email-queue-import.test.js'],
     fileParallelism: false,
   },
 });

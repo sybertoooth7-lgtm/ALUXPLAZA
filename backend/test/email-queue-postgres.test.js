@@ -57,7 +57,7 @@ describe('email queue: pgboss schema', () => {
     let boss = null;
     try {
       await runMigrations(pool);
-      const { default: PgBoss } = await import('pg-boss');
+      const { PgBoss } = await import('pg-boss');
       boss = new PgBoss({ connectionString, schema: 'pgboss', createSchema: false });
       await boss.start();
 
@@ -81,7 +81,7 @@ describe('email queue: pgboss schema', () => {
     let boss = null;
     try {
       await runMigrations(pool);
-      const { default: PgBoss } = await import('pg-boss');
+      const { PgBoss } = await import('pg-boss');
       boss = new PgBoss({ connectionString, schema: 'pgboss', createSchema: false });
       await boss.start();
       await boss.createQueue('email', {
