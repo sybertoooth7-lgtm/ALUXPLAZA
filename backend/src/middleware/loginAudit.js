@@ -99,8 +99,8 @@ export async function detectDistributedFailure(clientId, email, ip) {
          FROM client_login_attempts
          WHERE client_id = $1
            AND success = FALSE
-           AND created_at > NOW() - INTERVAL '$2 minutes'`,
-        [clientId, String(DISTINCT_IP_WINDOW_MIN)]
+           AND created_at > NOW() - make_interval(mins => $2::int)`,
+        [clientId, DISTINCT_IP_WINDOW_MIN]
       );
       const ips = perAccount.rows[0].ips;
       if (ips >= DISTINCT_IP_THRESHOLD) {
@@ -123,8 +123,8 @@ export async function detectDistributedFailure(clientId, email, ip) {
        FROM client_login_attempts
        WHERE ip_address = $1
          AND success = FALSE
-         AND created_at > NOW() - INTERVAL '$2 minutes'`,
-      [ip, String(DISTINCT_EMAIL_WINDOW_MIN)]
+         AND created_at > NOW() - make_interval(mins => $2::int)`,
+      [ip, DISTINCT_EMAIL_WINDOW_MIN]
     );
     const emails = perIp.rows[0].emails;
     if (emails >= DISTINCT_EMAIL_THRESHOLD) {
