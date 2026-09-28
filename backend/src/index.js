@@ -12,6 +12,13 @@ import { logger } from './logger.js';
 import { initErrorTracking, captureError, sendAlert } from './monitoring.js';
 import { recordRequest, loadPersistedValues, persistStats } from './stats.js';
 import { startCleanupScheduler } from './jobs/cleanup.js';
+import { startEmailQueue, registerEmailWorker, stopEmailQueue } from './lib/email-queue.js';
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendContactNotification,
+  sendNewDeviceAlert,
+} from './lib/email.js';
 
 import { attachCspNonce, helmetMiddleware } from './middleware/helmetConfig.js';
 import { setCsrfCookie, verifyCsrfToken } from './middleware/csrf.js';
@@ -188,6 +195,9 @@ async function startServer() {
     clearInterval(cleanupInterval);
     await persistStats();
     server.close(async () => {
+      // Let in-flight jobs finish before closing the pool, so a shutdown
+      // doesn't strand a job mid-send. Bounded by the 10s force-exit below.
+      await stopEmailQueue().catch(() => {});
       // Release bcrypt workers so they don't keep the event loop alive.
       await bcrypt.shutdown().catch(() => {});
       await db.end().catch(() => {});
@@ -204,6 +214,17 @@ async function main() {
   await initDb();
   initErrorTracking();
   await loadPersistedValues();
+
+  // After initDb() because the pgboss schema comes from migration 023, and
+  // before listen() so the worker is ready to take jobs as soon as we serve.
+  // Both steps no-op into the in-process fallback if the queue can't start.
+  await startEmailQueue();
+  await registerEmailWorker({
+    verification: (p) => sendVerificationEmail(p),
+    'password-reset': (p) => sendPasswordResetEmail(p),
+    'contact-notification': (p) => sendContactNotification(p),
+    'new-device-alert': (p) => sendNewDeviceAlert(p),
+  });
 
   try {
     const { rows } = await db.query('SELECT COUNT(*) AS count FROM admin_users');

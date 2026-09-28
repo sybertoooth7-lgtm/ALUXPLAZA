@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import db from '../db.js';
 import { recordContactAttempt, recordContactSuccess, recordHoneypotBlocked } from '../stats.js';
 import { sendContactNotification } from '../lib/email.js';
+import { enqueueEmail } from '../lib/email-queue.js';
 import { contactLimiter } from '../middleware/rate-limit.js';
 
 const router = Router();
@@ -54,8 +55,15 @@ router.post(
 
       recordContactSuccess();
 
-      sendContactNotification({ name, company, email, message, id: result.rows[0].id }).catch(err => {
-        console.error('[email] Notification failed:', err.message);
+      enqueueEmail(
+        'contact-notification',
+        { name, company, email, message, id: result.rows[0].id },
+        {
+          fallback: () =>
+            sendContactNotification({ name, company, email, message, id: result.rows[0].id }),
+        }
+      ).catch((err) => {
+        console.error('[email] Notification enqueue failed:', err.message);
       });
 
       res.status(201).json({ success: true, id: result.rows[0].id });

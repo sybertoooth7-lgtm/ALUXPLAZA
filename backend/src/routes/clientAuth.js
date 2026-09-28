@@ -10,6 +10,7 @@ import { recordFailedLogin } from '../shield/bruteForceGuard.js';
 import { logLoginAttempt, isNewIp, alertNewDevice, DUMMY_HASH } from '../middleware/loginAudit.js';
 import { parseExpiryToMs } from '../lib/parseExpiry.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../lib/email.js';
+import { enqueueEmail } from '../lib/email-queue.js';
 import { requireClientAuth } from '../middleware/clientAuth.js';
 
 const router = Router();
@@ -273,10 +274,14 @@ router.post(
 
         await createVerificationToken(client, clientId, tokenHash, expiresAt);
 
-        sendVerificationEmail({
-          email,
-          link: buildLink('/client/verify-email', rawToken),
-        }).catch((err) => console.error('[clientAuth] Verification email failed:', err));
+        enqueueEmail(
+          'verification',
+          { email, link: buildLink('/client/verify-email', rawToken) },
+          {
+            fallback: () =>
+              sendVerificationEmail({ email, link: buildLink('/client/verify-email', rawToken) }),
+          }
+        ).catch((err) => console.error('[clientAuth] Verification enqueue failed:', err.message));
       });
 
       res.status(200).json({ message: ENUM_MSG.signup });
@@ -341,10 +346,16 @@ router.post(
 
       await createVerificationToken(client, clientId, tokenHash, expiresAt);
 
-      sendVerificationEmail({
-        email,
-        link: buildLink('/client/verify-email', rawToken),
-      }).catch((err) => console.error('[clientAuth] Resend verification email failed:', err));
+      enqueueEmail(
+        'verification',
+        { email, link: buildLink('/client/verify-email', rawToken) },
+        {
+          fallback: () =>
+            sendVerificationEmail({ email, link: buildLink('/client/verify-email', rawToken) }),
+        }
+      ).catch((err) =>
+        console.error('[clientAuth] Resend verification enqueue failed:', err.message)
+      );
     });
 
     res.status(200).json({ message: ENUM_MSG.resend });
@@ -373,10 +384,14 @@ router.post(
 
       await createPasswordResetToken(client, clientId, tokenHash, expiresAt);
 
-      sendPasswordResetEmail({
-        email,
-        link: buildLink('/client/reset-password', rawToken),
-      }).catch((err) => console.error('[clientAuth] Password-reset email failed:', err));
+      enqueueEmail(
+        'password-reset',
+        { email, link: buildLink('/client/reset-password', rawToken) },
+        {
+          fallback: () =>
+            sendPasswordResetEmail({ email, link: buildLink('/client/reset-password', rawToken) }),
+        }
+      ).catch((err) => console.error('[clientAuth] Password-reset enqueue failed:', err.message));
     });
 
     res.status(200).json({ message: ENUM_MSG.resetReq });
