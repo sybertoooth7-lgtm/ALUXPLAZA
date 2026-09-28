@@ -17,6 +17,10 @@ export default defineConfig({
       'test/email-queue-import.test.js',
       'test/body-limit.test.js',
       'test/email-strict.test.js',
+      // Pure address-parsing functions, no database and no network. The SSRF
+      // blocklist can be tested honestly only without a live server bound to
+      // a private address, so it belongs in the set that runs everywhere.
+      'test/authAudit.test.js',
     ],
     fileParallelism: false,
   },
