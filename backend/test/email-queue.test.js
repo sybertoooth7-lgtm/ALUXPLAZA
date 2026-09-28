@@ -105,6 +105,27 @@ describe('lib/email-queue.js', () => {
     expect(sender).toHaveBeenCalled();
   });
 
+  it('handles a single-job argument as well as a batch array', async () => {
+    // Defensive: if pg-boss ever hands over a bare job, destructuring it as an
+    // array would throw on every send and burn all five retries.
+    const mod = await load();
+    await mod.startEmailQueue();
+    let handler;
+    work.mockImplementation(async (queue, opts, fn) => {
+      handler = fn;
+      return 'w';
+    });
+    const sender = vi.fn().mockResolvedValue(undefined);
+    await mod.registerEmailWorker({ verification: sender });
+
+    await handler({
+      id: 'j2',
+      retryCount: 0,
+      data: { kind: 'verification', payload: { email: 'a@b.c' } },
+    });
+    expect(sender).toHaveBeenCalledWith({ email: 'a@b.c' });
+  });
+
   it('does not retry an unknown email kind', async () => {
     const mod = await load();
     await mod.startEmailQueue();

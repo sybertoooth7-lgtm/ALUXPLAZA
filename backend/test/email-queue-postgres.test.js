@@ -94,7 +94,9 @@ describe('email queue: pgboss schema', () => {
       });
 
       let attempts = 0;
-      await boss.work('email', { batchSize: 1 }, async () => {
+      await boss.work('email', { batchSize: 1 }, async (arg) => {
+        const job = Array.isArray(arg) ? arg[0] : arg;
+        if (!job) return;
         attempts += 1;
         if (attempts < 3) throw new Error('simulated Resend 503');
       });

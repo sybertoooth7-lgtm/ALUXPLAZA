@@ -96,7 +96,13 @@ export async function registerEmailWorker(senders) {
     return;
   }
 
-  await boss.work(QUEUE_EMAIL, { batchSize: 1 }, async ([job]) => {
+  await boss.work(QUEUE_EMAIL, { batchSize: 1 }, async (arg) => {
+    // Tolerant of both handler shapes. pg-boss documents a batch array, but
+    // destructuring a single job object here would throw on every send and
+    // quietly burn all five retries, which is the worst possible failure mode
+    // for the one path that must not drop mail.
+    const job = Array.isArray(arg) ? arg[0] : arg;
+    if (!job) return;
     const { kind, payload } = job.data || {};
     const sender = senders[kind];
     if (!sender) {
@@ -110,7 +116,7 @@ export async function registerEmailWorker(senders) {
     } catch (err) {
       // Rethrow so pg-boss counts the attempt and retries.
       console.error(
-        `[email-queue] ${kind} failed (job ${job.id}, attempt ${job.retryCount + 1}/${QUEUE_OPTIONS.retryLimit}): ${err.message}`
+        `[email-queue] ${kind} failed (job ${job.id}, attempt ${(job.retryCount ?? 0) + 1}/${QUEUE_OPTIONS.retryLimit}): ${err.message}`
       );
       throw err;
     }

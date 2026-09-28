@@ -215,16 +215,22 @@ async function main() {
   initErrorTracking();
   await loadPersistedValues();
 
-  // After initDb() because the pgboss schema comes from migration 023, and
-  // before listen() so the worker is ready to take jobs as soon as we serve.
-  // Both steps no-op into the in-process fallback if the queue can't start.
-  await startEmailQueue();
-  await registerEmailWorker({
-    verification: (p) => sendVerificationEmail(p),
-    'password-reset': (p) => sendPasswordResetEmail(p),
-    'contact-notification': (p) => sendContactNotification(p),
-    'new-device-alert': (p) => sendNewDeviceAlert(p),
-  });
+  // Deliberately NOT awaited, and deliberately after initDb() so the pgboss
+  // schema from migration 023 exists. pg-boss's first start() installs its own
+  // tables, which is slow enough on a cold database to delay the server
+  // coming up. A queue problem must never delay or prevent the API serving,
+  // so this runs in the background: until it finishes, enqueueEmail() finds no
+  // queue and falls back to sending in-process, which is the old behaviour.
+  startEmailQueue()
+    .then(() =>
+      registerEmailWorker({
+        verification: (p) => sendVerificationEmail(p),
+        'password-reset': (p) => sendPasswordResetEmail(p),
+        'contact-notification': (p) => sendContactNotification(p),
+        'new-device-alert': (p) => sendNewDeviceAlert(p),
+      })
+    )
+    .catch((err) => console.error('[email-queue] startup failed:', err.message));
 
   try {
     const { rows } = await db.query('SELECT COUNT(*) AS count FROM admin_users');
