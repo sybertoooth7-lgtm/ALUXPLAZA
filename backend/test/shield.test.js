@@ -7,7 +7,11 @@ import {
   scoreLabel,
 } from '../src/shield/riskScore.js';
 import { isBlocked, blockIp, unblockIp, listActiveBlocks } from '../src/shield/blocklist.js';
-import { recordFailedLogin, recordRequest } from '../src/shield/bruteForceGuard.js';
+import {
+  recordFailedLogin,
+  recordRequest,
+  trackedKeyCounts,
+} from '../src/shield/bruteForceGuard.js';
 import { logSecurityEvent } from '../src/shield/eventLogger.js';
 import db from '../src/db.js';
 
@@ -439,6 +443,21 @@ describe('shield/bruteForceGuard.js', () => {
     }
     expect(await isBlocked(ip)).toBe(true);
   }, 15_000);
+
+  // Both maps are keyed by attacker-controlled strings and used to be pruned
+  // only when the same key returned, so rotating source IPs grew them without
+  // bound until the process OOMed.
+  it('caps tracked keys instead of growing without bound', async () => {
+    const before = trackedKeyCounts().requestCounts;
+    // Well past MAX_TRACKED_KEYS (10000) in bruteForceGuard.js.
+    for (let i = 0; i < 12_000; i++) {
+      await recordRequest(`flood-${i}`, `10.99.${Math.floor(i / 256) % 256}.${i % 256}`);
+    }
+    const after = trackedKeyCounts().requestCounts;
+    expect(after).toBeLessThanOrEqual(10_000);
+    // The cap must not be a no-op that lets the map grow past the old ceiling.
+    expect(after).toBeGreaterThan(before);
+  }, 60_000);
 });
 
 describe('shield/eventLogger.js', () => {
