@@ -16,6 +16,7 @@ export default defineConfig({
       'test/email-queue.test.js',
       'test/email-queue-import.test.js',
       'test/body-limit.test.js',
+      'test/email-strict.test.js',
     ],
     fileParallelism: false,
   },

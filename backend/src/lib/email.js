@@ -33,14 +33,53 @@ function isSafeLink(link) {
   try {
     const configuredHost = new URL(config.frontendUrl || '').hostname;
     const url = new URL(link);
-    const protocolOk = config.isProduction ? url.protocol === 'https:' : /^https?:$/.test(url.protocol);
+    const protocolOk = config.isProduction
+      ? url.protocol === 'https:'
+      : /^https?:$/.test(url.protocol);
     return protocolOk && !!configuredHost && url.hostname === configuredHost;
   } catch {
     return false;
   }
 }
 
-export async function sendContactNotification({ name = 'Unknown', company = '', email = '', message = '', id = '' } = {}) {
+// Thrown when Resend reports that a message was not accepted.
+//
+// The Resend v4 SDK does NOT throw on API-level failures: emails.send()
+// resolves with { data, error } and only throws for programmer errors. So a
+// rejected send (422 invalid address, 429, 5xx) looks exactly like a success
+// unless the error field is inspected explicitly. That is easy to miss, and
+// it matters: without it the pg-boss worker marks a failed send complete and
+// never retries, which is the exact failure this queue exists to prevent.
+class EmailDeliveryError extends Error {
+  constructor(message, cause) {
+    super(message);
+    this.name = 'EmailDeliveryError';
+    this.cause = cause;
+  }
+}
+
+// Sends via Resend and throws if the message was rejected. Used by the
+// `strict` paths so a delivery failure propagates to the pg-boss worker.
+async function sendOrThrow(payload) {
+  const result = await resend.emails.send(payload);
+  if (result?.error) {
+    const detail = result.error.message || result.error.name || 'unknown error';
+    throw new EmailDeliveryError(`Resend rejected the message: ${detail}`, result.error);
+  }
+  return result;
+}
+
+// Sends an email, throwing on failure only when `strict` is set.
+//
+// Non-strict (the default) keeps the historical behaviour of logging and
+// resolving, because the inline call sites in clientAuth.js, contact.js and
+// loginAudit.js are fire-and-forget or run behind a try/catch, and Node exits
+// on an unhandled rejection. Strict is what registerEmailWorker passes in
+// index.js, because pg-boss can only retry a send it sees fail.
+export async function sendContactNotification(
+  { name = 'Unknown', company = '', email = '', message = '', id = '' } = {},
+  { strict = false } = {}
+) {
   if (!resend) {
     console.log('[email] RESEND_API_KEY not set — skipping notification.');
     return;
@@ -62,7 +101,7 @@ export async function sendContactNotification({ name = 'Unknown', company = '', 
   const safeId = escapeHtml(String(id));
 
   try {
-    await resend.emails.send({
+    await sendOrThrow({
       from: `Alux Plaza <${FROM_EMAIL}>`,
       to: [ADMIN_EMAIL],
       subject: `New contact form submission #${safeId}`,
@@ -78,20 +117,29 @@ export async function sendContactNotification({ name = 'Unknown', company = '', 
     });
   } catch (err) {
     console.error('[email] error sending contact notification:', err);
+    if (strict) throw err;
   }
 }
 
-export async function sendVerificationEmail({ email = '', link = '' } = {}) {
+export async function sendVerificationEmail(
+  { email = '', link = '' } = {},
+  { strict = false } = {}
+) {
   if (!email || !link) {
     console.log('[email] Missing recipient or link — skipping verification email.');
     return;
   }
   if (!isSafeLink(link)) {
-    console.error('[email] Refusing to send verification email: link does not match FRONTEND_URL.', { link });
+    console.error(
+      '[email] Refusing to send verification email: link does not match FRONTEND_URL.',
+      { link }
+    );
     return;
   }
   if (!resend) {
-    console.log(`[email] RESEND_API_KEY not set — skipping verification email. Link would be: ${link}`);
+    console.log(
+      `[email] RESEND_API_KEY not set — skipping verification email. Link would be: ${link}`
+    );
     return;
   }
   if (!FROM_EMAIL) {
@@ -102,7 +150,7 @@ export async function sendVerificationEmail({ email = '', link = '' } = {}) {
   const safeUrl = escapeHtml(link);
 
   try {
-    await resend.emails.send({
+    await sendOrThrow({
       from: `Alux Plaza <${FROM_EMAIL}>`,
       to: [email],
       subject: 'Verify your Alux Plaza account',
@@ -116,20 +164,29 @@ export async function sendVerificationEmail({ email = '', link = '' } = {}) {
     });
   } catch (err) {
     console.error('[email] error sending verification email:', err);
+    if (strict) throw err;
   }
 }
 
-export async function sendPasswordResetEmail({ email = '', link = '' } = {}) {
+export async function sendPasswordResetEmail(
+  { email = '', link = '' } = {},
+  { strict = false } = {}
+) {
   if (!email || !link) {
     console.log('[email] Missing recipient or link — skipping password reset email.');
     return;
   }
   if (!isSafeLink(link)) {
-    console.error('[email] Refusing to send password reset email: link does not match FRONTEND_URL.', { link });
+    console.error(
+      '[email] Refusing to send password reset email: link does not match FRONTEND_URL.',
+      { link }
+    );
     return;
   }
   if (!resend) {
-    console.log(`[email] RESEND_API_KEY not set — skipping password reset email. Link would be: ${link}`);
+    console.log(
+      `[email] RESEND_API_KEY not set — skipping password reset email. Link would be: ${link}`
+    );
     return;
   }
   if (!FROM_EMAIL) {
@@ -140,7 +197,7 @@ export async function sendPasswordResetEmail({ email = '', link = '' } = {}) {
   const safeUrl = escapeHtml(link);
 
   try {
-    await resend.emails.send({
+    await sendOrThrow({
       from: `Alux Plaza Security <${FROM_EMAIL}>`,
       to: [email],
       subject: 'Reset your Alux Plaza password',
@@ -154,10 +211,14 @@ export async function sendPasswordResetEmail({ email = '', link = '' } = {}) {
     });
   } catch (err) {
     console.error('[email] error sending password reset email:', err);
+    if (strict) throw err;
   }
 }
 
-export async function sendNewDeviceAlert({ email = '', ip = '', userAgent = '' } = {}) {
+export async function sendNewDeviceAlert(
+  { email = '', ip = '', userAgent = '' } = {},
+  { strict = false } = {}
+) {
   if (!resend) {
     console.log('[email] RESEND_API_KEY not set — skipping new-device alert.');
     return;
@@ -177,7 +238,7 @@ export async function sendNewDeviceAlert({ email = '', ip = '', userAgent = '' }
   const when = new Date().toUTCString();
 
   try {
-    await resend.emails.send({
+    await sendOrThrow({
       from: `Alux Plaza Security <${FROM_EMAIL}>`,
       to: [email],
       subject: 'New login from an unfamiliar device',
@@ -194,5 +255,6 @@ export async function sendNewDeviceAlert({ email = '', ip = '', userAgent = '' }
     });
   } catch (err) {
     console.error('[email] error sending new-device alert:', err);
+    if (strict) throw err;
   }
 }

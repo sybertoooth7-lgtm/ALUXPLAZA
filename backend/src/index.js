@@ -236,10 +236,15 @@ async function main() {
   startEmailQueue()
     .then(() =>
       registerEmailWorker({
-        verification: (p) => sendVerificationEmail(p),
-        'password-reset': (p) => sendPasswordResetEmail(p),
-        'contact-notification': (p) => sendContactNotification(p),
-        'new-device-alert': (p) => sendNewDeviceAlert(p),
+        // strict: true is load-bearing. Without it these senders log and
+        // resolve, pg-boss sees success, and the job is marked complete — so a
+        // Resend rejection would never be retried and the retry settings on the
+        // queue would be decorative. The inline call sites in clientAuth.js,
+        // contact.js and loginAudit.js keep the default non-strict behaviour.
+        verification: (p) => sendVerificationEmail(p, { strict: true }),
+        'password-reset': (p) => sendPasswordResetEmail(p, { strict: true }),
+        'contact-notification': (p) => sendContactNotification(p, { strict: true }),
+        'new-device-alert': (p) => sendNewDeviceAlert(p, { strict: true }),
       })
     )
     .catch((err) => console.error('[email-queue] startup failed:', err.message));
