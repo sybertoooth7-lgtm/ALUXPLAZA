@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "profile": "full",
+  "repo": "https://github.com/sybertoooth7-lgtm/ALUXPLAZA",
+  "entryPoint": "CLAUDE.md",
+  "ruleFiles": [
+    ".claude/rules/aluxplaza-guardrails.md",
+    ".claude/rules/backend-node.md",
+    ".claude/rules/frontend-react.md"
+  ],
+  "commandFiles": [
+    ".claude/commands/database-migration.md",
+    ".claude/commands/feature-development.md",
+    ".claude/commands/add-language-rules.md"
+  ],
+  "researchFiles": [".claude/research/aluxplaza-research-playbook.md"],
+  "enterpriseFiles": [".claude/enterprise/controls.md"],
+  "sharedSkills": [
+    ".opencode/skills/tdd-workflow/SKILL.md",
+    ".opencode/skills/security-review/SKILL.md",
+    ".opencode/skills/coding-standards/SKILL.md"
+  ],
+  "note": "The .claude bundle is the Claude Code surface. .opencode/ is the parallel OpenCode surface for the same ECC-derived workflow; keep the two in step when repository conventions change.",
+  "updatedAt": "2026-09-29T00:00:00.000Z"
+}

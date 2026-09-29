@@ -1,0 +1,13 @@
+{
+  "version": "2.0",
+  "technicalLevel": "technical",
+  "preferredStyle": {
+    "verbosity": "minimal",
+    "codeComments": true,
+    "explanations": true
+  },
+  "domains": ["javascript", "typescript", "python"],
+  "suggestedBy": "repo-analysis",
+  "notes": "Comment style in this repository is to explain non-obvious reasoning inline, not to restate the code.",
+  "createdAt": "2026-09-29T00:00:00.000Z"
+}
