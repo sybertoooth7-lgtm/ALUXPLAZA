@@ -19,6 +19,11 @@ import HomePage from './pages/HomePage';
 const ClientLogin = lazy(() => import('./pages/ClientLogin'));
 const ClientSignup = lazy(() => import('./pages/ClientSignup'));
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
+// Client portal sub-pages — each lazy-loaded so a client only downloads the
+// page they're on; all four share the ClientLayout shell.
+const ClientCompliancePage = lazy(() => import('./pages/ClientCompliancePage'));
+const ClientSecurityPage = lazy(() => import('./pages/ClientSecurityPage'));
+const ClientSessionsPage = lazy(() => import('./pages/ClientSessionsPage'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
@@ -63,6 +68,9 @@ function App() {
           <Route path="/client/forgot-password" element={<ForgotPassword />} />
           <Route path="/client/reset-password/:token" element={<ResetPassword />} />
           <Route path="/client/dashboard" element={<ClientDashboard />} />
+          <Route path="/client/compliance" element={<ClientCompliancePage />} />
+          <Route path="/client/security" element={<ClientSecurityPage />} />
+          <Route path="/client/sessions" element={<ClientSessionsPage />} />
           <Route path="/client/verify-email/:token" element={<VerifyEmail />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
