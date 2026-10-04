@@ -28,7 +28,8 @@ best practice.
   ruleset would be a legitimate next step.
 - An existing ruleset has drifted from the code and needs correcting.
 - A subsystem is large enough to deserve its own file (for example
-  `docs/` methodology writing conventions, or the `pg-boss` job layer).
+  `docs/` methodology writing conventions, or the `email-queue` durability
+  layer).
 
 ## Common Files
 

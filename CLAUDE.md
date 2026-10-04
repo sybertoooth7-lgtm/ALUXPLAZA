@@ -23,7 +23,8 @@ and an admin dashboard (client management, security operations, triage).
 - **Backend** (`backend/`): Node 20, Express 5, ESM (`"type": "module"`),
   PostgreSQL via `pg`, JWT auth with separate `adminToken` / `clientToken`
   cookies, CSRF double-submit, Postgres-backed rate limiting, in-house request
-  scanner in `src/shield/`, `pg-boss` for background jobs, `pino` logging,
+  scanner in `src/shield/`, `pg-boss` for the durable email queue, `pino`
+  logging,
   Sentry, `vitest` with a freshly migrated database per test file.
 - **Frontend** (`frontend/`): React 19, Vite 7, TypeScript 5.9, Tailwind 3.4,
   `react-router` 7, Sentry, PWA.

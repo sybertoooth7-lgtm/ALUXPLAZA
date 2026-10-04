@@ -42,7 +42,7 @@ unrelated change.
 
 - **Backend** (`backend/`): Express 5, ESM, PostgreSQL via `pg`. Entry point `src/index.js`; wiring lives in `src/config.js`, `src/db.js`, `src/logger.js`, `src/monitoring.js`.
 - **Request path**: `src/routes/*` → `src/middleware/*` → `src/lib/*`. `src/shield/` is the in-house request scanner and runs ahead of route handlers.
-- **Background work** goes through `pg-boss` (`src/lib/email-queue.js`, `src/jobs/cleanup.js`). It is ESM with named exports — `import { Job } from 'pg-boss'`, not a default import. Do not move queue startup onto the boot path.
+- **Background work uses two mechanisms, deliberately.** The email queue is durable and goes through `pg-boss` (`src/lib/email-queue.js`) — ESM with named exports, `import { PgBoss } from 'pg-boss'`, not a default import. Its `start()` is deliberately not awaited and must not move onto the boot path. The periodic purge in `src/jobs/cleanup.js` is a plain in-process `setInterval`, so it does not survive a restart and needs no queue. Do not move work between the two without a reason — durability is the whole difference.
 - **Frontend** (`frontend/`): React 19 + Vite + TypeScript + Tailwind, routed with `react-router`. Organise by `src/pages`, `src/sections`, `src/components`, `src/hooks`, `src/lib`.
 - **Migrations** are numbered SQL files in `backend/migrations/`, applied in filename order by `src/migrations-runner.js` and tracked in a `_migrations` table. Apply with `npm run migrate --prefix backend`. Never edit a migration that has shipped — add a new file.
 - **API surface is documented in `backend/openapi.yaml`.** If you add or change an endpoint, that file is part of the change.

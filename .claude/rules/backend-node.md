@@ -22,7 +22,7 @@ Project-specific rules for `backend/`. Extends `aluxplaza-guardrails.md`.
 - **Linter**: ESLint flat config (`eslint.config.js`), `npm run lint`
 - **Logging**: `pino` / `pino-http` via `src/logger.js`
 - **Errors / monitoring**: Sentry (`@sentry/node`) wired in `src/monitoring.js`
-- **Background jobs**: `pg-boss`
+- **Background jobs**: `pg-boss` for the durable email queue only; `jobs/cleanup.js` uses a plain `setInterval`
 - **Auth**: JWT (`jsonwebtoken`) with `bcryptjs`, plus `express-validator` for request validation
 
 ## Layout
@@ -41,7 +41,7 @@ src/
   middleware/         auth, rbac, csrf, rate-limit, audit, shield
   lib/                focused helpers (auth-cookie, mfa, email-queue, …)
   shield/             in-house request scanner
-  jobs/               pg-boss scheduled work
+  jobs/               in-process setInterval purge (not pg-boss)
   scripts/            interactive CLI tooling
 test/
   setup.js            per-file database creation + migration
