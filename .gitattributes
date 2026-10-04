@@ -1,0 +1,46 @@
+# Line endings
+#
+# Without this file, the checkout line ending is decided by each contributor's
+# local core.autocrlf, so two people can have different bytes for the same
+# tracked file. That is not theoretical here: with core.autocrlf=true on
+# Windows, 182 of the tracked files landed in the working tree as CRLF while
+# Prettier (which defaults to endOfLine: "lf") still expects LF, so
+# `npm run format:check` failed on 150 files before this file existed.
+#
+# Pin it in the repo instead: store LF, check out LF, on every platform.
+# Prettier's default and this file now agree.
+* text=auto eol=lf
+
+# Windows-native scripts are the exception - they need CRLF to run.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Interpreted scripts run on Linux and in CI. CRLF in a shell script or a
+# Python file produces a confusing error, so these stay LF.
+*.sh text eol=lf
+*.py text eol=lf
+
+# Generated. npm writes LF; .prettierignore already excludes it from
+# formatting, so this just stops anything else rewriting it.
+package-lock.json text eol=lf
+
+# Container and CI entrypoints are read by other runtimes, never a Windows
+# shell. Keep them LF so the image does not change between platforms.
+Dockerfile text eol=lf
+*.dockerignore text eol=lf
+
+# Binary assets. `text=auto` already detects these, but naming them keeps a
+# stray conversion from corrupting them if detection ever guesses wrong.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
