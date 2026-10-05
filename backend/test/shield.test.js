@@ -34,11 +34,20 @@ function testIp() {
   return `10.1.0.${ipCounter}`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────
 describe('shield/detector.js — scanRequest', () => {
   it('returns null for a clean request', () => {
     const result = scanRequest(fakeReq({ query: { search: 'hello world' } }));
     expect(result).toBeNull();
+  });
+
+  it('skips benign free-text fields when scanning payloads', () => {
+    expect(
+      scanRequest(fakeReq({ body: { message: 'The union of our two teams met yesterday.' } }))
+    ).toBeNull();
+    expect(
+      scanRequest(fakeReq({ body: { comment: 'Please select the second option instead.' } }))
+    ).toBeNull();
+    expect(scanRequest(fakeReq({ body: { username: '1 UNION SELECT username FROM users' } }))).not.toBeNull();
   });
 
   it('detects a classic SQL injection UNION SELECT in a query param', () => {
@@ -82,7 +91,6 @@ describe('shield/detector.js — scanRequest', () => {
   });
 
   it('detects a SQL injection hidden behind double URL-encoding', () => {
-    // "union select" URL-encoded twice: normalizeInput decodes up to 3 levels
     const doubleEncoded = encodeURIComponent(encodeURIComponent('union select'));
     const result = scanRequest(fakeReq({ query: { q: doubleEncoded } }));
     expect(result).not.toBeNull();
@@ -90,7 +98,6 @@ describe('shield/detector.js — scanRequest', () => {
   });
 
   it('detects SQLi hidden via HTML-entity-encoded characters', () => {
-    // A single-quote OR-injection spelled with an HTML entity for the space
     const result = scanRequest(fakeReq({ query: { id: "1' OR '1'='1" } }));
     expect(result).not.toBeNull();
   });
@@ -102,12 +109,8 @@ describe('shield/detector.js — scanRequest', () => {
     expect(result).toBeNull();
   });
 
-  // The patterns used to be unbounded (/\bunion\b.*?\bselect\b/ and
-  // /<script[\s\S]*?>[\s\S]*?<\/script>/), so a 1mb body full of opening
-  // tokens blocked the event loop for minutes. They are now gap-bounded and
-  // each request part is capped before normalization.
   it('scans a 1mb adversarial body in well under a second', () => {
-    const hostile = { blob: 'union '.repeat(200000) }; // ~1.2mb
+    const hostile = { blob: 'union '.repeat(200000) };
     const started = Date.now();
     scanRequest(fakeReq({ body: hostile }));
     expect(Date.now() - started).toBeLessThan(2000);
@@ -124,22 +127,18 @@ describe('shield/detector.js — scanRequest', () => {
   });
 
   it('scans a 1mb body of script tags in well under a second', () => {
-    const hostile = { blob: '<script>'.repeat(114000) }; // ~900kb
+    const hostile = { blob: '<script>'.repeat(114000) };
     const started = Date.now();
     scanRequest(fakeReq({ body: hostile }));
     expect(Date.now() - started).toBeLessThan(2000);
   });
 
-  // /on\w+\s*=/ backtracked once per character from every 'on' in the input:
-  // 2.6s inside a single 64KB window, so the input cap did not save it.
   it('scans a 64kb body of "on" in well under a second', () => {
     const started = Date.now();
     scanRequest(fakeReq({ body: { blob: 'on'.repeat(32768) } }));
     expect(Date.now() - started).toBeLessThan(2000);
   });
 
-  // Nested unbounded quantifiers. This hung outright at 16kb, long before
-  // reaching the input cap.
   it('scans a 64kb body of iframe tags in well under a second', () => {
     const started = Date.now();
     scanRequest(fakeReq({ body: { blob: '<iframe>'.repeat(8000) } }));
@@ -155,12 +154,6 @@ describe('shield/detector.js — scanRequest', () => {
     const result = scanRequest(fakeReq({ body: { html: '<img src=x onerror=alert(1)>' } }));
     expect(result.matchedPattern).toBe('xss_event_handler');
   });
-
-  // ── The widened signature set ─────────────────────────────────────────
-  // Each of these closes a category the previous set did not cover. They are
-  // grouped by the class they defend against, and each asserts the exact
-  // pattern name so a broad parent regex can't silently take credit for a
-  // narrower pattern's test.
 
   it('detects command injection via subshell and backticks', () => {
     expect(
@@ -206,11 +199,6 @@ describe('shield/detector.js — scanRequest', () => {
     ).toBe('log4j_jndi');
   });
 
-  // These are written against the NORMALIZED string, which lowercases and
-  // JSON-escapes the input first. Each of these caught a real bug where the
-  // pattern looked right but could never fire: a case-sensitive /rO0AB/
-  // against a lowercased subject, and quote-anchored patterns against
-  // JSON.stringify'd bodies where the quote arrives as \".
   it('detects deserialization markers after normalization', () => {
     expect(scanRequest(fakeReq({ body: { data: 'rO0ABXNyABdqYXZh' } })).matchedPattern).toBe(
       'deser_java_b64'
@@ -220,25 +208,16 @@ describe('shield/detector.js — scanRequest', () => {
     );
   });
 
-  // The base64 prefix of the Java magic bytes is `rO0AB`, which lowercases
-  // to `ro0ab` — the `o` belongs to the prefix. A version of this pattern
-  // written as /r0ab/i could never match anything, and looked like coverage
-  // while detecting nothing. This asserts against the real prefix so the
-  // omission can't come back.
   it('matches the full base64 prefix including its second character', () => {
     expect(scanRequest(fakeReq({ body: { d: 'rO0ABXNyABdqYXZh' } })).matchedPattern).toBe(
       'deser_java_b64'
     );
-    // And the shape an attacker would actually vary: longer blobs, different
-    // trailing bytes, embedded in a nested field.
     expect(
       scanRequest(fakeReq({ body: { meta: { blob: 'rO0ABXNyABZzaWQAAAAAAAA' } } })).matchedPattern
     ).toBe('deser_java_b64');
   });
 
   it('prefers the more specific category when one payload contains two signatures', () => {
-    // <!ENTITY x SYSTEM "file:///etc/passwd"> is both an XXE and an SSRF
-    // attempt. XXE is the specific finding and must be the one reported.
     const result = scanRequest(
       fakeReq({ body: { xml: '<!ENTITY xxe SYSTEM "file:///etc/passwd">' } })
     );
@@ -246,19 +225,13 @@ describe('shield/detector.js — scanRequest', () => {
   });
 
   it('detects prototype pollution payloads', () => {
-    // The payload arrives inside a JSON string value, so the quotes are
-    // backslash-escaped by the time patterns see them.
     const result = scanRequest(fakeReq({ body: { '{"__proto__": {"isAdmin": true}}': 1 } }));
     expect(result.eventType).toBe('proto_pollution');
   });
 
-  // Same payload as a real parsed key. Written as a computed key on purpose:
-  // a literal `__proto__:` in an object literal assigns the prototype rather
-  // than creating a property, so JSON.stringify would drop it and the test
-  // would pass against a payload the scanner never saw.
   it('detects prototype pollution as an actual parsed key', () => {
     const body = { a: 1, ['__proto__']: { isAdmin: true } };
-    expect(JSON.stringify(body)).toContain('__proto__'); // guard: payload survives serialization
+    expect(JSON.stringify(body)).toContain('__proto__');
     const result = scanRequest(fakeReq({ body }));
     expect(result.eventType).toBe('proto_pollution');
   });
@@ -277,12 +250,6 @@ describe('shield/detector.js — scanRequest', () => {
     );
   });
 
-  // The widening is only worth having if it doesn't start blocking real
-  // users. These are the sentences most at risk from the new patterns, drawn
-  // from the fields this app actually accepts free text into: contact
-  // messages, compliance notes, admin search, company names.
-  //
-  // A match here is a 6-hour IP block for someone who sent a support ticket.
   it('does not flag benign text that resembles the new signatures', () => {
     const benign = [
       "Hi - I'd like a quote for Q3, please. Thanks!",
@@ -325,9 +292,6 @@ describe('shield/detector.js — scanRequest', () => {
     }
   });
 
-  // A wider pattern table means more regexes per request, each against
-  // attacker-controlled text. The ReDoS budgets from the original set have
-  // to still hold.
   it("scans 1mb of the new signatures' worst-case shapes in well under a second", () => {
     for (const hostile of [
       { blob: '$(cat '.repeat(100_000) },
@@ -344,19 +308,9 @@ describe('shield/detector.js — scanRequest', () => {
     }
   }, 15_000);
 
-  // Patterns run against normalizeInput()'s output, not the raw request. That
-  // pipeline lowercases, percent-decodes, entity-decodes, NFKC-folds, decodes
-  // \xNN and \uNNNN escapes, and JSON.stringify's the body first — so a
-  // signature written against raw text can be silently unable to ever match.
-  // Three patterns were wrong this way before being caught: a case-sensitive
-  // /rO0AB/, quote-anchored ones that broke on \" inside JSON string values,
-  // and a raw \xac magic-bytes pattern that step 7 had already decoded away.
   it('patterns match the normalized string, which is what they are given', () => {
-    // Lowercasing: the base64 prefix arrives as rO0AB and is matched as ro0ab.
     expect(normalizeForTest('rO0AB')).toBe('ro0ab');
-    // A payload that is fully encoded at the HTTP layer still matches.
     expect(scanRequest(fakeReq({ body: { d: '%24%28cat' } })).matchedPattern).toBe('cmdi_subshell');
-    // A payload that is HTML-entity encoded still matches.
     expect(
       scanRequest(fakeReq({ body: { d: '&lt;script&gt;alert(1)&lt;/script&gt;' } })).matchedPattern
     ).toBe('xss_script_tag');
@@ -373,15 +327,12 @@ describe('shield/riskScore.js', () => {
     const clientId = client.rows[0].id;
 
     const items = await db.query('SELECT id, framework FROM compliance_items ORDER BY id LIMIT 4');
-    expect(items.rows.length).toBeGreaterThanOrEqual(4); // sanity check the seed data exists
+    expect(items.rows.length).toBeGreaterThanOrEqual(4);
 
     const [a, b, c, d] = items.rows;
-    // Mark every OTHER item not_applicable first, so the LEFT JOIN's
-    // COALESCE-to-'pending' default doesn't pull in items we didn't
-    // intend to be part of this test's math.
     await db.query(
       `INSERT INTO client_compliance_status (client_id, item_id, status)
-       SELECT $1, id, 'not_applicable' FROM compliance_items WHERE id NOT IN ($2, $3, $4, $5)`,
+        SELECT $1, id, 'not_applicable' FROM compliance_items WHERE id NOT IN ($2, $3, $4, $5)`,
       [clientId, a.id, b.id, c.id, d.id]
     );
     await db.query(
@@ -391,8 +342,6 @@ describe('shield/riskScore.js', () => {
     );
 
     const { score, itemCount } = await computeRiskScore(clientId);
-
-    // 3 applicable items (not_applicable excluded): 1 + 0.5 + 0 = 1.5 / 3 = 50%
     expect(itemCount).toBe(3);
     expect(score).toBe(50);
   });
@@ -424,10 +373,8 @@ describe('shield/riskScore.js', () => {
     );
     const clientId = client.rows[0].id;
 
-    // No client_compliance_status rows at all for this client.
     const { score, itemCount } = await computeRiskScore(clientId);
-    const totalItems = (await db.query('SELECT COUNT(*)::int AS c FROM compliance_items')).rows[0]
-      .c;
+    const totalItems = (await db.query('SELECT COUNT(*)::int AS c FROM compliance_items')).rows[0].c;
 
     expect(itemCount).toBe(totalItems);
     expect(score).toBe(0);
@@ -449,10 +396,6 @@ describe('shield/riskScore.js', () => {
 
   describe('computeRiskScoreBulk', () => {
     it('agrees with computeRiskScore for the same set of clients', async () => {
-      // Two clients with different, deliberately mixed statuses — if the
-      // bulk aggregate query's math ever drifts from the tested per-client
-      // function, this catches it directly rather than trusting the SQL
-      // by inspection alone.
       const items = (await db.query('SELECT id FROM compliance_items ORDER BY id LIMIT 3')).rows;
       const [i1, i2, i3] = items;
 
@@ -523,10 +466,6 @@ describe('shield/riskScore.js', () => {
 
   describe('computeComplianceOverview', () => {
     it('band counts sum to totalClients, and avgScore falls within a sane 0-100 range', async () => {
-      // Uses whatever clients already exist in the test DB at this point
-      // in the suite — deliberately not asserting exact counts (those
-      // depend on every earlier test in this file), just structural
-      // correctness of the aggregate.
       const overview = await computeComplianceOverview();
 
       const bandSum = Object.values(overview.bandCounts).reduce((a, b) => a + b, 0);
@@ -547,8 +486,6 @@ describe('shield/riskScore.js', () => {
           [`perfect-${Date.now()}@example.com`]
         )
       ).rows[0].id;
-      // Mark every item passing except this client only has one applicable
-      // item marked passing and the rest not_applicable, guaranteeing 100.
       await db.query(
         `INSERT INTO client_compliance_status (client_id, item_id, status)
          SELECT $1, id, 'not_applicable' FROM compliance_items WHERE id != $2`,
@@ -560,7 +497,6 @@ describe('shield/riskScore.js', () => {
       );
 
       const before = await computeComplianceOverview();
-      // Sanity: this client's own score really is 100 before checking the aggregate reflects it.
       const own = await computeRiskScore(clientId);
       expect(own.score).toBe(100);
       expect(before.bandCounts.Strong).toBeGreaterThanOrEqual(1);
@@ -584,12 +520,6 @@ describe('shield/blocklist.js', () => {
     expect(await isBlocked(ip)).toBe(false);
   });
 
-  // ── False-positive feedback ───────────────────────────────────────────
-  //
-  // An admin unblocking is the only ground truth this system gets about
-  // whether a detection was wrong. These tests pin the property that makes it
-  // worth collecting: the history survives, keyed by something stable.
-
   it('records a block as false-positive feedback, attributed to the admin and the signature', async () => {
     const ip = testIp();
     await blockIp(ip, 'sqli: OR 1=1--', 'high', 'sig_basic_feedback');
@@ -607,11 +537,6 @@ describe('shield/blocklist.js', () => {
   });
 
   it('attributes feedback to the same key the block was counted under', async () => {
-    // The bug this guards: blockIp takes an explicit stable key because the
-    // reason is unstable, so re-deriving the key from the reason at unblock
-    // time yields a different value. The numerator then lands on a row whose
-    // block_count is zero, and no rate ever rolls up. Catches exactly that,
-    // and it failed the first time round.
     const ip = testIp();
     await blockIp(ip, 'sqli: OR 1=1--', 'high', 'sig_attr_match');
     await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
@@ -623,7 +548,6 @@ describe('shield/blocklist.js', () => {
     expect(Number(stats.rows[0].block_count)).toBe(1);
     expect(Number(stats.rows[0].false_positive_count)).toBe(1);
 
-    // And nothing leaked into the reason-derived key.
     const derived = await db.query(
       'SELECT false_positive_count FROM shield_signature_stats WHERE signature_key = $1',
       ['sqli: or 1=1--']
@@ -632,13 +556,9 @@ describe('shield/blocklist.js', () => {
   });
 
   it('attributes feedback to the signature that was blocked, not whatever fired most recently', async () => {
-    // The point of denormalising the signature onto the feedback row. blockIp
-    // overwrites the block's reason on every re-block, so reading it after an
-    // unblock would credit the feedback to the wrong detection.
     const ip = testIp();
     await blockIp(ip, 'sqli: OR 1=1--', 'high', 'sig_first_trip');
     await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
-    // Same IP, different detection trips next.
     await blockIp(ip, 'xss: <script>', 'high', 'sig_second_trip');
     await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
 
@@ -651,9 +571,6 @@ describe('shield/blocklist.js', () => {
   });
 
   it('keys rate-limit blocks on a stable signature despite the count in the reason', async () => {
-    // The reason is built with live counts ("5 failed login attempts in
-    // 5min"), so it differs on every trip. The explicit signature arg is what
-    // stops that from fragmenting the history.
     const counts = [5, 6, 7];
     for (const total of counts) {
       await blockIp(
@@ -672,7 +589,6 @@ describe('shield/blocklist.js', () => {
   });
 
   it('signatureKey strips the varying count and identity suffix from a reason', async () => {
-    // The fallback for call sites that pass no explicit signature.
     expect(signatureKey('5 failed login attempts in 5min')).toBe(
       signatureKey('6 failed login attempts in 5min')
     );
@@ -681,9 +597,6 @@ describe('shield/blocklist.js', () => {
   });
 
   it('does not fragment one detection across keys when the attacker varies their payload', async () => {
-    // The reason carries the matched pattern verbatim, so it includes the
-    // attacker's input. Without the explicit eventType key, each variation
-    // would be a separate signature with no accumulated history.
     for (const payload of ['OR 1=1--', "OR '1'='1", 'OR 2>1--']) {
       await blockIp(testIp(), `sqli: ${payload}`, 'high', 'sig_payload_variation');
     }
@@ -695,9 +608,6 @@ describe('shield/blocklist.js', () => {
   });
 
   it('unblockIp still lifts the block when feedback recording is given no metadata', async () => {
-    // Existing callers pass no metadata, and the unblock itself is a safety
-    // action: losing a tuning counter is never a reason to leave a customer
-    // locked out.
     const ip = testIp();
     await blockIp(ip, 'some detector', 'medium', 'sig_no_metadata');
     await unblockIp(ip);
@@ -706,17 +616,10 @@ describe('shield/blocklist.js', () => {
       'SELECT admin_email FROM shield_unblock_feedback WHERE ip_address = $1',
       [ip]
     );
-    expect(rows[0].admin_email).toBe('unknown'); // sentinel, not NULL
+    expect(rows[0].admin_email).toBe('unknown');
   });
 
   it('false-positive report ranks the worst signature and reports a real rate', async () => {
-    // A numerator alone is not interpretable: 3 false positives is alarming
-    // for a signature that fires twice a month and irrelevant for one that
-    // fires constantly. The rate is the signal.
-    // Signature keys are per-test-unique. shield_signature_stats is a global
-    // per-signature counter and every test in this file shares one database,
-    // so reusing a key that another test also blocks against would make the
-    // counts order-dependent.
     const partial = [];
     for (let i = 0; i < 10; i++) {
       const ip = testIp();
@@ -726,7 +629,6 @@ describe('shield/blocklist.js', () => {
     for (const ip of partial.slice(0, 4)) {
       await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
     }
-    // A signature that never misfires, at comparable volume.
     for (let i = 0; i < 5; i++) {
       await blockIp(testIp(), 'stable detector', 'low', 'sig_clean_report');
     }
@@ -740,13 +642,10 @@ describe('shield/blocklist.js', () => {
     expect(Number(flaky.false_positive_count)).toBe(4);
     expect(parseFloat(flaky.false_positive_pct)).toBeCloseTo(40, 1);
     expect(parseFloat(clean.false_positive_pct)).toBeCloseTo(0, 1);
-    // Worst rate first.
     expect(report.indexOf(flaky)).toBeLessThan(report.indexOf(clean));
   });
 
   it('false-positive report suppresses low-traffic signatures', async () => {
-    // One false positive out of one block is a 100% rate and would otherwise
-    // top the report, drowning the real findings.
     const ip = testIp();
     await blockIp(ip, 'rare detector', 'low', 'sig_low_traffic');
     await unblockIp(ip, { adminEmail: 'admin@aluxplaza.com' });
@@ -756,8 +655,6 @@ describe('shield/blocklist.js', () => {
   });
 
   it('repeat-offender report lists addresses unblocked more than once, with their signatures', async () => {
-    // Three unblocks of one address is usually a misfiring detection or a
-    // too-tight threshold, not three separate attacks.
     const repeat = testIp();
     await blockIp(repeat, 'sqli: x', 'high', 'sig_repeat_ip');
     await unblockIp(repeat, { adminEmail: 'admin@aluxplaza.com', note: 'monitoring scanner' });
@@ -771,9 +668,6 @@ describe('shield/blocklist.js', () => {
     const rows = await getRepeatOffenders({ minUnblocks: 2 });
     const listed = rows.find((r) => r.ip_address === repeat);
     expect(listed).toBeDefined();
-    // Postgres returns COUNT(*) and the array_agg elements from pg as JS
-    // strings, not numbers/arrays of their own. Comparing against a bare 2 or
-    // ['sqli'] fails on the type, not the value.
     expect(Number(listed.unblock_count)).toBe(2);
     expect(listed.signatures).toEqual(['sig_repeat_ip']);
     expect(listed.notes).toEqual(['monitoring scanner']);
@@ -789,9 +683,9 @@ describe('shield/blocklist.js', () => {
       'SELECT hit_count, severity, reason FROM blocked_ips WHERE ip_address = $1',
       [ip]
     );
-    expect(rows).toHaveLength(1); // one row, not two
+    expect(rows).toHaveLength(1);
     expect(rows[0].hit_count).toBe(2);
-    expect(rows[0].severity).toBe('medium'); // latest reason/severity wins
+    expect(rows[0].severity).toBe('medium');
     expect(rows[0].reason).toBe('second hit');
   });
 
@@ -836,14 +730,6 @@ describe('shield/bruteForceGuard.js', () => {
     expect(rows[0].severity).toBe('high');
   });
 
-  // Regression test for a bug that shipped and was caught in CI: the rolling
-  // window was read entirely from the table in the same statement that
-  // incremented it. A PostgreSQL data-modifying CTE shares its snapshot with
-  // the main query, so the SUM saw the state *before* this request — the
-  // count was always one behind, and the 5th failed login returned 4. The
-  // counter row held the right number; only the decision read it too early.
-  // Asserting the stored total against the number of calls is what pins that
-  // down, since the boolean return hides an off-by-one of exactly one.
   it('counts every recorded hit, with no off-by-one between the counter and the decision', async () => {
     const ip = testIp();
     for (let i = 1; i <= 4; i++) {
@@ -855,13 +741,9 @@ describe('shield/bruteForceGuard.js', () => {
       );
       expect(rows[0].total, `after ${i} calls`).toBe(i);
     }
-    // The 5th is the one that must flip, and it must flip now, not on the 6th.
     expect(await recordFailedLogin(ip)).toBe(true);
   });
 
-  // The old 100-iteration loops were in-memory and cost nothing. Each call is
-  // now a Postgres round trip, so these assert against the stored counter
-  // directly where a full threshold walk isn't needed.
   it('recordRequest does not block below the threshold', async () => {
     const key = `test-rate-under-${testIp()}`;
     for (let i = 0; i < 5; i++) {
@@ -886,9 +768,7 @@ describe('shield/bruteForceGuard.js', () => {
     expect(lastResult).toBe(true);
     expect(await isBlocked(key)).toBe(true);
 
-    const { rows } = await db.query('SELECT severity FROM blocked_ips WHERE ip_address = $1', [
-      key,
-    ]);
+    const { rows } = await db.query('SELECT severity FROM blocked_ips WHERE ip_address = $1', [key]);
     expect(rows[0].severity).toBe('medium');
   }, 30_000);
 
@@ -906,8 +786,6 @@ describe('shield/bruteForceGuard.js', () => {
     for (let i = 0; i < 100; i++) await recordRequest(key, key);
     expect(await isBlocked(key)).toBe(true);
 
-    // Without the reset the count would still read 100 and every subsequent
-    // request would re-block and re-alert.
     const { rows } = await db.query(
       'SELECT COALESCE(SUM(count), 0)::int AS total FROM shield_counters WHERE counter_key = $1',
       [key]
@@ -922,16 +800,9 @@ describe('shield/bruteForceGuard.js', () => {
       'SELECT DISTINCT metric FROM shield_counters WHERE counter_key LIKE $1',
       [`metric-split-%${ip.split('.').pop()}`]
     );
-    // A burst of one metric must not be able to push the other over its own
-    // threshold, which is what a shared counter would allow.
     expect(rows.map((r) => r.metric)).toEqual(['request_volume']);
   });
 
-  // The property the in-memory Maps could not provide: the count outlives
-  // the process. Asserted against the stored row rather than by reloading
-  // the module, because re-importing would build a second db pool — and
-  // reading 3 here from a fresh connection is a strictly stronger statement
-  // than reading it back through the same pool that wrote it.
   it('stores the count in Postgres, where a restart cannot clear it', async () => {
     const key = `test-persist-${testIp()}`;
     for (let i = 0; i < 3; i++) await recordRequest(key, key);
@@ -942,10 +813,8 @@ describe('shield/bruteForceGuard.js', () => {
       [key]
     );
     expect(rows[0].total).toBe(3);
-    // Bucketed, not row-per-event: 3 requests in one window share a bucket.
     expect(rows[0].buckets).toBe(1);
 
-    // Independently: a second client on the same pool sees the same count.
     const other = await db.query(
       'SELECT COALESCE(SUM(count), 0)::int AS total FROM shield_counters WHERE counter_key = $1',
       [key]
@@ -958,7 +827,6 @@ describe('shield/bruteForceGuard.js', () => {
     const dead = `test-sweep-dead-${testIp()}`;
     await recordRequest(live, live);
 
-    // Age one key's bucket well past any window it could still count toward.
     await db.query(
       `INSERT INTO shield_counters (counter_key, metric, bucket_start, count)
        VALUES ($1, 'request_volume', now() - interval '2 hours', 1)
@@ -979,15 +847,12 @@ describe('shield/bruteForceGuard.js', () => {
   });
 
   it('bounded sweep reclaims rotating-IP keys instead of growing without bound', async () => {
-    // 300 distinct keys — the shape of an attacker rotating source IPs. Each
-    // costs one row; the sweep is what stops that accumulating forever.
     for (let i = 0; i < 300; i++) {
       await recordRequest(`rotate-${i}-${testIp()}`, `10.98.${Math.floor(i / 256)}.${i % 256}`);
     }
     const before = (await trackedKeyCounts()).requestVolume;
     expect(before).toBeGreaterThan(0);
 
-    // Backdate every row for these keys past the sweep horizon.
     await db.query(
       `UPDATE shield_counters SET bucket_start = now() - interval '2 hours'
        WHERE counter_key LIKE 'rotate-%'`
@@ -1025,9 +890,6 @@ describe('shield/eventLogger.js', () => {
   });
 
   it('never throws, even if a required-looking field is missing', async () => {
-    // eventLogger swallows its own errors and logs to console instead —
-    // confirm that contract holds rather than letting a bad call crash
-    // the request that triggered it.
     await expect(logSecurityEvent({ ip: testIp(), eventType: 'xss' })).resolves.toBeUndefined();
   });
 });
