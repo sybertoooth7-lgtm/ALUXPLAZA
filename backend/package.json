@@ -4,7 +4,7 @@
   "description": "Production backend: PostgreSQL, JWT auth, email notifications, rate limiting.",
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "main": "src/index.js",
   "scripts": {
