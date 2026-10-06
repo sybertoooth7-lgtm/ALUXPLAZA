@@ -14,14 +14,13 @@ function buildTestApp() {
 describe('POST /api/contact', () => {
   it('accepts a valid submission and stores it in the database', async () => {
     const app = buildTestApp();
-    const res = await request(app)
-      .post('/api/contact')
-      .send({
-        name: 'Jane Doe',
-        email: 'jane@example.com',
-        company: 'Acme Ltd',
-        message: 'Interested in an access control audit.',
-      });
+    const res = await request(app).post('/api/contact').send({
+      name: 'Jane Doe',
+      email: 'jane@example.com',
+      company: 'Acme Ltd',
+      message: 'Interested in an access control audit.',
+      consent: true,
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
@@ -43,6 +42,7 @@ describe('POST /api/contact', () => {
       email: 'obrien@example.com',
       company: 'AT&T "Ventures"',
       message: 'Quotes " and apostrophes \' and ampersands & should survive intact.',
+      consent: true,
     });
 
     expect(res.status).toBe(201);
@@ -100,5 +100,82 @@ describe('POST /api/contact', () => {
 
     const countAfter = (await db.query('SELECT COUNT(*) AS c FROM contacts')).rows[0].c;
     expect(countAfter).toBe(countBefore);
+  });
+});
+
+describe('POST /api/contact — consent', () => {
+  const validBody = {
+    name: 'Consent Tester',
+    email: 'consent.tester@example.com',
+    company: 'Consent Co',
+    message: 'Testing the consent requirement.',
+  };
+
+  async function contactCount() {
+    return Number((await db.query('SELECT COUNT(*) AS c FROM contacts')).rows[0].c);
+  }
+
+  it('records consented_at when consent is given', async () => {
+    const app = buildTestApp();
+    const before = Date.now();
+    const res = await request(app)
+      .post('/api/contact')
+      .send({ ...validBody, consent: true });
+    expect(res.status).toBe(201);
+
+    const { rows } = await db.query('SELECT consented_at FROM contacts WHERE id = $1', [
+      res.body.id,
+    ]);
+    expect(rows[0].consented_at).toBeInstanceOf(Date);
+    const ts = rows[0].consented_at.getTime();
+    expect(ts).toBeGreaterThanOrEqual(before - 5000);
+    expect(ts).toBeLessThanOrEqual(Date.now() + 5000);
+  });
+
+  it('rejects a submission with no consent field with 400, a consent error, and stores nothing', async () => {
+    const app = buildTestApp();
+    const countBefore = await contactCount();
+    const res = await request(app).post('/api/contact').send(validBody);
+
+    expect(res.status).toBe(400);
+    expect(res.body.errors.some((e) => e.path === 'consent')).toBe(true);
+    expect(await contactCount()).toBe(countBefore);
+  });
+
+  it.each([
+    ['false', false],
+    ['the string "true"', 'true'],
+    ['the number 1', 1],
+    ['null', null],
+  ])('rejects consent sent as %s (only boolean true counts)', async (_label, value) => {
+    const app = buildTestApp();
+    const countBefore = await contactCount();
+    const res = await request(app)
+      .post('/api/contact')
+      .send({ ...validBody, consent: value });
+
+    expect(res.status).toBe(400);
+    expect(res.body.errors.some((e) => e.path === 'consent')).toBe(true);
+    expect(await contactCount()).toBe(countBefore);
+  });
+
+  it('still returns the silent 200 for a honeypot hit that also omits consent, and stores nothing', async () => {
+    const app = buildTestApp();
+    const countBefore = await contactCount();
+    const res = await request(app)
+      .post('/api/contact')
+      .send({ ...validBody, honeypot: 'http://spam.example.com' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(await contactCount()).toBe(countBefore);
+  });
+
+  it('leaves consented_at NULL for rows that predate consent capture', async () => {
+    const { rows } = await db.query(
+      `INSERT INTO contacts (name, email, message, status)
+       VALUES ('Legacy', 'legacy.row@example.com', 'old', 'new') RETURNING consented_at`
+    );
+    expect(rows[0].consented_at).toBeNull();
   });
 });
