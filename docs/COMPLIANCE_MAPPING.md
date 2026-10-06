@@ -63,7 +63,7 @@ The policy says people can access, correct or delete their data. Today that work
 ### 4.3 No consent or notice at the point of collection
 `Contact.tsx` has no privacy notice link or consent statement, and nothing records consent.
 
-**Fix:** a one-line notice under the form linking to `/privacy`, a required checkbox, and a `consented_at` column on `contacts` (new migration).
+**Fix:** a one-line notice under the form linking to `/privacy-policy`, a required checkbox, and a `consented_at` column on `contacts` (new migration).
 
 ### 4.4 Third-party processors and cross-border transfers not disclosed
 **Fix:** add a "Who we share data with" section to the privacy policy listing processors by name and purpose, and a "Transfers outside Kenya" paragraph. Confirm each processor's data-processing terms and where the data is hosted. Also check whether alert-webhook messages or Sentry events can contain emails or IPs; the backend Sentry config does not set any scrubbing.
