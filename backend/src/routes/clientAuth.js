@@ -56,6 +56,11 @@ const V = {
     .isLength({ max: MAX_COMPANY_NAME_LENGTH })
     .matches(/^[\p{L}\p{N}\s&'’\-.,]+$/u)
     .withMessage('Company name contains invalid characters.'),
+  // Must be the JSON boolean true — not "true", 1, or anything truthy. Only
+  // used by /signup, where it records that the person ticked the privacy box.
+  consent: body('consent')
+    .custom((value) => value === true)
+    .withMessage('You must agree to the Privacy Policy to create an account.'),
 };
 
 const validate = (req, res, next) => {
@@ -139,8 +144,8 @@ async function findClientByEmail(conn, email) {
 
 async function createClient(conn, { companyName, email, passwordHash }) {
   const result = await conn.query(
-    `INSERT INTO clients (company_name, email, password_hash, email_verified)
-     VALUES ($1, $2, $3, FALSE) RETURNING id`,
+    `INSERT INTO clients (company_name, email, password_hash, email_verified, consented_at)
+     VALUES ($1, $2, $3, FALSE, NOW()) RETURNING id`,
     [companyName, email, passwordHash]
   );
   return result.rows[0].id;
@@ -256,7 +261,7 @@ async function deleteSession(conn, jti) {
 router.post(
   '/signup',
   honeypot,
-  [V.companyName, V.email, V.password],
+  [V.companyName, V.email, V.password, V.consent],
   validate,
   asyncHandler(async (req, res) => {
     const { companyName, email, password } = req.body;
