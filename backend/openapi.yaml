@@ -251,6 +251,12 @@ paths:
         already registered, to resist account enumeration. A verification
         email is sent; the account cannot log in until verified. Rate-
         limited beyond the general API limit. Requires a valid CSRF token.
+
+        `consent` must be the JSON boolean `true` (the person ticked the
+        Privacy Policy checkbox). Anything else, including omitting it, is
+        rejected with `400` before any account lookup, so the rejection is
+        identical for registered and unregistered emails. The time of consent
+        is stored as `clients.consented_at`.
       security: [{ csrfToken: [] }]
       requestBody:
         required: true
@@ -258,7 +264,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [companyName, email, password]
+              required: [companyName, email, password, consent]
               properties:
                 companyName:
                   type: string
@@ -269,6 +275,10 @@ paths:
                   type: string
                   minLength: 8
                   maxLength: 128
+                consent:
+                  type: boolean
+                  enum: [true]
+                  description: Must be `true` — the person agreed to the Privacy Policy.
                 honeypot:
                   type: string
                   description: Leave empty.
