@@ -13,6 +13,7 @@ export default function ClientSignup() {
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [consent, setConsent] = useState(false);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -31,23 +32,34 @@ export default function ClientSignup() {
       return;
     }
 
+    // The server enforces this too; checking here just avoids a round trip.
+    if (!consent) {
+      setError('Please tick the box to agree to the Privacy Policy before creating an account.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await secureFetch('/api/client/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyName, email, password }),
+        body: JSON.stringify({ companyName, email, password, consent }),
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.error || 'Signup failed');
+        const consentError = Array.isArray(data.details)
+          ? data.details.find((d: { path?: string }) => d?.path === 'consent')
+          : undefined;
+        throw new Error(consentError?.msg || data.error || 'Signup failed');
       }
 
       setSuccess(data.message || 'Account created. Please verify your email.');
       setCompanyName('');
       setEmail('');
       setPassword('');
+      setConsent(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -158,6 +170,40 @@ export default function ClientSignup() {
               <p className="text-xs text-white/30 mt-1">
                 Minimum 8 characters
               </p>
+            </div>
+
+            <div>
+              <label
+                htmlFor="consent"
+                className="flex items-start gap-2 text-sm text-white/70 cursor-pointer"
+              >
+                <input
+                  id="consent"
+                  name="consent"
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => {
+                    setConsent(e.target.checked);
+                    if (e.target.checked) setError('');
+                  }}
+                  required
+                  aria-required="true"
+                  className="mt-1 h-4 w-4 shrink-0 accent-alux-cyan"
+                />
+                <span>
+                  I agree that Alux Plaza may use the details I provide to create and manage my
+                  account, as described in the{' '}
+                  <a
+                    href="/privacy-policy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-alux-cyan hover:underline"
+                  >
+                    Privacy Policy
+                  </a>
+                  . I can withdraw this at any time by emailing privacy@aluxplaza.com.
+                </span>
+              </label>
             </div>
 
             <button
