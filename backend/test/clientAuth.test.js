@@ -84,7 +84,7 @@ describe('POST /api/client/signup', () => {
 
     const res = await request(app)
       .post('/api/client/signup')
-      .send({ companyName: 'Acme Ltd', email, password: 'SuperSecret123!' });
+      .send({ companyName: 'Acme Ltd', email, password: 'SuperSecret123!', consent: true });
 
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/verification link has been sent/i);
@@ -107,7 +107,7 @@ describe('POST /api/client/signup', () => {
 
     const res = await request(app)
       .post('/api/client/signup')
-      .send({ companyName: 'Acme Ltd', email, password: 'SuperSecret123!' });
+      .send({ companyName: 'Acme Ltd', email, password: 'SuperSecret123!', consent: true });
 
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/verification link has been sent/i);
@@ -124,6 +124,7 @@ describe('POST /api/client/signup', () => {
       companyName: 'Acme Ltd',
       email,
       password: 'SuperSecret123!',
+      consent: true, // so only the honeypot can cause the 400 below
       website_url: 'http://spam.example',
     });
 
@@ -668,5 +669,91 @@ describe('POST /api/client/logout', () => {
     const res = await request(app).post('/api/client/logout');
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+  });
+});
+
+describe('POST /api/client/signup — consent', () => {
+  const body = (email, extra = {}) => ({
+    companyName: 'Consent Ltd',
+    email,
+    password: 'SuperSecret123!',
+    ...extra,
+  });
+
+  it('stores consented_at on the new client when consent is given', async () => {
+    const app = buildTestApp();
+    const email = uniqueEmail();
+    const before = Date.now();
+
+    const res = await request(app)
+      .post('/api/client/signup')
+      .send(body(email, { consent: true }));
+    expect(res.status).toBe(200);
+
+    const { rows } = await db.query('SELECT consented_at FROM clients WHERE email = $1', [email]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].consented_at).toBeInstanceOf(Date);
+    const ts = rows[0].consented_at.getTime();
+    expect(ts).toBeGreaterThanOrEqual(before - 5000);
+    expect(ts).toBeLessThanOrEqual(Date.now() + 5000);
+  });
+
+  it('rejects a signup with no consent field: 400, a consent error, no client row, no verification token', async () => {
+    const app = buildTestApp();
+    const email = uniqueEmail();
+
+    const res = await request(app).post('/api/client/signup').send(body(email));
+
+    expect(res.status).toBe(400);
+    expect(res.body.details.some((d) => d.path === 'consent')).toBe(true);
+    const clients = await db.query('SELECT id FROM clients WHERE email = $1', [email]);
+    expect(clients.rows).toHaveLength(0);
+  });
+
+  it.each([
+    ['false', false],
+    ['the string "true"', 'true'],
+    ['the number 1', 1],
+    ['null', null],
+  ])('rejects consent sent as %s (only boolean true counts)', async (_label, value) => {
+    const app = buildTestApp();
+    const email = uniqueEmail();
+
+    const res = await request(app)
+      .post('/api/client/signup')
+      .send(body(email, { consent: value }));
+
+    expect(res.status).toBe(400);
+    expect(res.body.details.some((d) => d.path === 'consent')).toBe(true);
+    const clients = await db.query('SELECT id FROM clients WHERE email = $1', [email]);
+    expect(clients.rows).toHaveLength(0);
+  });
+
+  it('does not reveal whether an email is registered: a missing-consent signup gets the same 400 for new and existing emails', async () => {
+    const app = buildTestApp();
+    const { email: existingEmail } = await insertVerifiedClient();
+
+    const forExisting = await request(app).post('/api/client/signup').send(body(existingEmail));
+    const forNew = await request(app).post('/api/client/signup').send(body(uniqueEmail()));
+
+    expect(forExisting.status).toBe(400);
+    expect(forNew.status).toBe(400);
+    const paths = (r) => r.body.details.map((d) => d.path);
+    expect(paths(forExisting)).toEqual(['consent']);
+    expect(paths(forNew)).toEqual(['consent']);
+    expect(forExisting.body.error).toBe(forNew.body.error);
+  });
+
+  it("a signup attempt for an already-registered email cannot stamp consent onto that person's account", async () => {
+    const app = buildTestApp();
+    const { id, email } = await insertVerifiedClient();
+
+    const res = await request(app)
+      .post('/api/client/signup')
+      .send(body(email, { consent: true }));
+    expect(res.status).toBe(200); // enumeration-safe success message, unchanged
+
+    const { rows } = await db.query('SELECT consented_at FROM clients WHERE id = $1', [id]);
+    expect(rows[0].consented_at).toBeNull();
   });
 });
