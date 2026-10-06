@@ -406,9 +406,14 @@ router.delete(
     }
 
     try {
-      const result = await db.query('DELETE FROM contacts WHERE id = $1 RETURNING *', [
-        req.params.id,
-      ]);
+      // Return only non-identifying columns: the deleted submission's name,
+      // email and message must not be copied into audit_logs, which would
+      // keep the personal data after the delete.
+      const result = await db.query(
+        `DELETE FROM contacts WHERE id = $1
+         RETURNING id, status, created_at, (company IS NOT NULL AND company <> '') AS had_company`,
+        [req.params.id]
+      );
       if (result.rowCount === 0) {
         return res.status(404).json({ error: 'Submission not found' });
       }
@@ -417,7 +422,11 @@ router.delete(
         action: 'submission.delete',
         targetTable: 'contacts',
         targetId: req.params.id,
-        oldValue: result.rows[0],
+        oldValue: {
+          status: result.rows[0].status,
+          had_company: result.rows[0].had_company,
+          created_at: result.rows[0].created_at,
+        },
         newValue: null,
       });
       res.json({ success: true });
