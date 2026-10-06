@@ -38,6 +38,23 @@ router.post(
       return res.status(200).json({ success: true });
     }
 
+    // Consent is checked AFTER the honeypot on purpose: a bot that trips the
+    // honeypot must keep receiving the same silent 200 as a real success, even
+    // if it also omits consent. Real users who forget the checkbox get a clear
+    // 400 in the same shape express-validator uses above.
+    if (req.body.consent !== true) {
+      return res.status(400).json({
+        errors: [
+          {
+            type: 'field',
+            msg: 'You must agree to the Privacy Policy to send a message.',
+            path: 'consent',
+            location: 'body',
+          },
+        ],
+      });
+    }
+
     const { name, email, company, message } = req.body;
 
     // No sanitization step here on purpose: express-validator already
@@ -47,8 +64,8 @@ router.post(
     // is unreliable outside a real browser DOM — removed.
     try {
       const result = await db.query(
-        `INSERT INTO contacts (name, email, company, message, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, 'new', NOW(), NOW())
+        `INSERT INTO contacts (name, email, company, message, status, consented_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, 'new', NOW(), NOW(), NOW())
          RETURNING id`,
         [name, email, company || null, message]
       );
