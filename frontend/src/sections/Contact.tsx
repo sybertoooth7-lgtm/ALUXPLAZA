@@ -19,6 +19,7 @@ export default function Contact() {
   const [form, setForm] = useState<FormState>({ name: '', email: '', company: '', message: '' });
   const [status, setStatus] = useState<SubmitStatus>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [consent, setConsent] = useState(false);
 
   const limits: Record<keyof FormState, number> = {
     name: MAX_NAME,
@@ -36,6 +37,15 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // The server enforces this too; checking here just avoids a round trip
+    // and lets us show a clear message next to the button.
+    if (!consent) {
+      setStatus('error');
+      setErrorMsg('Please tick the box to agree to the Privacy Policy before sending.');
+      return;
+    }
+
     setStatus('submitting');
     setErrorMsg('');
 
@@ -46,16 +56,17 @@ export default function Contact() {
       const res = await secureFetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, consent }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Server error: ${res.status}`);
+        throw new Error(data.error || data.errors?.[0]?.msg || `Server error: ${res.status}`);
       }
 
       setStatus('success');
       setForm({ name: '', email: '', company: '', message: '' });
+      setConsent(false);
     } catch (err: unknown) {
       setStatus('error');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to send message. Please try again.');
@@ -174,6 +185,48 @@ export default function Contact() {
           <div style={counterStyle(form.message.length, MAX_MESSAGE)}>
             {form.message.length} / {MAX_MESSAGE}
           </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label
+            htmlFor="consent"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+              fontSize: '14px',
+              color: '#333',
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              id="consent"
+              name="consent"
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => {
+                setConsent(e.target.checked);
+                if (status === 'error') setStatus('idle');
+              }}
+              required
+              aria-required="true"
+              style={{ marginTop: 3, flexShrink: 0 }}
+            />
+            <span>
+              I agree that Alux Plaza may use the details I provide here to respond to my enquiry,
+              as described in the{' '}
+              <a
+                href="/privacy-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#1976d2', textDecoration: 'underline' }}
+              >
+                Privacy Policy
+              </a>
+              . I can withdraw this at any time by emailing privacy@aluxplaza.com.{' '}
+              <span style={{ color: '#d32f2f' }}>*</span>
+            </span>
+          </label>
         </div>
 
         <button
