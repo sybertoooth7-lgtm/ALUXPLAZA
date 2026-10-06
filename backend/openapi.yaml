@@ -185,18 +185,28 @@ paths:
         accepted with `200` (not `400`) to avoid revealing the detection
         logic to bots, but nothing is stored. Rate-limited beyond the
         general API limit.
+
+        `consent` must be the JSON boolean `true`, meaning the sender ticked
+        the privacy-notice checkbox. Any other value (`false`, `"true"`, `1`,
+        `null`, or omitted) is rejected with `400`. The time of consent is
+        stored server-side as `consented_at`. The honeypot check runs first,
+        so a honeypot hit still gets the silent `200` even without consent.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [name, email, message]
+              required: [name, email, message, consent]
               properties:
                 name: { type: string, maxLength: 100 }
                 email: { type: string, format: email, maxLength: 255 }
                 company: { type: string, maxLength: 150 }
                 message: { type: string, maxLength: 5000 }
+                consent:
+                  type: boolean
+                  enum: [true]
+                  description: Must be `true` — the sender agreed to the Privacy Policy.
                 honeypot:
                   type: string
                   description: Leave empty. Any value silently discards the submission.
