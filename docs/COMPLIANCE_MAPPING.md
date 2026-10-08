@@ -1,10 +1,39 @@
 # Alux Plaza — Compliance Mapping
 
-Maps the controls that exist in the repository to Kenya's Data Protection Act, 2019 (DPA), PCI DSS and NIST SP 800-61, and lists the gaps.
+Maps the controls that exist in the repository to Kenya's Data Protection Act, 2019 (DPA), the Data Protection (General) Regulations 2021, PCI DSS and NIST SP 800-61, and lists the gaps.
 
-**How this was produced:** every "Implemented" row below was checked against a fresh pull of `main` (file paths given). DPA section numbers were checked against the Act's published table of contents. Nothing here is a legal opinion or a certification. Before relying on it for any client or regulator, have it reviewed by a qualified Kenyan data-protection lawyer.
+**Last updated:** 8 October 2026.
 
-**Status key:** Implemented = verified in code. Partial = exists but incomplete. Gap = not found in repo. Organisational = not a code matter.
+**How this was produced:** every status below was checked against a fresh pull of `main` on that date (file paths given). DPA section numbers were checked against the Act's published table of contents, and regulation numbers against the Legal Notice 263 of 2021 text on Kenya Law. Nothing here is a legal opinion or a certification. Before relying on it for any client or regulator, have it reviewed by a qualified Kenyan data-protection lawyer.
+
+**Not verified:** the state of the production database. The migration runner applies new migrations at boot, so migrations 026–029 should run on the next deploy, but this document cannot confirm they have.
+
+**Status key:**
+
+| Status | Meaning |
+|---|---|
+| Done | Implemented and present on `main`, with tests |
+| Built, awaiting merge | Written and tested, but not on `main` when checked |
+| Partial | Exists but incomplete |
+| Gap | Not found in the repo |
+| Organisational | Not a code matter |
+
+---
+
+## 0. Status at a glance
+
+| Item | What | Status |
+|---|---|---|
+| 4.1 | Deleted contacts no longer leave personal data in `audit_logs`; existing rows scrubbed | **Done** |
+| 4.2 | Export and erase tooling for data-subject requests, plus runbook | **Built, awaiting merge** |
+| 4.3 | Consent checkbox and `consented_at` on the contact form and client signup | **Done** (notice wording still incomplete, see 4.4) |
+| 4.4 | Privacy policy: processors, transfers, content required by reg. 4(1) | **Gap** |
+| 4.5 | Written breach-response procedure | **Gap** |
+| 4.6 | Concrete retention periods, enforced | **Gap** |
+| 4.7 | Audit-log integrity | **Gap** (optional) |
+| — | ODPC registration, DPIA, lawful-basis decision (including whether consent is valid for signup), processor contracts | **Organisational** |
+
+Also fixed along the way: migration 026 adds the `disabled_at` columns that the authentication code reads but no earlier migration created.
 
 ---
 
@@ -12,29 +41,41 @@ Maps the controls that exist in the repository to Kenya's Data Protection Act, 2
 
 | Data | Where | Source of truth |
 |---|---|---|
-| Name, email, company, message | `contacts` table | `routes/contact.js`, migrations 001, 004 |
-| Client account email, password hash, MFA secret | `clients`, admin tables | migrations 001, 019, 022 |
-| Email attempted, IP address, user agent, success flag | `client_login_attempts` | `middleware/loginAudit.js`, migration 014 |
-| Admin email, action, old/new row values | `audit_logs` | `middleware/auditLog.js`, migration 007 |
+| Name, email, company, message, consent time | `contacts` | `routes/contact.js`, migrations 001, 004, 028 |
+| Client account: company name, email, password hash, consent time | `clients` | `routes/clientAuth.js`, migrations 012, 015, 022, 026, 029 |
+| Client sessions: IP address, browser, times | `client_sessions` | `middleware/clientAuth.js`, migrations 016, 022 |
+| Email attempted, IP address, browser, success flag | `client_login_attempts` | `middleware/loginAudit.js`, migrations 014, 016 |
+| Verification and password-reset tokens (hashed) | `client_email_verifications`, `client_password_resets` | migration 022 |
+| Risk-score share links (publicly show the company name) | `risk_score_shares` | migration 013 |
+| Compliance assessment records and free-text notes per client | `client_compliance_status` | migration 012 |
+| Admin staff accounts, including the MFA secret (encrypted) | `admin_users` | migrations 001, 017, 019, 020 |
+| Admin action, target, old and new values | `audit_logs` | `middleware/auditLog.js`, migration 007 |
 | IPs and attack metadata | Shield tables, `blocked_ips`, `rate_limits` | `shield/`, migrations 005, 011, 024 |
+| Queued email jobs (contain recipient emails and, for contact notifications, the sender's name, company, email and message); kept about 24 hours after completion | `pgboss.job` | `lib/email-queue.js` |
 
-Third parties that receive data (processors): Resend (email), Sentry (errors, backend and frontend), the alert webhook (Slack/Discord, if `ALERT_WEBHOOK_URL` set), plus hosting/database providers (Render, Vercel, Neon). Most of these are likely outside Kenya; see section 3.
+Third parties that receive data (processors): Resend (email), Sentry (errors, backend and frontend), and the alert webhook if `ALERT_WEBHOOK_URL` is set. The hosting and database providers are not determined from the repo code and should be confirmed. At least some of these are likely outside Kenya; see 4.4.
 
 ---
 
-## 2. DPA 2019 mapping
+## 2. DPA 2019 and Regulations 2021 mapping
 
-| DPA reference | Requirement (summary) | Evidence in repo | Status |
+| Reference | Requirement (summary) | Evidence in repo | Status |
 |---|---|---|---|
-| s.25 principles (minimisation, purpose limitation, storage limitation, accuracy) | Collect only what's needed; don't keep identifiable data longer than necessary | Contact form collects 4 fields with length limits (`contact.js`). `jobs/cleanup.js` purges tokens, sessions, rate limits, IP blocks (7 days after expiry), login attempts (90 days), Shield counters | **Partial.** No retention rule for `contacts`, `audit_logs`, or client records |
-| s.26 rights of the data subject (access, correction, deletion, objection) | Be able to honour these on request | Privacy policy promises all of them (`PrivacyPolicy.tsx`). Only `DELETE /api/admin/submissions/:id` exists for contacts; no client delete/export route | **Gap.** Promise made, no tooling behind it (see 4.1, 4.2) |
-| s.28, s.29, s.32 collection, notice, consent | Tell people why data is collected at the point of collection; consent must be demonstrable | `PrivacyPolicy.tsx` states purposes. `Contact.tsx` has no consent text, checkbox, or link to the policy; no consent record is stored | **Gap** (see 4.3) |
-| s.41 data protection by design/default | Build protection in | httpOnly + Secure cookies, SameSite handling (`lib/auth-cookie.js`), CSRF double-submit (`middleware/csrf.js`), bcrypt cost 12, MFA secrets AES-256-GCM with HKDF key (`lib/mfa.js`), JWT 2h expiry, Helmet CSP + HSTS 1 year (`middleware/helmetConfig.js`), Postgres-backed rate limiting and token blocklist | **Implemented** |
-| s.43 breach notification (Commissioner within 72 hours; data subjects without undue delay) | Detect, assess, notify | Detection exists (Shield, new-device alerts, admin security dashboard, alert webhook). No written breach-notification procedure or ODPC notification template found in repo or docs; the NIST 800-61 methodology doc in `docs/` is a client-facing service, not Alux Plaza's own plan | **Partial** (see 4.5) |
-| Part VI transfers outside Kenya | Safeguards required before transfer | Data flows to Resend, Sentry, hosting providers. Privacy policy does not mention transfers or processors | **Gap** (see 4.4) |
-| s.18 registration of controllers/processors | Register with the ODPC unless exempt | Not a code matter; nothing in repo confirms registration or an exemption decision | **Organisational.** Confirm status with the ODPC |
-| Data Protection (General) Regulations 2021, reg. 23 | Maintain a data protection policy | `PrivacyPolicy.tsx` is the public notice; no internal policy document found | **Partial** |
+| DPA s.25 principles (minimisation, purpose limitation, storage limitation, accuracy) | Collect only what's needed; don't keep identifiable data longer than necessary | Contact form collects 4 fields with length limits (`contact.js`). `jobs/cleanup.js` purges tokens, sessions, rate limits, IP blocks (7 days after expiry), login attempts (90 days) and Shield counters | **Partial.** No retention rule for `contacts`, `audit_logs` or client records (see 4.6) |
+| DPA s.25 / s.26 deletion integrity | Deleted data must actually be gone | Deleting a contact used to copy the whole row into `audit_logs.old_value`. Fixed in `routes/admin.js`; migration 027 scrubs existing rows; `test/adminAudit.test.js` | **Done** (4.1). Database backups taken earlier still hold the old data until they age out |
+| DPA s.26 rights of the data subject (access, correction, deletion, objection); Regs. 9, 12 | Honour requests within the deadlines: access 7 days, erasure 14 days | Export and erase endpoints (superadmin-only, dry-run by default, audit-logged without the email), a schema-drift guard, and `docs/DATA_SUBJECT_REQUESTS.md` with deadlines, steps and a reply template; `test/dataSubjects.test.js` | **Built, awaiting merge** (4.2). API-only; third-party and backup cleanup is manual; rectification and portability are by hand |
+| DPA s.28, s.29, s.32 collection, notice, consent | Tell people why data is collected at the point of collection; consent must be demonstrable | Required checkbox linking to `/privacy-policy` on `Contact.tsx` and `ClientSignup.tsx`; server rejects anything but boolean `true`; time stored in `consented_at` (migrations 028, 029); tests in `contact.test.js`, `clientAuth.test.js` | **Done** (4.3), with caveats: the notice content is incomplete (next row); existing rows and admin-created clients have no consent recorded; which notice version someone saw is not stored |
+| Reg. 4(1) content of the notice | When relying on consent, tell the person: who the controller is, the purpose, the type of data, the risks of transfers abroad, whether data is shared with third parties, the right to withdraw, and the implications of giving, withholding or withdrawing consent | The checkbox text names Alux Plaza, the purpose and the right to withdraw. The linked privacy policy does not name processors or mention transfers, and nothing states the implications of withholding consent | **Gap** (4.4) |
+| Reg. 4(4)(b), (d) consent must be freely given | Consent is not free if it is a non-negotiable part of the terms, or if several purposes are merged | The signup checkbox must be ticked to create an account, which may count as non-negotiable. The contact form is similar: you can't send a message without it | **Organisational.** Needs a lawyer: a contract basis may fit client accounts better than consent (see Lawful basis) |
+| DPA s.41 data protection by design/default | Build protection in | httpOnly + Secure cookies, SameSite handling (`lib/auth-cookie.js`), CSRF double-submit (`middleware/csrf.js`), bcrypt cost 12, MFA secrets AES-256-GCM with HKDF key (`lib/mfa.js`), JWT 2h expiry, Helmet CSP + HSTS 1 year (`middleware/helmetConfig.js`), Postgres-backed rate limiting and token blocklist | **Done** |
+| DPA s.43 breach notification (Commissioner within 72 hours; data subjects without undue delay) | Detect, assess, notify | Detection exists (Shield, new-device alerts, admin security dashboard, alert webhook). No written breach-notification procedure or ODPC notification template found; the NIST 800-61 methodology doc in `docs/` is a client-facing service, not Alux Plaza's own plan | **Partial** (4.5) |
+| DPA Part VI and Regs. 40–48 transfers outside Kenya | Before transferring, ascertain a basis (safeguards, adequacy decision, necessity or consent). Transfers relying on safeguards must be documented: date and time, recipient, justification, description of the data (reg. 41(2)) | Data flows to Resend, Sentry and the hosting providers. Privacy policy does not mention transfers or processors, and no transfer documentation exists | **Gap** (4.4) |
+| Reg. 19 retention schedule | Written schedule of retention periods | Only the cleanup job's periods exist (above); policy says "as long as reasonably necessary" | **Gap** (4.6) |
+| DPA s.18 registration of controllers/processors | Register with the ODPC unless exempt | Not a code matter; nothing in the repo confirms registration or an exemption decision | **Organisational.** Confirm status with the ODPC |
+| Reg. 23 data protection policy | Develop, publish and regularly update a policy covering: the nature of data held, how to exercise rights, complaints handling, lawful purposes, transfers abroad and named recipients where possible, and the retention schedule | `PrivacyPolicy.tsx` is published. It does not yet cover transfers or recipients or a retention schedule; its complaints-handling wording was not checked | **Partial** (4.4, 4.6) |
 | DPIA (Part IV) | Assess high-risk processing | None found. Probably low risk for a contact form; client security-assessment data may warrant one | **Organisational** |
+| Lawful basis (reg. 5(2)–(3)) | Rely on one legal basis at a time per purpose, established before processing and demonstrable | The forms currently rely on consent. Whether consent is the right basis for answering an enquiry or running a client account (rather than, for example, a contract) is not decided, and reg. 4(4)(b) casts doubt on consent for signup | **Organisational.** Needs a lawyer |
+| Regs. 24–25 processor contracts | A written contract with each processor containing the listed particulars (subject matter, duration, instructions, confidentiality, security measures, deletion or return at the end, audit rights) | Not a code matter; no contracts or data-processing terms are referenced in the repo for Resend, Sentry or the hosting providers | **Organisational.** Confirm the providers' data-processing terms cover these |
 
 ---
 
@@ -48,38 +89,51 @@ Two things to keep true:
 
 ---
 
-## 4. Gaps, in priority order, with concrete fixes
+## 4. Gaps and what was done, in priority order
 
-### 4.1 Contact deletion doesn't actually erase the data (highest priority)
-`DELETE /api/admin/submissions/:id` runs `DELETE FROM contacts ... RETURNING *` and then passes the full deleted row (`name`, `email`, `message`) into `recordAuditLog` as `oldValue` (`routes/admin.js`, around lines 409–421). The "deleted" personal data therefore lives on indefinitely in `audit_logs.old_value`, and `audit_logs` has no retention job.
+### 4.1 Contact deletion didn't actually erase the data — DONE
+`DELETE /api/admin/submissions/:id` used to pass the full deleted row (name, email, message) into `audit_logs.old_value`, so the "deleted" personal data lived on indefinitely.
 
-**Fix:** log only the id and a non-identifying summary (e.g. `{ status, had_company }`) for deletions, and add a retention rule for `audit_logs`. Existing rows containing deleted contacts need a one-off scrub.
+**Done:** the route now records only the id, status, creation time and whether a company was given. Migration 027 rewrites existing `submission.delete` audit rows to the same summary and is safe to re-run. `test/adminAudit.test.js` fails against the old behaviour.
 
-### 4.2 No data subject request tooling
-The policy says people can access, correct or delete their data. Today that works only by an admin manually editing the database.
+**Remaining:** database backups taken before the fix still contain the old data until they expire.
 
-**Fix:** a superadmin-only endpoint (audit-logged) that, for a given email, exports everything held (contacts, client record, login attempts) as JSON, and a matching erase/anonymise action. Also add a short internal procedure: who receives `privacy@aluxplaza.com` requests and the response deadline you commit to.
+### 4.2 No data subject request tooling — BUILT, AWAITING MERGE
+The privacy policy promises access, correction and deletion. Until now that worked only by an admin editing the database by hand.
 
-### 4.3 No consent or notice at the point of collection
-`Contact.tsx` has no privacy notice link or consent statement, and nothing records consent.
+**Built:** `POST /api/admin/data-subjects/export` and `/erase` (superadmin-only; erase is a dry run unless `"confirm": true`).
+- Export returns everything held by email: contacts, client account, login history, sessions, share links, compliance records, queued email jobs, and related audit entries. It excludes secrets and staff identities.
+- Erase deletes contacts, login history, sessions, tokens, share links and queued email jobs; anonymises the client account (compliance records kept, unlinked from any person); and redacts the email inside audit entries, matching whole addresses only.
+- Neither action writes the subject's email to the audit log.
+- A test compares the exported-column lists with the live schema, so a future migration that adds a column must be classified before CI passes.
+- `docs/DATA_SUBJECT_REQUESTS.md` gives the deadlines (access 7 days, erasure 14, rectification 14, portability 30), steps, a reply template, and a third-party cleanup checklist.
 
-**Fix:** a one-line notice under the form linking to `/privacy-policy`, a required checkbox, and a `consented_at` column on `contacts` (new migration).
+**Remaining:** merge the files. Resend, Sentry, alert-channel messages, your own mailbox and backups need manual cleanup per the runbook. There is no admin screen yet. Free-text notes can hold personal data the tool can't find by email.
 
-### 4.4 Third-party processors and cross-border transfers not disclosed
-**Fix:** add a "Who we share data with" section to the privacy policy listing processors by name and purpose, and a "Transfers outside Kenya" paragraph. Confirm each processor's data-processing terms and where the data is hosted. Also check whether alert-webhook messages or Sentry events can contain emails or IPs; the backend Sentry config does not set any scrubbing.
+### 4.3 No consent or notice at the point of collection — DONE
+**Done:** both the contact form and client signup now have a required checkbox linking to the Privacy Policy. The server rejects any submission where `consent` is not exactly boolean `true`, and stores `consented_at`. Honeypot behaviour on the contact form is preserved. Signup rejection is identical for registered and unregistered emails, and a signup attempt cannot stamp consent onto someone else's account.
 
-### 4.5 No written breach-response procedure
-**Fix:** a one-page internal runbook: how a suspected breach is triaged, who decides it is notifiable, an ODPC notification template, and a template message to affected clients. Use the same NIST SP 800-61 phases you already document for clients (preparation, detection/analysis, containment/eradication/recovery, post-incident), and record the 72-hour clock start time as a mandatory field.
+**Remaining:**
+- Rows that existed before, and accounts created by an admin, have no consent recorded. They were deliberately not back-filled.
+- The notice text is a draft, and it is incomplete until 4.4 is done.
+- Reg. 4(4)(b) says consent is not freely given if it is a non-negotiable part of the terms. Because the signup box must be ticked to create an account, a lawyer should decide whether client accounts should rest on a contract basis instead, with the box replaced by an acknowledgement of the notice.
+- Which version of the wording a person saw is not stored. A `consent_version` column would close that.
 
-### 4.6 Retention periods are vague
-The policy says data is kept "for as long as reasonably necessary." That's hard to defend or audit.
+### 4.4 Third-party processors, transfers and notice content not disclosed — OPEN
+**Fix:** add a "Who we share data with" section to the privacy policy listing processors by name and purpose, and a "Transfers outside Kenya" paragraph covering the risks, which reg. 4(1) expects. Confirm each processor's data-processing terms (reg. 24 expects a written contract with set particulars) and where the data is hosted. For any transfer that relies on safeguards, keep the documentation reg. 41(2) lists. Also check whether alert-webhook messages or Sentry events can contain emails or IPs; the backend Sentry config sets no scrubbing.
 
-**Fix:** pick concrete periods (for example: unanswered/closed contacts 12 months, client records 24 months after engagement ends, audit logs 24 months, login attempts 90 days as today), add them to the policy, and extend `jobs/cleanup.js` to enforce them.
+### 4.5 No written breach-response procedure — OPEN
+**Fix:** a one-page internal runbook: how a suspected breach is triaged, who decides it is notifiable, an ODPC notification template, and a template message to affected clients. Use the same NIST SP 800-61 phases you already document for clients (preparation, detection/analysis, containment/eradication/recovery, post-incident), and record the 72-hour clock start time as a mandatory field. Two points from the regulations: a breach involving a client's account identifier together with a password or access code counts as notifiable (reg. 37(1)(b)), and the notice to the Commissioner has a required content list (reg. 38(1)) that makes a good template skeleton.
 
-### 4.7 Audit log integrity
+### 4.6 Retention periods are vague — OPEN
+The policy says data is kept "for as long as reasonably necessary." That is hard to defend or audit, and reg. 19 expects a written schedule.
+
+**Fix:** pick concrete periods (for example: unanswered/closed contacts 12 months, client records 24 months after engagement ends, audit logs 24 months, login attempts 90 days as today), add them to the policy, and extend `jobs/cleanup.js` to enforce them. `contacts`, client records and `audit_logs` currently have no automatic deletion. Reg. 19(3) says the schedule must state the purpose, the period, how the data is periodically audited and what happens afterwards; reg. 35(f) also expects you to decide how long backups and logs are kept.
+
+### 4.7 Audit log integrity — OPEN (optional, lower priority)
 `recordAuditLog` deliberately fails open (a logging failure doesn't block the action), and the table is ordinary mutable rows. That is a reasonable availability tradeoff but means the log isn't tamper-evident.
 
-**Fix (optional, lower priority):** restrict the application DB role to INSERT/SELECT on `audit_logs`, and alert when an audit write fails.
+**Fix:** restrict the application DB role to INSERT/SELECT on `audit_logs`, and alert when an audit write fails.
 
 ---
 
@@ -96,14 +150,14 @@ The policy says data is kept "for as long as reasonably necessary." That's hard 
 
 ## 6. Suggested order of work
 
-1. Fix audit-log leakage on contact deletion and scrub existing rows (4.1).
-2. Consent notice + checkbox + `consented_at` (4.3).
-3. Export and erase endpoints for data subject requests (4.2).
-4. Update the privacy policy: processors, transfers, concrete retention periods (4.4, 4.6).
+1. ~~Fix audit-log leakage on contact deletion and scrub existing rows (4.1).~~ Done.
+2. ~~Consent notice, checkbox and `consented_at` on both forms (4.3).~~ Done.
+3. Merge the data-subject tooling and runbook (4.2).
+4. Rewrite the privacy policy: processors, transfers, notice content, and concrete retention periods (4.4, 4.6). This also completes the consent notice from 4.3.
 5. Write the breach runbook (4.5).
 6. Extend the cleanup job to enforce the retention periods (4.6).
-7. Confirm ODPC registration status with the Commissioner's office.
+7. Confirm ODPC registration status with the Commissioner's office. With a lawyer, decide the lawful basis for each purpose (in particular whether consent is valid for client signup) and confirm the processors' contracts.
 
 ## 7. What this document does not cover
 
-Whether Alux Plaza must register with the ODPC, any lawful-basis decision beyond consent, DPIA conclusions, certification, and a threat model for the production environment. Those need a lawyer, the regulator, or a proper assessment.
+Whether Alux Plaza must register with the ODPC, any lawful-basis decision, DPIA conclusions, certification, a threat model for the production environment, and the state of the production database. Those need a lawyer, the regulator, or a proper assessment.
