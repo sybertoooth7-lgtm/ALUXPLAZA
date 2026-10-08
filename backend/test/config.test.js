@@ -83,7 +83,10 @@ describe('config.js fail-fast validation', () => {
   it('strips a trailing slash from CORS_ORIGIN rather than leaving a value that can never match', () => {
     const output = execFileSync(
       'node',
-      ['-e', "import('./src/config.js').then(m => console.log(JSON.stringify(m.config.corsOrigins)))"],
+      [
+        '-e',
+        "import('./src/config.js').then(m => console.log(JSON.stringify(m.config.corsOrigins)))",
+      ],
       {
         cwd: backendRoot,
         env: {

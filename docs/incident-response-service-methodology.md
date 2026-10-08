@@ -1,6 +1,6 @@
 # Incident Response Plan & Playbook — Service Methodology
 
-*A real, deliverable security service. Replaces "Autonomous Incident Response" fiction with an actual written IR plan grounded in NIST SP 800-61.*
+_A real, deliverable security service. Replaces "Autonomous Incident Response" fiction with an actual written IR plan grounded in NIST SP 800-61._
 
 ## What this service actually is
 
@@ -14,13 +14,13 @@ Any small business or site operator without an internal security team — which 
 
 ## Scope of a typical engagement
 
-| Phase | What happens | Deliverable |
-|---|---|---|
-| 1. Intake interview | Ask about the client's systems, who has access, what's most critical (customer data? payment processing? uptime?), existing tools (hosting provider, backups, admin accounts) | Intake notes |
-| 2. Drafting | Fill the IR Plan template with the client's specific systems, contacts, and decision points | Draft IR Plan |
-| 3. Review | Walk the client through the plan; confirm contact info, escalation paths, and that they understand their own role in it | Revised IR Plan |
-| 4. Tabletop exercise (optional, recommended) | A short talk-through of a hypothetical incident ("customer data appears in a breach forum — what do you do first?") to pressure-test the plan | Session notes / plan revisions |
-| 5. Delivery | Final signed-off plan, in a format the client can actually find and use during a real incident (not buried in an inbox) | Final PDF/Word document + printed copy recommended |
+| Phase                                        | What happens                                                                                                                                                                  | Deliverable                                        |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 1. Intake interview                          | Ask about the client's systems, who has access, what's most critical (customer data? payment processing? uptime?), existing tools (hosting provider, backups, admin accounts) | Intake notes                                       |
+| 2. Drafting                                  | Fill the IR Plan template with the client's specific systems, contacts, and decision points                                                                                   | Draft IR Plan                                      |
+| 3. Review                                    | Walk the client through the plan; confirm contact info, escalation paths, and that they understand their own role in it                                                       | Revised IR Plan                                    |
+| 4. Tabletop exercise (optional, recommended) | A short talk-through of a hypothetical incident ("customer data appears in a breach forum — what do you do first?") to pressure-test the plan                                 | Session notes / plan revisions                     |
+| 5. Delivery                                  | Final signed-off plan, in a format the client can actually find and use during a real incident (not buried in an inbox)                                                       | Final PDF/Word document + printed copy recommended |
 
 ## What's in the actual plan (see `incident-response-plan-template`)
 

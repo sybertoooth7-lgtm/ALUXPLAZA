@@ -223,7 +223,11 @@ export default function AdminDashboard() {
                 </table>
               </div>
             )}
-            <PageControls page={clientsPage} totalPages={clientsTotalPages} onChange={setClientsPage} />
+            <PageControls
+              page={clientsPage}
+              totalPages={clientsTotalPages}
+              onChange={setClientsPage}
+            />
           </section>
 
           {/* Security events */}
@@ -278,7 +282,11 @@ export default function AdminDashboard() {
                 </table>
               </div>
             )}
-            <PageControls page={eventsPage} totalPages={eventsTotalPages} onChange={setEventsPage} />
+            <PageControls
+              page={eventsPage}
+              totalPages={eventsTotalPages}
+              onChange={setEventsPage}
+            />
           </section>
         </div>
       )}

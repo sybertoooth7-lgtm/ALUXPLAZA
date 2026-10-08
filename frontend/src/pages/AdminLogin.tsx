@@ -90,7 +90,10 @@ export default function AdminLogin() {
         <MfaVerifyModal
           mfaToken={mfaToken}
           onSuccess={handleMfaSuccess}
-          onCancel={() => { setMfaToken(null); setError('MFA verification cancelled.'); }}
+          onCancel={() => {
+            setMfaToken(null);
+            setError('MFA verification cancelled.');
+          }}
         />
       )}
     </div>

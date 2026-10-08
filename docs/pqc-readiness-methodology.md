@@ -1,6 +1,6 @@
 # Post-Quantum Cryptography Readiness Assessment — Service Methodology
 
-*A real, deliverable, forward-looking security service. Replaces "Quantum Neural Cryptography" fiction with an honest assessment grounded in NIST's actual finalized standards.*
+_A real, deliverable, forward-looking security service. Replaces "Quantum Neural Cryptography" fiction with an honest assessment grounded in NIST's actual finalized standards._
 
 ## What this service actually is
 
@@ -20,12 +20,12 @@ Any business wanting a forward-looking security roadmap, or handling data that g
 
 ## Scope of a typical engagement
 
-| Phase | What happens | Deliverable |
-|---|---|---|
-| 1. Scoping | Confirm domain(s)/systems in scope | Scoping note |
-| 2. Automated pass | Run the assessment tool: certificate algorithm/key size, TLS version, hybrid PQC key exchange support | Raw findings |
+| Phase             | What happens                                                                                                                      | Deliverable          |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| 1. Scoping        | Confirm domain(s)/systems in scope                                                                                                | Scoping note         |
+| 2. Automated pass | Run the assessment tool: certificate algorithm/key size, TLS version, hybrid PQC key exchange support                             | Raw findings         |
 | 3. Context review | Identify which of the client's data genuinely needs long-term confidentiality (this determines real urgency, not a generic score) | Prioritization notes |
-| 4. Report | Plain-English report explaining current posture, realistic timeline, and next steps | Written report |
+| 4. Report         | Plain-English report explaining current posture, realistic timeline, and next steps                                               | Written report       |
 
 ## What the automated tool checks (see `pqc_readiness.py`)
 
@@ -48,6 +48,7 @@ Testing for actual hybrid PQC key exchange support requires OpenSSL 3.5+ (or an 
 - A lower-cost add-on to another engagement (e.g. bundled with the Network Hardening Audit) rather than a standalone service, given its lower urgency — pricing should reflect that this is forward-looking context, not urgent remediation work.
 
 ## Sources
+
 - NIST FIPS 203, 204, 205 (finalized 13 August 2024)
 - NIST IR 8547 (draft transition guidance)
 - Public reporting on hybrid PQC deployment by Cloudflare, Google, and major browsers (2025-2026)

@@ -1,6 +1,6 @@
 # Data Backup & Encryption Audit — Service Methodology
 
-*A real, deliverable security service. Replaces "Neural Data Vault" fiction with an actual, testable review of backup and encryption practices.*
+_A real, deliverable security service. Replaces "Neural Data Vault" fiction with an actual, testable review of backup and encryption practices._
 
 ## What this service actually is
 
@@ -12,13 +12,13 @@ Any business handling customer data exports — a direct fit for Shopify merchan
 
 ## Scope of a typical engagement
 
-| Phase | What happens | Deliverable |
-|---|---|---|
-| 1. Scoping | Identify where the client's backups/exports actually live — local machine, cloud storage, email attachments, a hosting provider's backup feature | Scoping note |
-| 2. Local/folder scan | Run the audit tool against the client's actual backup folder(s): flags plaintext sensitive files, weak permissions, unencrypted archives | Raw findings |
-| 3. Remote checks | If backups go to a URL/cloud endpoint, check transport security (HTTPS/TLS) and, if a cloud storage bucket is used, check for public exposure | Raw findings |
-| 4. Manual review | Check for things the tool can't fully verify: retention policy (how long are old backups kept?), who has access to the backup location, whether backups are actually tested/restorable | Annotated findings |
-| 5. Report | Plain-English report: what was found, why it matters, how to fix it, prioritized | Written report |
+| Phase                | What happens                                                                                                                                                                           | Deliverable        |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| 1. Scoping           | Identify where the client's backups/exports actually live — local machine, cloud storage, email attachments, a hosting provider's backup feature                                       | Scoping note       |
+| 2. Local/folder scan | Run the audit tool against the client's actual backup folder(s): flags plaintext sensitive files, weak permissions, unencrypted archives                                               | Raw findings       |
+| 3. Remote checks     | If backups go to a URL/cloud endpoint, check transport security (HTTPS/TLS) and, if a cloud storage bucket is used, check for public exposure                                          | Raw findings       |
+| 4. Manual review     | Check for things the tool can't fully verify: retention policy (how long are old backups kept?), who has access to the backup location, whether backups are actually tested/restorable | Annotated findings |
+| 5. Report            | Plain-English report: what was found, why it matters, how to fix it, prioritized                                                                                                       | Written report     |
 
 ## What the automated tool checks (see `backup_audit.py`)
 

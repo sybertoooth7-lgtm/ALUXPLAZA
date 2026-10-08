@@ -5,7 +5,9 @@ const sentryEnabled = Boolean(process.env.SENTRY_DSN);
 
 export function initErrorTracking() {
   if (!sentryEnabled) {
-    logger.info('SENTRY_DSN not set — error tracking to Sentry is disabled (this is fine for local dev).');
+    logger.info(
+      'SENTRY_DSN not set — error tracking to Sentry is disabled (this is fine for local dev).'
+    );
     return;
   }
 
@@ -63,7 +65,8 @@ function buildAlertSummary(record) {
     return record.message;
   }
 
-  const suffix = record.count > 1 ? ` [aggregated ${record.count} alerts in ${elapsedSeconds}s]` : '';
+  const suffix =
+    record.count > 1 ? ` [aggregated ${record.count} alerts in ${elapsedSeconds}s]` : '';
   return `${record.message}${suffix}`;
 }
 

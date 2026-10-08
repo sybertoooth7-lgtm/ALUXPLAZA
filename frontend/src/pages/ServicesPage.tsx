@@ -52,7 +52,8 @@ export default function ServicesPage() {
               Neural <span className="gradient-text-cyan">Services</span>
             </h1>
             <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
-              Every engagement is scoped to your actual risk profile, priced for SME budgets, and mapped to standards you can audit.
+              Every engagement is scoped to your actual risk profile, priced for SME budgets, and
+              mapped to standards you can audit.
             </p>
           </div>
 
@@ -73,7 +74,8 @@ export default function ServicesPage() {
                 </h3>
                 <p className="text-[#94a3b8] text-sm mb-6 leading-relaxed">{s.short}</p>
                 <span className="inline-flex items-center gap-1 text-alux-cyan text-sm font-medium">
-                  Learn more <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  Learn more{' '}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </Link>
             ))}
@@ -82,7 +84,8 @@ export default function ServicesPage() {
           <div className="mt-20 bg-white/[0.03] border border-white/[0.06] rounded-3xl p-10 text-center">
             <h2 className="text-2xl font-serif font-bold mb-4">Not sure what you need?</h2>
             <p className="text-[#94a3b8] mb-8 max-w-xl mx-auto">
-              Start with a free 30-minute discovery call. We'll map your current posture to the right service stack — no upsell, no filler.
+              Start with a free 30-minute discovery call. We'll map your current posture to the
+              right service stack — no upsell, no filler.
             </p>
             <Link
               to="/"

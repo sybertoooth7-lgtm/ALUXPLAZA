@@ -1,10 +1,10 @@
 # AI/LLM Application Security Review — Service Methodology
 
-*A real, deliverable security service. Replaces "Adversarial AI Defense" fiction with an actual black-box test of AI-backed application features, grounded in the OWASP Top 10 for LLM Applications (2025 edition).*
+_A real, deliverable security service. Replaces "Adversarial AI Defense" fiction with an actual black-box test of AI-backed application features, grounded in the OWASP Top 10 for LLM Applications (2025 edition)._
 
 ## What this service actually is
 
-A security review of a client's AI-backed feature — a chatbot, AI product recommender, AI customer support widget, or similar — testing whether the *application wrapping the model* is safe, not the underlying model itself. This distinction matters: this service doesn't try to "fix" a language model's behavior in the abstract; it tests whether the client's specific integration handles that behavior safely (validates output before rendering it, doesn't over-trust user input, has usage limits, etc.).
+A security review of a client's AI-backed feature — a chatbot, AI product recommender, AI customer support widget, or similar — testing whether the _application wrapping the model_ is safe, not the underlying model itself. This distinction matters: this service doesn't try to "fix" a language model's behavior in the abstract; it tests whether the client's specific integration handles that behavior safely (validates output before rendering it, doesn't over-trust user input, has usage limits, etc.).
 
 Grounded in the **OWASP Top 10 for LLM Applications (2025 edition, LLM01:2025-LLM10:2025)** — the current, community-maintained, named industry-standard reference for this category, published by the OWASP GenAI Security Project.
 
@@ -14,13 +14,13 @@ Any business adding an AI-backed feature to their site or app — increasingly r
 
 ## Scope of a typical engagement
 
-| Phase | What happens | Deliverable |
-|---|---|---|
-| 1. Scoping | Identify the AI-backed endpoint(s) in scope, confirm the request/response format, get written authorization | Signed scope-of-work |
-| 2. Automated pass | Run the review tool: prompt injection, system prompt leakage, output handling, rate limiting | Raw findings |
-| 3. Manual review | Review flagged WARN items (leakage heuristics can have false positives - see limitation below), plus the categories the tool can't test black-box (see below) | Annotated findings |
-| 4. Report | Plain-English report, mapped to OWASP LLM categories, prioritized | Written report |
-| 5. Follow-up (optional) | Re-test after remediation | Confirmation report |
+| Phase                   | What happens                                                                                                                                                  | Deliverable          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| 1. Scoping              | Identify the AI-backed endpoint(s) in scope, confirm the request/response format, get written authorization                                                   | Signed scope-of-work |
+| 2. Automated pass       | Run the review tool: prompt injection, system prompt leakage, output handling, rate limiting                                                                  | Raw findings         |
+| 3. Manual review        | Review flagged WARN items (leakage heuristics can have false positives - see limitation below), plus the categories the tool can't test black-box (see below) | Annotated findings   |
+| 4. Report               | Plain-English report, mapped to OWASP LLM categories, prioritized                                                                                             | Written report       |
+| 5. Follow-up (optional) | Re-test after remediation                                                                                                                                     | Confirmation report  |
 
 ## What the automated tool checks (see `llm_security_review.py`)
 
@@ -57,4 +57,5 @@ Verified against both a deliberately vulnerable mock endpoint (all 4 checks corr
 - A flat fee for the automated pass + manual review of the non-black-box-testable categories relevant to the client's specific AI feature + written report.
 
 ## Sources
+
 - OWASP Top 10 for LLM Applications (2025 edition, v2.0), OWASP GenAI Security Project

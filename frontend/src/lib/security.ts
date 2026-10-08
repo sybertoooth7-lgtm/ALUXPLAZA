@@ -30,10 +30,7 @@ async function getCsrfToken(): Promise<string> {
  * - Standard browser headers that bots often omit
  * - credentials: 'include' for cookie-based auth
  */
-export async function secureFetch(
-  path: string,
-  options: RequestInit = {}
-): Promise<Response> {
+export async function secureFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const url = `${API_BASE}${path}`;
   const method = (options.method || 'GET').toUpperCase();
   const isStateChanging = !['GET', 'HEAD', 'OPTIONS'].includes(method);
@@ -59,7 +56,10 @@ export async function secureFetch(
   // raced the cookie being set). One retry with a freshly fetched token
   // covers that without silently failing every request until reload.
   if (isStateChanging && res.status === 403) {
-    const body = await res.clone().json().catch(() => null);
+    const body = await res
+      .clone()
+      .json()
+      .catch(() => null);
     if (body?.error === 'CSRF token missing' || body?.error === 'Invalid CSRF token') {
       cachedCsrfToken = null;
       return doFetch();

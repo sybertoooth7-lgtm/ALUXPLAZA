@@ -1,6 +1,6 @@
 # Compliance Readiness Checklist — Service Methodology
 
-*A real, deliverable compliance service. Replaces "AI Compliance Engine" fiction with an actual gap-analysis grounded in named, current regulatory sources.*
+_A real, deliverable compliance service. Replaces "AI Compliance Engine" fiction with an actual gap-analysis grounded in named, current regulatory sources._
 
 ## What this service actually is
 
@@ -17,13 +17,13 @@ Any Kenya-based e-commerce or web business — a natural fit for Shopify merchan
 
 ## Scope of a typical engagement
 
-| Phase | What happens | Deliverable |
-|---|---|---|
-| 1. Scoping | Confirm which framework(s) apply — does the client take payments directly (PCI), and do they collect/process Kenyan customer data (DPA — almost always yes for any storefront) | Scoping note |
-| 2. Walkthrough | Go through the checklist item by item with the client (or on their behalf using available evidence — store settings, privacy policy, admin access list) | Filled-in draft checklist |
-| 3. Evidence review | For each item marked Compliant, confirm there's something concrete backing it up (a screenshot, a policy document, a setting) — not just "I think so" | Annotated checklist |
-| 4. Gap report | Summarize what's Non-Compliant or Partial, prioritized, in plain English | Written summary + the spreadsheet |
-| 5. Follow-up (optional) | Re-check after the client addresses gaps | Updated checklist |
+| Phase                   | What happens                                                                                                                                                                   | Deliverable                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| 1. Scoping              | Confirm which framework(s) apply — does the client take payments directly (PCI), and do they collect/process Kenyan customer data (DPA — almost always yes for any storefront) | Scoping note                      |
+| 2. Walkthrough          | Go through the checklist item by item with the client (or on their behalf using available evidence — store settings, privacy policy, admin access list)                        | Filled-in draft checklist         |
+| 3. Evidence review      | For each item marked Compliant, confirm there's something concrete backing it up (a screenshot, a policy document, a setting) — not just "I think so"                          | Annotated checklist               |
+| 4. Gap report           | Summarize what's Non-Compliant or Partial, prioritized, in plain English                                                                                                       | Written summary + the spreadsheet |
+| 5. Follow-up (optional) | Re-check after the client addresses gaps                                                                                                                                       | Updated checklist                 |
 
 ## What's in the spreadsheet (see `compliance-readiness-checklist.xlsx`)
 
@@ -51,6 +51,7 @@ Any Kenya-based e-commerce or web business — a natural fit for Shopify merchan
 - Follow-up re-checks after remediation can be priced as a smaller fixed add-on.
 
 ## Sources
+
 - PCI Security Standards Council — SAQ A and PCI DSS v4.0.1 (effective 31 March 2025, including Requirements 6.4.3 and 11.6.1 script-security updates)
 - Kenya Data Protection Act, 2019 (Act No. 24 of 2019)
 - Data Protection (General) Regulations, 2021

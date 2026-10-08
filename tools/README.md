@@ -1,4 +1,5 @@
 [README.md](https://github.com/user-attachments/files/30592244/README.md)
+
 # Tools
 
 Real, tested scripts backing the services described in `docs/`. Every tool
@@ -60,7 +61,7 @@ risk score (see the methodology doc for the exact formula).
 **Does NOT check:** SQL injection, XSS, authentication bypass, business
 logic flaws, or anything requiring active exploitation attempts. **Known
 false-positive risk:** platforms with username/org-based routing (where any
-path resolves to *some* real content, e.g. GitHub itself) can trigger a
+path resolves to _some_ real content, e.g. GitHub itself) can trigger a
 false FAIL on the exposed-paths check - always manually verify a FAIL
 before it goes in a client report (see the methodology doc's "Known
 limitation" section).

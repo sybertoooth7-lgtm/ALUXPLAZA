@@ -109,11 +109,15 @@ export default function AdminSecurity() {
   }, [tab, eventsPage, eventTypeFilter]);
 
   async function handleUnblock(ip: string) {
-    if (!confirm(`Unblock ${ip}? Only do this if you're confident it was a false positive.`)) return;
+    if (!confirm(`Unblock ${ip}? Only do this if you're confident it was a false positive.`))
+      return;
     try {
-      const res = await secureFetch(`/api/admin/security/blocks/${encodeURIComponent(ip)}/unblock`, {
-        method: 'POST',
-      });
+      const res = await secureFetch(
+        `/api/admin/security/blocks/${encodeURIComponent(ip)}/unblock`,
+        {
+          method: 'POST',
+        }
+      );
       if (!res.ok) throw new Error('Failed to unblock IP.');
       setBlocks((prev) => prev.filter((b) => b.ip_address !== ip));
     } catch (err) {
@@ -199,7 +203,11 @@ export default function AdminSecurity() {
                   </table>
                 </div>
               )}
-              <PageControls page={blocksPage} totalPages={blocksTotalPages} onChange={setBlocksPage} />
+              <PageControls
+                page={blocksPage}
+                totalPages={blocksTotalPages}
+                onChange={setBlocksPage}
+              />
             </div>
           )}
 
@@ -264,7 +272,11 @@ export default function AdminSecurity() {
                   </table>
                 </div>
               )}
-              <PageControls page={eventsPage} totalPages={eventsTotalPages} onChange={setEventsPage} />
+              <PageControls
+                page={eventsPage}
+                totalPages={eventsTotalPages}
+                onChange={setEventsPage}
+              />
             </div>
           )}
         </div>

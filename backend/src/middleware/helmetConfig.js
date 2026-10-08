@@ -27,16 +27,16 @@ export const helmetMiddleware = helmet({
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
-      frameAncestors: ["'none'"],          // Modern X-Frame-Options replacement
-      baseUri: ["'none'"],                  // Prevent <base> tag injection
-      formAction: ["'self'"],              // Restrict form submissions
+      frameAncestors: ["'none'"], // Modern X-Frame-Options replacement
+      baseUri: ["'none'"], // Prevent <base> tag injection
+      formAction: ["'self'"], // Restrict form submissions
       ...(config.isProduction && { upgradeInsecureRequests: [] }),
     },
   },
   hsts: {
     maxAge: 31536000,
     includeSubDomains: true,
-    preload: true,                         // WARNING: irreversible once preloaded
+    preload: true, // WARNING: irreversible once preloaded
   },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 });

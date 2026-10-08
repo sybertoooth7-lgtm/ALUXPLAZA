@@ -6,6 +6,6 @@
  * while taking advantage of OpenCode's more sophisticated 20+ event types.
  */
 
-import { ECCHooksPlugin } from "./ecc-hooks.ts"
+import { ECCHooksPlugin } from './ecc-hooks.ts';
 
-export default ECCHooksPlugin
+export default ECCHooksPlugin;

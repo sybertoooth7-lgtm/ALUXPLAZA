@@ -10,25 +10,29 @@ const researchItems = [
     num: '01',
     color: '#a855f7',
     title: 'Post-Quantum Readiness',
-    description: 'Assessing exposure to "harvest now, decrypt later" risk and readiness for post-quantum cryptography migration.',
+    description:
+      'Assessing exposure to "harvest now, decrypt later" risk and readiness for post-quantum cryptography migration.',
   },
   {
     num: '02',
     color: '#00d4ff',
     title: 'LLM & AI Security Review',
-    description: 'Applying the OWASP LLM Top 10 (2025) to products that integrate AI or LLM features.',
+    description:
+      'Applying the OWASP LLM Top 10 (2025) to products that integrate AI or LLM features.',
   },
   {
     num: '03',
     color: '#00ff88',
     title: 'Threat Intelligence Briefings',
-    description: 'Curated, sourced threat intelligence relevant to businesses operating in Kenya and East Africa.',
+    description:
+      'Curated, sourced threat intelligence relevant to businesses operating in Kenya and East Africa.',
   },
   {
     num: '04',
     color: '#f97316',
     title: 'Honeypot & Deception Monitoring',
-    description: 'Deploying decoy systems and monitoring them to study real attacker behavior against our own infrastructure.',
+    description:
+      'Deploying decoy systems and monitoring them to study real attacker behavior against our own infrastructure.',
   },
 ];
 
@@ -177,8 +181,8 @@ export default function NeuralLab() {
               ))}
             </div>
             <p className="text-[#475569] text-xs mt-6">
-              Every deliverable is checked against a written methodology document, not produced
-              ad hoc — ask for the methodology behind any service before you book it.
+              Every deliverable is checked against a written methodology document, not produced ad
+              hoc — ask for the methodology behind any service before you book it.
             </p>
           </div>
         </div>

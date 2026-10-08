@@ -20,7 +20,9 @@ Set VITE_API_BASE_URL to your deployed backend's URL before building, e.g.:
 ${RESET}`);
 
   if (isProduction) {
-    console.error(`${RED}${BOLD}Failing build because NODE_ENV=production and VITE_API_BASE_URL is required.${RESET}`);
+    console.error(
+      `${RED}${BOLD}Failing build because NODE_ENV=production and VITE_API_BASE_URL is required.${RESET}`
+    );
     process.exit(1);
   }
 }

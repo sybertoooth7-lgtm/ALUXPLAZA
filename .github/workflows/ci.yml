@@ -7,6 +7,18 @@ on:
     branches: [main]
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      # Root has no committed package-lock.json (only backend/ and frontend/ do),
+      # so npm ci has nothing to read here and npm install is the correct call.
+      - run: npm install
+      - run: npm run format:check
+
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -8,14 +8,14 @@ This is an operating procedure, not legal advice. Have a Kenyan data-protection 
 
 From the Data Protection (General) Regulations (Legal Notice 263 of 2021), checked against the text on Kenya Law:
 
-| Request | Deadline | Regulation |
-|---|---|---|
-| Access to personal data | **7 days** from the request, free of charge, electronic form if asked electronically | reg. 9(4)–(6) |
-| Erasure | **Respond within 14 days**, free of charge | reg. 12(3), (5) |
-| Rectification | 14 days to correct; if declined, written reasons within 7 days | reg. 10(4)–(5) |
-| Objection to processing | 14 days | reg. 8(3) |
-| Restriction of processing | 14 days | reg. 7(3) |
-| Data portability | 30 days; if declined, written reasons within 7 days | reg. 11(3), (6) |
+| Request                   | Deadline                                                                             | Regulation      |
+| ------------------------- | ------------------------------------------------------------------------------------ | --------------- |
+| Access to personal data   | **7 days** from the request, free of charge, electronic form if asked electronically | reg. 9(4)–(6)   |
+| Erasure                   | **Respond within 14 days**, free of charge                                           | reg. 12(3), (5) |
+| Rectification             | 14 days to correct; if declined, written reasons within 7 days                       | reg. 10(4)–(5)  |
+| Objection to processing   | 14 days                                                                              | reg. 8(3)       |
+| Restriction of processing | 14 days                                                                              | reg. 7(3)       |
+| Data portability          | 30 days; if declined, written reasons within 7 days                                  | reg. 11(3), (6) |
 
 The clock starts when the request arrives, not when you read it. Requesters may use Forms DPG 1–5 from the First Schedule, but the regulations say a request "may" be made on the form, so don't refuse a clear request just because it isn't on one. A person unhappy with the outcome can complain to the Data Commissioner (reg. 58); say so in any refusal.
 
@@ -38,10 +38,10 @@ The clock starts when the request arrives, not when you read it. Requesters may 
 >
 > Attached is a copy of the personal data Alux Plaza holds under this email address.
 >
-> - **Why we hold it:** *[purposes, as stated in the Privacy Policy, e.g. to respond to your enquiry; to provide and secure your client account]*
+> - **Why we hold it:** _[purposes, as stated in the Privacy Policy, e.g. to respond to your enquiry; to provide and secure your client account]_
 > - **Categories of data:** contact details you gave us, account details, login history (including IP address and browser), and consent records.
-> - **Who receives it:** *[confirm the current list before sending: e.g. our email provider (Resend), our error-monitoring provider (Sentry), our hosting and database providers]*
-> - **How long we keep it:** login attempts are deleted automatically after 90 days. *[Add your retention periods for contact messages, client accounts and audit records once they are decided.]*
+> - **Who receives it:** _[confirm the current list before sending: e.g. our email provider (Resend), our error-monitoring provider (Sentry), our hosting and database providers]_
+> - **How long we keep it:** login attempts are deleted automatically after 90 days. _[Add your retention periods for contact messages, client accounts and audit records once they are decided.]_
 > - **Where it came from:** you gave it to us through our contact form or signup form; login history is recorded automatically when you sign in.
 >
 > You can ask us to correct or erase it by replying to this email. If you are unhappy with our response you may complain to the Office of the Data Protection Commissioner.

@@ -55,7 +55,9 @@ async function bootServerAndCaptureLogs(env, port, waitFor = 'No admin users exi
         setTimeout(finish, 200);
       }
     });
-    proc.stderr.on('data', (chunk) => { output += chunk.toString(); });
+    proc.stderr.on('data', (chunk) => {
+      output += chunk.toString();
+    });
 
     // Safety net in case the server never logs the expected line at all
     // (e.g. it crashed) - don't hang the test suite forever.

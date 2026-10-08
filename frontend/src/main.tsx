@@ -1,11 +1,11 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router'
-import { registerSW } from 'virtual:pwa-register'
-import './index.css'
-import App from './App.tsx'
-import { ThemeProvider } from './components/theme-provider.tsx'
-import { initErrorTracking } from './lib/sentry'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router';
+import { registerSW } from 'virtual:pwa-register';
+import './index.css';
+import App from './App.tsx';
+import { ThemeProvider } from './components/theme-provider.tsx';
+import { initErrorTracking } from './lib/sentry';
 
 initErrorTracking();
 
@@ -28,5 +28,5 @@ createRoot(document.getElementById('root')!).render(
         <App />
       </BrowserRouter>
     </ThemeProvider>
-  </StrictMode>,
-)
+  </StrictMode>
+);

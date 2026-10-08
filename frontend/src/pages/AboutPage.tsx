@@ -45,9 +45,9 @@ export default function AboutPage() {
               Security Built on <span className="gradient-text-cyan">Standards</span>, Not Buzzwords
             </h1>
             <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto leading-relaxed">
-              Alux Plaza is a Nairobi-based cybersecurity consultancy helping East African SMEs
-              meet real compliance obligations — NIST SP 800-61, PCI DSS, and the Kenya Data
-              Protection Act 2019 — with practical, affordable engagements.
+              Alux Plaza is a Nairobi-based cybersecurity consultancy helping East African SMEs meet
+              real compliance obligations — NIST SP 800-61, PCI DSS, and the Kenya Data Protection
+              Act 2019 — with practical, affordable engagements.
             </p>
             <div className="flex items-center justify-center gap-2 mt-6 text-alux-cyan font-mono text-sm">
               <MapPin className="w-4 h-4" />
@@ -89,7 +89,8 @@ export default function AboutPage() {
           <div className="bg-gradient-to-br from-alux-cyan/10 via-alux-purple/10 to-alux-gold/10 border border-white/[0.06] rounded-3xl p-10 md:p-16 text-center">
             <h2 className="text-3xl font-serif font-bold mb-4">Ready to see how we can help?</h2>
             <p className="text-[#94a3b8] mb-8 max-w-xl mx-auto">
-              Whether you need a full compliance readiness assessment or a targeted incident response retainer, we scope engagements to your actual risk profile.
+              Whether you need a full compliance readiness assessment or a targeted incident
+              response retainer, we scope engagements to your actual risk profile.
             </p>
             <Link
               to="/"

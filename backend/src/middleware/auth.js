@@ -53,10 +53,7 @@ export async function requireAuth(req, res, next) {
   try {
     decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
   } catch (err) {
-    logger.warn(
-      { ip: req.ip, error: err.message },
-      '[auth] Token verification failed'
-    );
+    logger.warn({ ip: req.ip, error: err.message }, '[auth] Token verification failed');
     return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
   }
 
@@ -71,7 +68,7 @@ export async function requireAuth(req, res, next) {
 
   // Check token age against policy maximum, separate from JWT expiry
   const now = Math.floor(Date.now() / 1000);
-  const issuedAt = decoded.iat || decoded.exp - (60 * 60); // assume 1hr lifetime if iat missing
+  const issuedAt = decoded.iat || decoded.exp - 60 * 60; // assume 1hr lifetime if iat missing
   if (now - issuedAt > MAX_TOKEN_AGE_SECONDS) {
     logger.warn(
       { ip: req.ip, sub: decoded.sub, age: now - issuedAt },
@@ -82,33 +79,23 @@ export async function requireAuth(req, res, next) {
 
   // Wrong token type: client token on admin route
   if (decoded.role === 'client') {
-    logger.warn(
-      { ip: req.ip, sub: decoded.sub },
-      '[auth] Client token used on admin route'
-    );
+    logger.warn({ ip: req.ip, sub: decoded.sub }, '[auth] Client token used on admin route');
     return res.status(401).json({ error: 'Unauthorized: Wrong token type' });
   }
 
   // Token was explicitly revoked
-  if (decoded.jti && await isBlocklisted(decoded.jti)) {
-    logger.warn(
-      { ip: req.ip, sub: decoded.sub, jti: decoded.jti },
-      '[auth] Revoked token used'
-    );
+  if (decoded.jti && (await isBlocklisted(decoded.jti))) {
+    logger.warn({ ip: req.ip, sub: decoded.sub, jti: decoded.jti }, '[auth] Revoked token used');
     return res.status(401).json({ error: 'Unauthorized: Token has been revoked' });
   }
 
   // Verify the user still exists and fetch current role from DB
   try {
-    const { rows } = await db.query(
-      'SELECT role, disabled_at FROM admin_users WHERE id = $1',
-      [decoded.sub]
-    );
+    const { rows } = await db.query('SELECT role, disabled_at FROM admin_users WHERE id = $1', [
+      decoded.sub,
+    ]);
     if (rows.length === 0) {
-      logger.warn(
-        { ip: req.ip, sub: decoded.sub },
-        '[auth] User account no longer exists'
-      );
+      logger.warn({ ip: req.ip, sub: decoded.sub }, '[auth] User account no longer exists');
       return res.status(401).json({ error: 'Unauthorized: Account no longer exists' });
     }
     const user = rows[0];
@@ -123,10 +110,7 @@ export async function requireAuth(req, res, next) {
     // Use DB role, not token role (in case permissions were revoked)
     decoded.role = user.role;
   } catch (err) {
-    logger.error(
-      { error: err.message, sub: decoded.sub },
-      '[auth] Failed to fetch user role'
-    );
+    logger.error({ error: err.message, sub: decoded.sub }, '[auth] Failed to fetch user role');
     return res.status(500).json({ error: 'Internal server error' });
   }
 

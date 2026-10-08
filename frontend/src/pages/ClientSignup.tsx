@@ -72,9 +72,7 @@ export default function ClientSignup() {
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <span className="font-serif text-lg text-alux-gold">ALUX PLAZA</span>
-          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">
-            Client Portal
-          </p>
+          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">Client Portal</p>
         </div>
 
         <div className="bg-navy border border-white/10 rounded-2xl p-8 relative">
@@ -109,10 +107,7 @@ export default function ClientSignup() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label
-                htmlFor="companyName"
-                className="block text-sm text-white/70 mb-1"
-              >
+              <label htmlFor="companyName" className="block text-sm text-white/70 mb-1">
                 Company Name
               </label>
               <input
@@ -129,10 +124,7 @@ export default function ClientSignup() {
             </div>
 
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm text-white/70 mb-1"
-              >
+              <label htmlFor="email" className="block text-sm text-white/70 mb-1">
                 Email
               </label>
               <input
@@ -149,10 +141,7 @@ export default function ClientSignup() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm text-white/70 mb-1"
-              >
+              <label htmlFor="password" className="block text-sm text-white/70 mb-1">
                 Password
               </label>
               <input
@@ -167,9 +156,7 @@ export default function ClientSignup() {
                 placeholder="••••••••"
                 required
               />
-              <p className="text-xs text-white/30 mt-1">
-                Minimum 8 characters
-              </p>
+              <p className="text-xs text-white/30 mt-1">Minimum 8 characters</p>
             </div>
 
             <div>
@@ -217,10 +204,7 @@ export default function ClientSignup() {
 
           <p className="text-center text-sm text-white/40 mt-6">
             Already have an account?{' '}
-            <Link
-              to="/client/login"
-              className="text-alux-cyan hover:underline"
-            >
+            <Link to="/client/login" className="text-alux-cyan hover:underline">
               Sign in
             </Link>
           </p>

@@ -11,6 +11,7 @@ version number.
 ## [Unreleased]
 
 ### Added
+
 - React admin dashboard (`/admin/dashboard`, `/admin/submissions`,
   `/admin/security`, `/admin/users`) with client list + risk scores,
   contact submission management, IP block/unblock, and security event
@@ -38,6 +39,7 @@ version number.
 - `engines` field + `.nvmrc` pinning Node 20.x, matching production.
 
 ### Fixed
+
 - `adminClients.js`: client creation had lost its `email_verified=TRUE`
   flag, and the compliance-status PATCH route had been overwritten
   with an unrelated `INSERT INTO clients` fragment referencing
@@ -63,6 +65,7 @@ version number.
   pinned to 20 everywhere, matching the production Docker images.
 
 ### Removed
+
 - Stray AI-tool-generated documents (`VERIFICATION_REPORT.docx`,
   `PATCH_GUIDE.pdf`, `frontend/info.md`) and an orphaned duplicate
   `env.example` at the repo root.

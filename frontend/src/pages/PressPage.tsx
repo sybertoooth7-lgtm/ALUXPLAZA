@@ -6,17 +6,20 @@ const releases = [
   {
     date: '2026-08-10',
     title: 'Alux Plaza Launches Compliance Readiness Tracker for Kenya DPA',
-    excerpt: 'New feature gives SMEs real-time visibility into their Data Protection Act posture with per-framework scoring and auditor-ready export.',
+    excerpt:
+      'New feature gives SMEs real-time visibility into their Data Protection Act posture with per-framework scoring and auditor-ready export.',
   },
   {
     date: '2026-06-22',
     title: 'Alux Plaza Secures Seed Funding to Expand East African Operations',
-    excerpt: 'Nairobi-based cybersecurity consultancy closes seed round to scale incident response and compliance services across Kenya, Uganda, and Tanzania.',
+    excerpt:
+      'Nairobi-based cybersecurity consultancy closes seed round to scale incident response and compliance services across Kenya, Uganda, and Tanzania.',
   },
   {
     date: '2026-04-05',
     title: 'Open-Source Shield WAF Engine Released Under MIT License',
-    excerpt: 'The in-house request inspection and blocking engine powering Alux Plaza is now available for community review and self-hosted deployment.',
+    excerpt:
+      'The in-house request inspection and blocking engine powering Alux Plaza is now available for community review and self-hosted deployment.',
   },
 ];
 
@@ -38,7 +41,8 @@ export default function PressPage() {
               Press & <span className="gradient-text-cyan">Media</span>
             </h1>
             <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
-              For interview requests, speaker bookings, or media kit downloads, contact our communications team.
+              For interview requests, speaker bookings, or media kit downloads, contact our
+              communications team.
             </p>
           </div>
 

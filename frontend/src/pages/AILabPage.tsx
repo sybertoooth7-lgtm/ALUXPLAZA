@@ -40,8 +40,8 @@ export default function AILabPage() {
               The <span className="gradient-text-cyan">AI Lab</span>
             </h1>
             <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto leading-relaxed">
-              We build our own tools. The same automation and detection pipelines we use internally are
-              refined, documented, and made available to our clients.
+              We build our own tools. The same automation and detection pipelines we use internally
+              are refined, documented, and made available to our clients.
             </p>
           </div>
 
@@ -74,17 +74,26 @@ export default function AILabPage() {
             <div className="p-6">
               <Zap className="w-8 h-8 text-alux-gold mx-auto mb-4" />
               <h4 className="font-semibold mb-2">Automated First</h4>
-              <p className="text-[#94a3b8] text-sm">Every repetitive check is scripted before a human touches it. Humans validate; machines enumerate.</p>
+              <p className="text-[#94a3b8] text-sm">
+                Every repetitive check is scripted before a human touches it. Humans validate;
+                machines enumerate.
+              </p>
             </div>
             <div className="p-6">
               <Lock className="w-8 h-8 text-alux-purple mx-auto mb-4" />
               <h4 className="font-semibold mb-2">Security by Design</h4>
-              <p className="text-[#94a3b8] text-sm">Our tools eat our own dog food. They run against our infrastructure before they ever touch a client environment.</p>
+              <p className="text-[#94a3b8] text-sm">
+                Our tools eat our own dog food. They run against our infrastructure before they ever
+                touch a client environment.
+              </p>
             </div>
             <div className="p-6">
               <FileText className="w-8 h-8 text-alux-cyan mx-auto mb-4" />
               <h4 className="font-semibold mb-2">Open Methodology</h4>
-              <p className="text-[#94a3b8] text-sm">No black boxes. Every detection rule, scoring algorithm, and audit script is documented and reviewable.</p>
+              <p className="text-[#94a3b8] text-sm">
+                No black boxes. Every detection rule, scoring algorithm, and audit script is
+                documented and reviewable.
+              </p>
             </div>
           </div>
         </div>

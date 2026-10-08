@@ -29,14 +29,14 @@ export default function ServiceLayout({ title, subtitle, children, icon }: Servi
               {icon}
             </div>
             <div>
-              <h1 className="text-4xl md:text-5xl font-serif font-bold gradient-text-cyan">{title}</h1>
+              <h1 className="text-4xl md:text-5xl font-serif font-bold gradient-text-cyan">
+                {title}
+              </h1>
               <p className="text-[#94a3b8] mt-2 text-lg">{subtitle}</p>
             </div>
           </div>
 
-          <div className="prose prose-invert prose-lg max-w-none text-[#cbd5e1]">
-            {children}
-          </div>
+          <div className="prose prose-invert prose-lg max-w-none text-[#cbd5e1]">{children}</div>
         </div>
       </main>
       <Footer />

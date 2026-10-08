@@ -38,10 +38,7 @@ export class PostgresRateLimitStore {
   }
 
   async decrement(key) {
-    await db.query(
-      'UPDATE rate_limits SET count = GREATEST(count - 1, 0) WHERE key = $1',
-      [key]
-    );
+    await db.query('UPDATE rate_limits SET count = GREATEST(count - 1, 0) WHERE key = $1', [key]);
   }
 
   async resetKey(key) {

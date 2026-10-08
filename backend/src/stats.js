@@ -1,7 +1,13 @@
 import db from './db.js';
 
 const MAX_LATENCY_SAMPLES = 200;
-const PERSISTED_KEYS = ['requestCount', 'errorCount', 'contactAttempts', 'contactSuccesses', 'honeypotBlocked'];
+const PERSISTED_KEYS = [
+  'requestCount',
+  'errorCount',
+  'contactAttempts',
+  'contactSuccesses',
+  'honeypotBlocked',
+];
 
 async function loadPersistedValue(key) {
   try {
@@ -29,14 +35,16 @@ export const stats = {
 // worker's timer fires last silently overwrites the others' counts.
 // Persisting the delta instead means every worker's contribution adds up
 // correctly in the database, regardless of how many workers are running.
-const pendingDelta = Object.fromEntries(PERSISTED_KEYS.map(k => [k, 0]));
+const pendingDelta = Object.fromEntries(PERSISTED_KEYS.map((k) => [k, 0]));
 let dirty = false;
 
 export async function loadPersistedValues() {
   for (const key of PERSISTED_KEYS) {
     stats[key] = await loadPersistedValue(key);
   }
-  console.log(`[stats] Loaded persisted totals: requestCount=${stats.requestCount}, contactAttempts=${stats.contactAttempts}`);
+  console.log(
+    `[stats] Loaded persisted totals: requestCount=${stats.requestCount}, contactAttempts=${stats.contactAttempts}`
+  );
 }
 
 export async function persistStats() {
@@ -66,11 +74,10 @@ export async function persistStats() {
 // handled, so the public status endpoint uses this — not `stats` directly —
 // for counters meant to represent the whole cluster.
 export async function getPersistedTotals() {
-  const result = await db.query(
-    `SELECT key, value FROM metrics WHERE key = ANY($1)`,
-    [PERSISTED_KEYS]
-  );
-  const totals = Object.fromEntries(PERSISTED_KEYS.map(k => [k, 0]));
+  const result = await db.query(`SELECT key, value FROM metrics WHERE key = ANY($1)`, [
+    PERSISTED_KEYS,
+  ]);
+  const totals = Object.fromEntries(PERSISTED_KEYS.map((k) => [k, 0]));
   for (const row of result.rows) {
     totals[row.key] = parseInt(row.value, 10);
   }

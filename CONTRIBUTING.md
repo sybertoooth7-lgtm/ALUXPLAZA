@@ -83,8 +83,8 @@ unrelated change.
 
 ## Commit style
 
-No strict format required, but a commit message that explains *why*
-(not just *what*) is genuinely helpful for anyone debugging this
+No strict format required, but a commit message that explains _why_
+(not just _what_) is genuinely helpful for anyone debugging this
 codebase in six months — including future you.
 
 ## Questions

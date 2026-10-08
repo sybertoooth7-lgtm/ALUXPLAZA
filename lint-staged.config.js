@@ -6,9 +6,7 @@ import path from 'path';
 
 function eslintIn(dir) {
   return (filenames) => {
-    const rel = filenames
-      .map((f) => path.relative(dir, f))
-      .filter((f) => !f.startsWith('..'));
+    const rel = filenames.map((f) => path.relative(dir, f)).filter((f) => !f.startsWith('..'));
     if (rel.length === 0) return 'true';
     const quoted = rel.map((f) => JSON.stringify(f)).join(' ');
     return `sh -c 'cd ${dir} && npx eslint --fix ${quoted}'`;

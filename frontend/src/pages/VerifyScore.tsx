@@ -47,7 +47,9 @@ export default function VerifyScore() {
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <span className="font-serif text-lg text-alux-gold">ALUX PLAZA</span>
-          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">Risk Score Verification</p>
+          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">
+            Risk Score Verification
+          </p>
         </div>
 
         <div className="bg-navy-surface border border-white/10 rounded-2xl p-8">
@@ -67,7 +69,9 @@ export default function VerifyScore() {
 
               <p className="text-white/50 text-sm mb-1">Risk Score</p>
               <p className="text-5xl font-bold font-mono mb-2">{result.score}</p>
-              <p className={`text-sm font-semibold mb-6 ${LABEL_STYLES[result.label] || 'text-white/60'}`}>
+              <p
+                className={`text-sm font-semibold mb-6 ${LABEL_STYLES[result.label] || 'text-white/60'}`}
+              >
                 {result.label}
               </p>
 
@@ -80,8 +84,8 @@ export default function VerifyScore() {
         </div>
 
         <p className="text-center text-xs text-white/30 mt-6">
-          This score reflects a point-in-time compliance assessment conducted
-          by Alux Plaza and is not a guarantee of security or creditworthiness.
+          This score reflects a point-in-time compliance assessment conducted by Alux Plaza and is
+          not a guarantee of security or creditworthiness.
         </p>
       </div>
     </div>

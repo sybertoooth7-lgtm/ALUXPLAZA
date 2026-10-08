@@ -28,15 +28,24 @@ export default function ComplianceReadinessPage() {
     >
       <div className="space-y-16">
         <section>
-          <h2 className="text-2xl font-serif font-bold text-white mb-4">Compliance Is a Moving Target</h2>
+          <h2 className="text-2xl font-serif font-bold text-white mb-4">
+            Compliance Is a Moving Target
+          </h2>
           <p className="text-[#94a3b8] leading-relaxed mb-6">
-            Most compliance efforts fail because they are point-in-time. We build living compliance trackers that update as your environment changes — so you're never surprised by an auditor or a regulator.
+            Most compliance efforts fail because they are point-in-time. We build living compliance
+            trackers that update as your environment changes — so you're never surprised by an
+            auditor or a regulator.
           </p>
           <div className="grid md:grid-cols-3 gap-4">
             {frameworks.map((f) => (
-              <div key={f.name} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-6">
+              <div
+                key={f.name}
+                className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-6"
+              >
                 <h4 className="font-semibold mb-2 text-alux-cyan">{f.name}</h4>
-                <span className="text-xs font-mono bg-white/[0.05] px-2 py-1 rounded-full text-[#94a3b8]">{f.items}</span>
+                <span className="text-xs font-mono bg-white/[0.05] px-2 py-1 rounded-full text-[#94a3b8]">
+                  {f.items}
+                </span>
                 <p className="text-[#94a3b8] text-sm mt-4 leading-relaxed">{f.desc}</p>
               </div>
             ))}
@@ -47,12 +56,31 @@ export default function ComplianceReadinessPage() {
           <h2 className="text-2xl font-serif font-bold text-white mb-6">How It Works</h2>
           <div className="grid md:grid-cols-4 gap-4">
             {[
-              { icon: <BookOpen className="w-6 h-6" />, title: 'Discovery', desc: 'Map your data flows, assets, and existing policies.' },
-              { icon: <Target className="w-6 h-6" />, title: 'Gap Analysis', desc: 'Compare current state against framework requirements.' },
-              { icon: <ClipboardCheck className="w-6 h-6" />, title: 'Remediation', desc: 'Prioritized action plan with clear owners and deadlines.' },
-              { icon: <BarChart3 className="w-6 h-6" />, title: 'Continuous Tracking', desc: 'Live score dashboard that updates as you fix gaps.' },
+              {
+                icon: <BookOpen className="w-6 h-6" />,
+                title: 'Discovery',
+                desc: 'Map your data flows, assets, and existing policies.',
+              },
+              {
+                icon: <Target className="w-6 h-6" />,
+                title: 'Gap Analysis',
+                desc: 'Compare current state against framework requirements.',
+              },
+              {
+                icon: <ClipboardCheck className="w-6 h-6" />,
+                title: 'Remediation',
+                desc: 'Prioritized action plan with clear owners and deadlines.',
+              },
+              {
+                icon: <BarChart3 className="w-6 h-6" />,
+                title: 'Continuous Tracking',
+                desc: 'Live score dashboard that updates as you fix gaps.',
+              },
             ].map((s) => (
-              <div key={s.title} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 text-center">
+              <div
+                key={s.title}
+                className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 text-center"
+              >
                 <div className="text-alux-cyan mb-3 flex justify-center">{s.icon}</div>
                 <h4 className="font-semibold mb-2">{s.title}</h4>
                 <p className="text-[#94a3b8] text-sm">{s.desc}</p>

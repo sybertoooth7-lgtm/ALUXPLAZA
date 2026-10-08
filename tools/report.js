@@ -29,7 +29,9 @@ function parseArgs() {
 
 async function readEntries(logPath) {
   if (!fs.existsSync(logPath)) {
-    console.error(`No log file found at ${logPath} - no honeypot hits recorded yet (this is good news).`);
+    console.error(
+      `No log file found at ${logPath} - no honeypot hits recorded yet (this is good news).`
+    );
     process.exit(0);
   }
 
@@ -59,7 +61,9 @@ function summarize(entries) {
   }
 
   const topN = (obj, n = 10) =>
-    Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+    Object.entries(obj)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, n);
 
   return {
     totalHits: entries.length,

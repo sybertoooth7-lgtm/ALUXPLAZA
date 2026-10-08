@@ -143,7 +143,9 @@ export default function ClientLogin() {
                     disabled={resendStatus === 'sending'}
                     className="text-alux-cyan hover:underline text-xs disabled:opacity-50 disabled:no-underline"
                   >
-                    {resendStatus === 'sending' ? 'Sending verification email…' : 'Resend verification email'}
+                    {resendStatus === 'sending'
+                      ? 'Sending verification email…'
+                      : 'Resend verification email'}
                   </button>
                 )}
 
@@ -215,10 +217,7 @@ export default function ClientLogin() {
         </form>
 
         <footer className="flex items-center justify-between mt-6 text-sm">
-          <Link
-            to="/client/signup"
-            className="text-alux-cyan hover:underline underline-offset-2"
-          >
+          <Link to="/client/signup" className="text-alux-cyan hover:underline underline-offset-2">
             Create account
           </Link>
           <Link

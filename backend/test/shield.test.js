@@ -47,7 +47,9 @@ describe('shield/detector.js — scanRequest', () => {
     expect(
       scanRequest(fakeReq({ body: { comment: 'Please select the second option instead.' } }))
     ).toBeNull();
-    expect(scanRequest(fakeReq({ body: { username: '1 UNION SELECT username FROM users' } }))).not.toBeNull();
+    expect(
+      scanRequest(fakeReq({ body: { username: '1 UNION SELECT username FROM users' } }))
+    ).not.toBeNull();
   });
 
   it('detects a classic SQL injection UNION SELECT in a query param', () => {
@@ -374,7 +376,8 @@ describe('shield/riskScore.js', () => {
     const clientId = client.rows[0].id;
 
     const { score, itemCount } = await computeRiskScore(clientId);
-    const totalItems = (await db.query('SELECT COUNT(*)::int AS c FROM compliance_items')).rows[0].c;
+    const totalItems = (await db.query('SELECT COUNT(*)::int AS c FROM compliance_items')).rows[0]
+      .c;
 
     expect(itemCount).toBe(totalItems);
     expect(score).toBe(0);
@@ -768,7 +771,9 @@ describe('shield/bruteForceGuard.js', () => {
     expect(lastResult).toBe(true);
     expect(await isBlocked(key)).toBe(true);
 
-    const { rows } = await db.query('SELECT severity FROM blocked_ips WHERE ip_address = $1', [key]);
+    const { rows } = await db.query('SELECT severity FROM blocked_ips WHERE ip_address = $1', [
+      key,
+    ]);
     expect(rows[0].severity).toBe('medium');
   }, 30_000);
 

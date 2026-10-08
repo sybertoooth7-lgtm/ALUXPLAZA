@@ -37,9 +37,13 @@ if (cookieSecret && cookieSecret.length < 32) {
 // recommended — see the warning below.
 const mfaEncryptionKey = process.env.MFA_ENCRYPTION_KEY || '';
 if (!mfaEncryptionKey) {
-  warnings.push('MFA_ENCRYPTION_KEY is not set. Falling back to a key derived from JWT_SECRET — set a dedicated MFA_ENCRYPTION_KEY (32+ random bytes) so a leaked JWT_SECRET cannot also decrypt stored MFA secrets.');
+  warnings.push(
+    'MFA_ENCRYPTION_KEY is not set. Falling back to a key derived from JWT_SECRET — set a dedicated MFA_ENCRYPTION_KEY (32+ random bytes) so a leaked JWT_SECRET cannot also decrypt stored MFA secrets.'
+  );
 } else if (mfaEncryptionKey.length < 32) {
-  warnings.push('MFA_ENCRYPTION_KEY is too short. It should be at least 32 characters for security.');
+  warnings.push(
+    'MFA_ENCRYPTION_KEY is too short. It should be at least 32 characters for security.'
+  );
 }
 
 // CORS validation
@@ -50,18 +54,22 @@ if (!mfaEncryptionKey) {
 // can never match a real Origin header (browsers never send one).
 const rawCorsOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
-  .map(o => o.trim().replace(/\/+$/, ''))
+  .map((o) => o.trim().replace(/\/+$/, ''))
   .filter(Boolean);
 
 if (isProduction) {
   if (rawCorsOrigins.length === 0) {
-    fatalErrors.push('CORS_ORIGIN is not set in production. Set it to your frontend\'s origin(s), comma-separated.');
+    fatalErrors.push(
+      "CORS_ORIGIN is not set in production. Set it to your frontend's origin(s), comma-separated."
+    );
   } else {
-    const missingScheme = rawCorsOrigins.filter(o => !/^https?:\/\//.test(o));
+    const missingScheme = rawCorsOrigins.filter((o) => !/^https?:\/\//.test(o));
     if (missingScheme.length > 0) {
-      fatalErrors.push(`CORS_ORIGIN entry is missing scheme (http:// or https://): ${missingScheme.join(', ')}`);
+      fatalErrors.push(
+        `CORS_ORIGIN entry is missing scheme (http:// or https://): ${missingScheme.join(', ')}`
+      );
     }
-    const nonHttps = rawCorsOrigins.filter(o => o.startsWith('http://'));
+    const nonHttps = rawCorsOrigins.filter((o) => o.startsWith('http://'));
     if (nonHttps.length > 0) {
       warnings.push(`CORS_ORIGIN contains non-HTTPS origins in production: ${nonHttps.join(', ')}`);
     }
@@ -82,17 +90,19 @@ if (isProduction && process.env.DB_SSL === 'false') {
 // no working link, or gets silently refused by isSafeLink.
 const frontendUrl = (process.env.FRONTEND_URL || '').replace(/\/+$/, '');
 if (isProduction && !frontendUrl) {
-  warnings.push('FRONTEND_URL is not set. Verification and password-reset emails cannot include a working link.');
+  warnings.push(
+    'FRONTEND_URL is not set. Verification and password-reset emails cannot include a working link.'
+  );
 }
 
 if (warnings.length > 0) {
   console.warn('[config] Security warnings:');
-  warnings.forEach(w => console.warn(`  - ${w}`));
+  warnings.forEach((w) => console.warn(`  - ${w}`));
 }
 
 if (fatalErrors.length > 0) {
   console.error('[config] Refusing to start:\n');
-  fatalErrors.forEach(e => console.error(`  - ${e}`));
+  fatalErrors.forEach((e) => console.error(`  - ${e}`));
   process.exit(1);
 }
 

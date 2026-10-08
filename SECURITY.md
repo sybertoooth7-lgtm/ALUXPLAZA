@@ -39,11 +39,13 @@ We don't currently run a paid bug bounty program.
 ## Scope
 
 **In scope:**
+
 - This repository (`backend/` and `frontend/`)
 - The deployed production platform (frontend on Vercel, backend on
   Render) at the domains listed in this repo's `README.md`
 
 **Out of scope:**
+
 - Third-party services we depend on but don't control (Vercel, Render,
   Neon, Resend) — please report those directly to the provider
 - Social engineering of Alux Plaza staff, contractors, or clients

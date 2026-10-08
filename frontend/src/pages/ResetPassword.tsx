@@ -49,9 +49,7 @@ export default function ResetPassword() {
         setPassword('');
         setConfirmPassword('');
       } catch (err: unknown) {
-        setError(
-          err instanceof Error ? err.message : 'Something went wrong'
-        );
+        setError(err instanceof Error ? err.message : 'Something went wrong');
         setTimeout(() => passwordInputRef.current?.focus(), 50);
       } finally {
         setLoading(false);
@@ -66,9 +64,7 @@ export default function ResetPassword() {
         {/* Brand header */}
         <div className="text-center mb-6">
           <span className="font-serif text-lg text-alux-gold">ALUX PLAZA</span>
-          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">
-            Client Portal
-          </p>
+          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">Client Portal</p>
         </div>
 
         {/* Card */}
@@ -78,9 +74,7 @@ export default function ResetPassword() {
           aria-busy={loading}
         >
           <h2 className="text-xl font-bold mb-2">Set New Password</h2>
-          <p className="text-sm text-white/50 mb-6">
-            Choose a strong password for your account.
-          </p>
+          <p className="text-sm text-white/50 mb-6">Choose a strong password for your account.</p>
 
           {/* Error */}
           {error && (
@@ -118,27 +112,16 @@ export default function ResetPassword() {
                 stroke="currentColor"
                 strokeWidth={2}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
               <span>{success}</span>
             </div>
           )}
 
           {!success && (
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-4"
-              aria-label="Reset password"
-            >
+            <form onSubmit={handleSubmit} className="space-y-4" aria-label="Reset password">
               <div>
-                <label
-                  htmlFor="new-password"
-                  className="block text-sm text-white/70 mb-1"
-                >
+                <label htmlFor="new-password" className="block text-sm text-white/70 mb-1">
                   New Password
                 </label>
                 <input
@@ -157,9 +140,7 @@ export default function ResetPassword() {
                 <p
                   id="password-hint"
                   className={`text-xs mt-1 ${
-                    password.length > 0 && !minLengthMet
-                      ? 'text-alux-red'
-                      : 'text-white/30'
+                    password.length > 0 && !minLengthMet ? 'text-alux-red' : 'text-white/30'
                   }`}
                 >
                   Must be at least 8 characters
@@ -167,10 +148,7 @@ export default function ResetPassword() {
               </div>
 
               <div>
-                <label
-                  htmlFor="confirm-password"
-                  className="block text-sm text-white/70 mb-1"
-                >
+                <label htmlFor="confirm-password" className="block text-sm text-white/70 mb-1">
                   Confirm Password
                 </label>
                 <input
@@ -192,9 +170,7 @@ export default function ResetPassword() {
                   disabled={!token}
                 />
                 {confirmPassword.length > 0 && !passwordsMatch && (
-                  <p className="text-xs text-alux-red mt-1">
-                    Passwords do not match
-                  </p>
+                  <p className="text-xs text-alux-red mt-1">Passwords do not match</p>
                 )}
               </div>
 

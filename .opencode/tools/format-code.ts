@@ -6,108 +6,108 @@
  * Supports cross-platform command generation.
  */
 
-import { tool, type ToolDefinition } from "@opencode-ai/plugin/tool"
-import * as path from "path"
-import * as fs from "fs"
+import { tool, type ToolDefinition } from '@opencode-ai/plugin/tool';
+import * as path from 'path';
+import * as fs from 'fs';
 
-type Formatter = "biome" | "prettier" | "black" | "gofmt" | "rustfmt" | "swift-format"
+type Formatter = 'biome' | 'prettier' | 'black' | 'gofmt' | 'rustfmt' | 'swift-format';
 
 interface FormatResult {
-  success: boolean
-  formatter?: Formatter
-  command?: string
-  instructions?: string
-  message?: string
-  error?: string
+  success: boolean;
+  formatter?: Formatter;
+  command?: string;
+  instructions?: string;
+  message?: string;
+  error?: string;
 }
 
 const formatCodeTool: ToolDefinition = tool({
   description:
-    "Detect formatter for a file and return the exact command to run (Biome, Prettier, Black, gofmt, rustfmt, swift-format). Supports cross-platform command generation.",
+    'Detect formatter for a file and return the exact command to run (Biome, Prettier, Black, gofmt, rustfmt, swift-format). Supports cross-platform command generation.',
   args: {
-    filePath: tool.schema.string().describe("Path to the file to format"),
+    filePath: tool.schema.string().describe('Path to the file to format'),
     formatter: tool.schema
-      .enum(["biome", "prettier", "black", "gofmt", "rustfmt", "swift-format"])
+      .enum(['biome', 'prettier', 'black', 'gofmt', 'rustfmt', 'swift-format'])
       .optional()
-      .describe("Optional formatter override"),
+      .describe('Optional formatter override'),
   },
   async execute(args, context): Promise<string> {
     try {
-      const cwd = context.worktree || context.directory
-      const ext = args.filePath.split(".").pop()?.toLowerCase() || ""
-      const detected = args.formatter || detectFormatter(cwd, ext)
+      const cwd = context.worktree || context.directory;
+      const ext = args.filePath.split('.').pop()?.toLowerCase() || '';
+      const detected = args.formatter || detectFormatter(cwd, ext);
 
       if (!detected) {
         return JSON.stringify({
           success: false,
           message: `No formatter detected for .${ext} files`,
-          supportedFormatters: ["biome", "prettier", "black", "gofmt", "rustfmt", "swift-format"],
-        })
+          supportedFormatters: ['biome', 'prettier', 'black', 'gofmt', 'rustfmt', 'swift-format'],
+        });
       }
 
-      const command = buildFormatterCommand(detected, args.filePath, cwd)
+      const command = buildFormatterCommand(detected, args.filePath, cwd);
       return JSON.stringify({
         success: true,
         formatter: detected,
         command,
         instructions: `Run this command:\n\n${command}`,
         platform: process.platform,
-      })
+      });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return JSON.stringify({
         success: false,
         error: `Failed to detect formatter: ${errorMessage}`,
         filePath: args.filePath,
-      })
+      });
     }
   },
-})
+});
 
-export default formatCodeTool
+export default formatCodeTool;
 
 function detectFormatter(cwd: string, ext: string): Formatter | null {
   // Check for formatter config files
   const hasConfig = (configFiles: string[]): boolean => {
-    return configFiles.some(configFile => fs.existsSync(path.join(cwd, configFile)))
-  }
+    return configFiles.some((configFile) => fs.existsSync(path.join(cwd, configFile)));
+  };
 
   // JavaScript/TypeScript files
-  if (["ts", "tsx", "js", "jsx", "json", "css", "scss", "md", "yaml", "yml"].includes(ext)) {
-    if (hasConfig(["biome.json", "biome.jsonc"])) {
-      return "biome"
+  if (['ts', 'tsx', 'js', 'jsx', 'json', 'css', 'scss', 'md', 'yaml', 'yml'].includes(ext)) {
+    if (hasConfig(['biome.json', 'biome.jsonc'])) {
+      return 'biome';
     }
-    return "prettier"
+    return 'prettier';
   }
 
   // Python files
-  if (["py", "pyi"].includes(ext)) {
-    return "black"
+  if (['py', 'pyi'].includes(ext)) {
+    return 'black';
   }
 
   // Go files
-  if (ext === "go") {
-    return "gofmt"
+  if (ext === 'go') {
+    return 'gofmt';
   }
 
   // Rust files
-  if (ext === "rs") {
-    return "rustfmt"
+  if (ext === 'rs') {
+    return 'rustfmt';
   }
 
   // Swift files
-  if (ext === "swift") {
-    return "swift-format"
+  if (ext === 'swift') {
+    return 'swift-format';
   }
 
-  return null
+  return null;
 }
 
 function buildFormatterCommand(formatter: Formatter, filePath: string, cwd?: string): string {
   // Normalize to forward slashes so the emitted command is identical on every
   // platform. `path.normalize` yields backslashes on Windows, which broke the
   // command string (and Windows CI); all formatter CLIs accept `/` on Windows.
-  const normalizedPath = path.normalize(filePath).replace(/\\/g, "/")
+  const normalizedPath = path.normalize(filePath).replace(/\\/g, '/');
 
   // Build command based on formatter and platform
   const commands: Record<Formatter, string> = {
@@ -116,8 +116,8 @@ function buildFormatterCommand(formatter: Formatter, filePath: string, cwd?: str
     black: `black ${normalizedPath}`,
     gofmt: `gofmt -w ${normalizedPath}`,
     rustfmt: `rustfmt ${normalizedPath}`,
-    "swift-format": `swift-format format --in-place ${normalizedPath}`,
-  }
+    'swift-format': `swift-format format --in-place ${normalizedPath}`,
+  };
 
-  return commands[formatter]
+  return commands[formatter];
 }

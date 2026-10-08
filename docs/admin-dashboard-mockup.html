@@ -1,184 +1,435 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" class="dark">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alux Plaza — Admin Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --navy-base: #050a12;
-    --navy-surface: #0a1628;
-    --navy-light: #111d32;
-    --gold: #c9a84c;
-    --cyan: #00d4ff;
-    --green: #00ff88;
-    --red: #ff3366;
-    --border: rgba(255,255,255,0.10);
-    --border-soft: rgba(255,255,255,0.06);
-    --muted: rgba(255,255,255,0.50);
-    --muted-2: rgba(255,255,255,0.40);
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--navy-base);
-    color: #fff;
-    font-family: 'Inter', sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  .serif { font-family: 'Playfair Display', serif; }
-  .mono { font-family: 'JetBrains Mono', monospace; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alux Plaza — Admin Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --navy-base: #050a12;
+        --navy-surface: #0a1628;
+        --navy-light: #111d32;
+        --gold: #c9a84c;
+        --cyan: #00d4ff;
+        --green: #00ff88;
+        --red: #ff3366;
+        --border: rgba(255, 255, 255, 0.1);
+        --border-soft: rgba(255, 255, 255, 0.06);
+        --muted: rgba(255, 255, 255, 0.5);
+        --muted-2: rgba(255, 255, 255, 0.4);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--navy-base);
+        color: #fff;
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .serif {
+        font-family: 'Playfair Display', serif;
+      }
+      .mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
 
-  header {
-    border-bottom: 1px solid var(--border);
-    padding: 20px 32px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .brand-block { display: flex; align-items: center; gap: 32px; }
-  .wordmark { font-size: 18px; color: var(--gold); margin: 0; }
-  .wordmark-sub { font-size: 11px; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.08em; margin: 2px 0 0; }
-  nav { display: flex; gap: 4px; }
-  nav a {
-    font-size: 14px;
-    padding: 7px 14px;
-    border-radius: 8px;
-    color: var(--muted);
-    text-decoration: none;
-    transition: background 0.15s, color 0.15s;
-  }
-  nav a.active { background: rgba(255,255,255,0.08); color: #fff; }
-  .header-right { display: flex; align-items: center; gap: 16px; }
-  .header-email { font-size: 14px; color: var(--muted); }
-  .theme-btn {
-    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--border); border-radius: 8px; color: var(--muted);
-  }
-  .logout-btn {
-    font-size: 14px; color: var(--muted); border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 8px; padding: 8px 16px; background: none;
-  }
+      header {
+        border-bottom: 1px solid var(--border);
+        padding: 20px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .brand-block {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+      }
+      .wordmark {
+        font-size: 18px;
+        color: var(--gold);
+        margin: 0;
+      }
+      .wordmark-sub {
+        font-size: 11px;
+        color: var(--muted-2);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin: 2px 0 0;
+      }
+      nav {
+        display: flex;
+        gap: 4px;
+      }
+      nav a {
+        font-size: 14px;
+        padding: 7px 14px;
+        border-radius: 8px;
+        color: var(--muted);
+        text-decoration: none;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+      nav a.active {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .header-email {
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .theme-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+      }
+      .logout-btn {
+        font-size: 14px;
+        color: var(--muted);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        padding: 8px 16px;
+        background: none;
+      }
 
-  main { max-width: 1152px; margin: 0 auto; padding: 40px 24px; }
-  section { margin-bottom: 48px; }
-  h2.section-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold); margin: 0 0 16px; }
+      main {
+        max-width: 1152px;
+        margin: 0 auto;
+        padding: 40px 24px;
+      }
+      section {
+        margin-bottom: 48px;
+      }
+      h2.section-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 18px;
+        color: var(--gold);
+        margin: 0 0 16px;
+      }
 
-  .stat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
-  .stat-card {
-    background: var(--navy-surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px;
-  }
-  .stat-label { font-size: 11px; color: var(--muted-2); margin: 0 0 4px; }
-  .stat-value { font-size: 24px; font-weight: 700; margin: 0; }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+      }
+      .stat-card {
+        background: var(--navy-surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .stat-label {
+        font-size: 11px;
+        color: var(--muted-2);
+        margin: 0 0 4px;
+      }
+      .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0;
+      }
 
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .table-wrap { background: var(--navy-surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  thead tr { border-bottom: 1px solid var(--border); text-align: left; }
-  th { padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-2); font-weight: 500; }
-  tbody tr { border-bottom: 1px solid var(--border-soft); }
-  tbody tr:last-child { border-bottom: none; }
-  td { padding: 12px 16px; }
-  .company { font-weight: 500; }
-  .email-cell, .date-cell { color: var(--muted); }
-  .mono-cell { color: rgba(255,255,255,0.70); }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      .table-wrap {
+        background: var(--navy-surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      thead tr {
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+      }
+      th {
+        padding: 12px 16px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted-2);
+        font-weight: 500;
+      }
+      tbody tr {
+        border-bottom: 1px solid var(--border-soft);
+      }
+      tbody tr:last-child {
+        border-bottom: none;
+      }
+      td {
+        padding: 12px 16px;
+      }
+      .company {
+        font-weight: 500;
+      }
+      .email-cell,
+      .date-cell {
+        color: var(--muted);
+      }
+      .mono-cell {
+        color: rgba(255, 255, 255, 0.7);
+      }
 
-  .badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
-  .badge-strong { background: rgba(0,255,136,0.15); color: var(--green); }
-  .badge-adequate { background: rgba(0,212,255,0.15); color: var(--cyan); }
-  .badge-developing { background: rgba(201,168,76,0.15); color: var(--gold); }
-  .badge-attention { background: rgba(255,51,102,0.15); color: var(--red); }
-  .badge-high { background: rgba(255,51,102,0.15); color: var(--red); }
-  .badge-medium { background: rgba(201,168,76,0.15); color: var(--gold); }
-  .blocked-tag { color: var(--red); font-size: 12px; }
-  .logged-tag { color: rgba(255,255,255,0.30); font-size: 12px; }
+      .badge {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .badge-strong {
+        background: rgba(0, 255, 136, 0.15);
+        color: var(--green);
+      }
+      .badge-adequate {
+        background: rgba(0, 212, 255, 0.15);
+        color: var(--cyan);
+      }
+      .badge-developing {
+        background: rgba(201, 168, 76, 0.15);
+        color: var(--gold);
+      }
+      .badge-attention {
+        background: rgba(255, 51, 102, 0.15);
+        color: var(--red);
+      }
+      .badge-high {
+        background: rgba(255, 51, 102, 0.15);
+        color: var(--red);
+      }
+      .badge-medium {
+        background: rgba(201, 168, 76, 0.15);
+        color: var(--gold);
+      }
+      .blocked-tag {
+        color: var(--red);
+        font-size: 12px;
+      }
+      .logged-tag {
+        color: rgba(255, 255, 255, 0.3);
+        font-size: 12px;
+      }
 
-  .pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 16px; }
-  .pager button {
-    font-size: 12px; color: var(--muted); border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 8px; padding: 6px 12px; background: none;
-  }
-  .pager span { font-size: 12px; color: var(--muted-2); }
-</style>
-</head>
-<body>
+      .pager {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .pager button {
+        font-size: 12px;
+        color: var(--muted);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        padding: 6px 12px;
+        background: none;
+      }
+      .pager span {
+        font-size: 12px;
+        color: var(--muted-2);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand-block">
+        <div>
+          <p class="wordmark serif">ALUX PLAZA</p>
+          <p class="wordmark-sub">Admin</p>
+        </div>
+        <nav>
+          <a href="#" class="active">Dashboard</a>
+          <a href="#">Submissions</a>
+          <a href="#">Security</a>
+          <a href="#">Users</a>
+        </nav>
+      </div>
+      <div class="header-right">
+        <span class="header-email">amara@aluxplaza.com</span>
+        <div class="theme-btn">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+            />
+          </svg>
+        </div>
+        <button class="logout-btn">Logout</button>
+      </div>
+    </header>
 
-<header>
-  <div class="brand-block">
-    <div>
-      <p class="wordmark serif">ALUX PLAZA</p>
-      <p class="wordmark-sub">Admin</p>
-    </div>
-    <nav>
-      <a href="#" class="active">Dashboard</a>
-      <a href="#">Submissions</a>
-      <a href="#">Security</a>
-      <a href="#">Users</a>
-    </nav>
-  </div>
-  <div class="header-right">
-    <span class="header-email">amara@aluxplaza.com</span>
-    <div class="theme-btn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-    </div>
-    <button class="logout-btn">Logout</button>
-  </div>
-</header>
+    <main>
+      <section>
+        <h2 class="section-title">Compliance Overview</h2>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <p class="stat-label">Total clients</p>
+            <p class="stat-value mono">47</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Average score</p>
+            <p class="stat-value mono">74</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Strong</p>
+            <p class="stat-value mono" style="color: var(--green)">11</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Adequate</p>
+            <p class="stat-value mono" style="color: var(--cyan)">18</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Developing</p>
+            <p class="stat-value mono" style="color: var(--gold)">12</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label">Needs attention</p>
+            <p class="stat-value mono" style="color: var(--red)">6</p>
+          </div>
+        </div>
+      </section>
 
-<main>
-  <section>
-    <h2 class="section-title">Compliance Overview</h2>
-    <div class="stat-grid">
-      <div class="stat-card"><p class="stat-label">Total clients</p><p class="stat-value mono">47</p></div>
-      <div class="stat-card"><p class="stat-label">Average score</p><p class="stat-value mono">74</p></div>
-      <div class="stat-card"><p class="stat-label">Strong</p><p class="stat-value mono" style="color:var(--green)">11</p></div>
-      <div class="stat-card"><p class="stat-label">Adequate</p><p class="stat-value mono" style="color:var(--cyan)">18</p></div>
-      <div class="stat-card"><p class="stat-label">Developing</p><p class="stat-value mono" style="color:var(--gold)">12</p></div>
-      <div class="stat-card"><p class="stat-label">Needs attention</p><p class="stat-value mono" style="color:var(--red)">6</p></div>
-    </div>
-  </section>
+      <section>
+        <h2 class="section-title">Clients</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Email</th>
+                <th>Score</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="company">Serengeti Freight Ltd</td>
+                <td class="email-cell">ops@serengetifreight.co.tz</td>
+                <td><span class="badge badge-strong">94 · Strong</span></td>
+                <td class="date-cell">Feb 12, 2026</td>
+              </tr>
+              <tr>
+                <td class="company">Kampala Retail Group</td>
+                <td class="email-cell">it@kampalaretail.ug</td>
+                <td><span class="badge badge-adequate">81 · Adequate</span></td>
+                <td class="date-cell">Jan 30, 2026</td>
+              </tr>
+              <tr>
+                <td class="company">Nairobi Fintech Solutions</td>
+                <td class="email-cell">security@nairobifintech.co.ke</td>
+                <td><span class="badge badge-strong">96 · Strong</span></td>
+                <td class="date-cell">Jan 18, 2026</td>
+              </tr>
+              <tr>
+                <td class="company">Kigali Health Systems</td>
+                <td class="email-cell">admin@kigalihealth.rw</td>
+                <td><span class="badge badge-developing">58 · Developing</span></td>
+                <td class="date-cell">Dec 22, 2025</td>
+              </tr>
+              <tr>
+                <td class="company">Dar es Salaam Logistics Co</td>
+                <td class="email-cell">compliance@dslogistics.co.tz</td>
+                <td><span class="badge badge-attention">37 · Needs attention</span></td>
+                <td class="date-cell">Dec 09, 2025</td>
+              </tr>
+              <tr>
+                <td class="company">Kisumu Agrotech Ventures</td>
+                <td class="email-cell">hello@kisumuagro.co.ke</td>
+                <td><span class="badge badge-adequate">77 · Adequate</span></td>
+                <td class="date-cell">Nov 27, 2025</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button>Previous</button><span>Page 1 of 8</span><button>Next</button>
+        </div>
+      </section>
 
-  <section>
-    <h2 class="section-title">Clients</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Company</th><th>Email</th><th>Score</th><th>Joined</th></tr>
-        </thead>
-        <tbody>
-          <tr><td class="company">Serengeti Freight Ltd</td><td class="email-cell">ops@serengetifreight.co.tz</td><td><span class="badge badge-strong">94 · Strong</span></td><td class="date-cell">Feb 12, 2026</td></tr>
-          <tr><td class="company">Kampala Retail Group</td><td class="email-cell">it@kampalaretail.ug</td><td><span class="badge badge-adequate">81 · Adequate</span></td><td class="date-cell">Jan 30, 2026</td></tr>
-          <tr><td class="company">Nairobi Fintech Solutions</td><td class="email-cell">security@nairobifintech.co.ke</td><td><span class="badge badge-strong">96 · Strong</span></td><td class="date-cell">Jan 18, 2026</td></tr>
-          <tr><td class="company">Kigali Health Systems</td><td class="email-cell">admin@kigalihealth.rw</td><td><span class="badge badge-developing">58 · Developing</span></td><td class="date-cell">Dec 22, 2025</td></tr>
-          <tr><td class="company">Dar es Salaam Logistics Co</td><td class="email-cell">compliance@dslogistics.co.tz</td><td><span class="badge badge-attention">37 · Needs attention</span></td><td class="date-cell">Dec 09, 2025</td></tr>
-          <tr><td class="company">Kisumu Agrotech Ventures</td><td class="email-cell">hello@kisumuagro.co.ke</td><td><span class="badge badge-adequate">77 · Adequate</span></td><td class="date-cell">Nov 27, 2025</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="pager"><button>Previous</button><span>Page 1 of 8</span><button>Next</button></div>
-  </section>
-
-  <section>
-    <h2 class="section-title">Recent Security Events</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>IP</th><th>Type</th><th>Severity</th><th>Path</th><th>Blocked</th><th>When</th></tr>
-        </thead>
-        <tbody>
-          <tr><td class="mono mono-cell">41.90.64.112</td><td>sqli</td><td><span class="badge badge-high">high</span></td><td class="mono email-cell" style="font-size:12px">/api/client/login</td><td><span class="blocked-tag">Blocked</span></td><td class="date-cell">Sep 6, 4:12 PM</td></tr>
-          <tr><td class="mono mono-cell">154.72.9.201</td><td>xss</td><td><span class="badge badge-medium">medium</span></td><td class="mono email-cell" style="font-size:12px">/api/contact</td><td><span class="logged-tag">Logged only</span></td><td class="date-cell">Sep 6, 2:47 PM</td></tr>
-          <tr><td class="mono mono-cell">102.68.201.4</td><td>path_traversal</td><td><span class="badge badge-high">high</span></td><td class="mono email-cell" style="font-size:12px">/files/../../etc/passwd</td><td><span class="blocked-tag">Blocked</span></td><td class="date-cell">Sep 6, 11:03 AM</td></tr>
-          <tr><td class="mono mono-cell">196.201.14.88</td><td>sqli</td><td><span class="badge badge-medium">medium</span></td><td class="mono email-cell" style="font-size:12px">/api/client/security-events</td><td><span class="logged-tag">Logged only</span></td><td class="date-cell">Sep 5, 9:56 PM</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="pager"><button>Previous</button><span>Page 1 of 14</span><button>Next</button></div>
-  </section>
-</main>
-
-</body>
+      <section>
+        <h2 class="section-title">Recent Security Events</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>IP</th>
+                <th>Type</th>
+                <th>Severity</th>
+                <th>Path</th>
+                <th>Blocked</th>
+                <th>When</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono mono-cell">41.90.64.112</td>
+                <td>sqli</td>
+                <td><span class="badge badge-high">high</span></td>
+                <td class="mono email-cell" style="font-size: 12px">/api/client/login</td>
+                <td><span class="blocked-tag">Blocked</span></td>
+                <td class="date-cell">Sep 6, 4:12 PM</td>
+              </tr>
+              <tr>
+                <td class="mono mono-cell">154.72.9.201</td>
+                <td>xss</td>
+                <td><span class="badge badge-medium">medium</span></td>
+                <td class="mono email-cell" style="font-size: 12px">/api/contact</td>
+                <td><span class="logged-tag">Logged only</span></td>
+                <td class="date-cell">Sep 6, 2:47 PM</td>
+              </tr>
+              <tr>
+                <td class="mono mono-cell">102.68.201.4</td>
+                <td>path_traversal</td>
+                <td><span class="badge badge-high">high</span></td>
+                <td class="mono email-cell" style="font-size: 12px">/files/../../etc/passwd</td>
+                <td><span class="blocked-tag">Blocked</span></td>
+                <td class="date-cell">Sep 6, 11:03 AM</td>
+              </tr>
+              <tr>
+                <td class="mono mono-cell">196.201.14.88</td>
+                <td>sqli</td>
+                <td><span class="badge badge-medium">medium</span></td>
+                <td class="mono email-cell" style="font-size: 12px">/api/client/security-events</td>
+                <td><span class="logged-tag">Logged only</span></td>
+                <td class="date-cell">Sep 5, 9:56 PM</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button>Previous</button><span>Page 1 of 14</span><button>Next</button>
+        </div>
+      </section>
+    </main>
+  </body>
 </html>

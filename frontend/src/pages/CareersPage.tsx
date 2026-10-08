@@ -49,7 +49,8 @@ export default function CareersPage() {
               Join the <span className="gradient-text-cyan">Team</span>
             </h1>
             <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
-              We're building the security layer for East Africa's digital economy. If you care about standards, transparency, and real impact — you'll fit right in.
+              We're building the security layer for East Africa's digital economy. If you care about
+              standards, transparency, and real impact — you'll fit right in.
             </p>
           </div>
 

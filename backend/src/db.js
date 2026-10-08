@@ -4,9 +4,10 @@ import { runMigrations } from './migrations-runner.js';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' && process.env.DB_SSL !== 'false'
-    ? { rejectUnauthorized: process.env.DB_SSL_VERIFY !== 'false' }
-    : false,
+  ssl:
+    process.env.NODE_ENV === 'production' && process.env.DB_SSL !== 'false'
+      ? { rejectUnauthorized: process.env.DB_SSL_VERIFY !== 'false' }
+      : false,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
@@ -25,7 +26,7 @@ export async function initDb(maxRetries = 5, delayMs = 2000) {
         console.error('[db] FATAL: Could not connect to database after all retries.');
         process.exit(1);
       }
-      await new Promise(r => setTimeout(r, delayMs * Math.pow(2, i)));
+      await new Promise((r) => setTimeout(r, delayMs * Math.pow(2, i)));
     }
   }
 }

@@ -1,177 +1,195 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
-<base target="_blank">
-</head>
-<body>
-  <div style="background:#7a1f1f;color:#fff;padding:10px 16px;font:14px system-ui,sans-serif;text-align:center;">
-    This panel is being phased out. Please use the
-    <a href="https://jinarous.vercel.app/admin/login" style="color:#fff;text-decoration:underline;">new admin dashboard</a>
-    instead — it has everything this one does, plus client management and compliance reporting.
-  </div>
-  <div id="app">
-    <!-- Login Screen -->
-    <div id="login-screen" class="screen">
-      <div class="login-box">
-        <h1>Admin Login</h1>
-        <form id="login-form">
-          <div class="form-group">
-            <label for="login-email">Email</label>
-            <input type="email" id="login-email" required placeholder="admin@example.com">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <base target="_blank" />
+  </head>
+  <body>
+    <div
+      style="
+        background: #7a1f1f;
+        color: #fff;
+        padding: 10px 16px;
+        font:
+          14px system-ui,
+          sans-serif;
+        text-align: center;
+      "
+    >
+      This panel is being phased out. Please use the
+      <a
+        href="https://jinarous.vercel.app/admin/login"
+        style="color: #fff; text-decoration: underline"
+        >new admin dashboard</a
+      >
+      instead — it has everything this one does, plus client management and compliance reporting.
+    </div>
+    <div id="app">
+      <!-- Login Screen -->
+      <div id="login-screen" class="screen">
+        <div class="login-box">
+          <h1>Admin Login</h1>
+          <form id="login-form">
+            <div class="form-group">
+              <label for="login-email">Email</label>
+              <input type="email" id="login-email" required placeholder="admin@example.com" />
+            </div>
+            <div class="form-group">
+              <label for="login-password">Password</label>
+              <input type="password" id="login-password" required placeholder="••••••••" />
+            </div>
+            <button type="submit" class="btn-primary">Sign In</button>
+            <p id="login-error" class="error-text"></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- Dashboard Screen -->
+      <div id="dashboard-screen" class="screen hidden">
+        <header class="topbar">
+          <h2 id="panel-title">Contact Submissions</h2>
+          <nav class="tab-nav">
+            <button id="tab-submissions" class="tab-btn active">Submissions</button>
+            <button id="tab-security" class="tab-btn">Security</button>
+          </nav>
+          <div class="topbar-actions">
+            <span id="user-email"></span>
+            <button id="logout-btn" class="btn-secondary">Logout</button>
           </div>
-          <div class="form-group">
-            <label for="login-password">Password</label>
-            <input type="password" id="login-password" required placeholder="••••••••">
+        </header>
+
+        <!-- Submissions Panel -->
+        <main class="dashboard-main" id="submissions-panel">
+          <!-- Filters -->
+          <div class="filters">
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Search name, email, company, message..."
+            />
+            <select id="status-filter">
+              <option value="">All Statuses</option>
+              <option value="new">New</option>
+              <option value="read">Read</option>
+              <option value="replied">Replied</option>
+              <option value="archived">Archived</option>
+            </select>
+            <button id="apply-filters" class="btn-primary">Filter</button>
+            <button id="clear-filters" class="btn-secondary">Clear</button>
           </div>
-          <button type="submit" class="btn-primary">Sign In</button>
-          <p id="login-error" class="error-text"></p>
-        </form>
+
+          <!-- Stats -->
+          <div class="stats-bar">
+            <div class="stat">
+              <span class="stat-value" id="stat-total">0</span>
+              <span class="stat-label">Total</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value" id="stat-showing">0</span>
+              <span class="stat-label">Showing</span>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="table-wrapper">
+            <table id="submissions-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Company</th>
+                  <th>Message</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="submissions-body">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination" id="pagination">
+            <button id="prev-page" class="btn-secondary">← Prev</button>
+            <span id="page-info">Page 1 of 1</span>
+            <button id="next-page" class="btn-secondary">Next →</button>
+          </div>
+        </main>
+
+        <!-- Security Panel (Shield) -->
+        <main class="dashboard-main hidden" id="security-panel">
+          <!-- Stats -->
+          <div class="stats-bar">
+            <div class="stat">
+              <span class="stat-value" id="stat-active-blocks">0</span>
+              <span class="stat-label">Active Blocks</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value" id="stat-recent-events">0</span>
+              <span class="stat-label">Recent Events</span>
+            </div>
+            <button id="refresh-security" class="btn-secondary">Refresh</button>
+          </div>
+
+          <h3 class="section-heading">Active Blocks</h3>
+          <div class="table-wrapper">
+            <table id="blocks-table">
+              <thead>
+                <tr>
+                  <th>IP Address</th>
+                  <th>Reason</th>
+                  <th>Severity</th>
+                  <th>Blocked At</th>
+                  <th>Expires</th>
+                  <th>Hits</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="blocks-body">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="section-heading">Recent Events</h3>
+          <div class="filters">
+            <select id="event-type-filter">
+              <option value="">All Types</option>
+              <option value="sqli">SQL Injection</option>
+              <option value="xss">XSS</option>
+              <option value="path_traversal">Path Traversal</option>
+              <option value="brute_force">Brute Force</option>
+              <option value="rate_abuse">Rate Abuse</option>
+            </select>
+            <button id="apply-event-filter" class="btn-primary">Filter</button>
+          </div>
+          <div class="table-wrapper">
+            <table id="events-table">
+              <thead>
+                <tr>
+                  <th>IP Address</th>
+                  <th>Type</th>
+                  <th>Severity</th>
+                  <th>Path</th>
+                  <th>Method</th>
+                  <th>Blocked</th>
+                  <th>When</th>
+                </tr>
+              </thead>
+              <tbody id="events-body">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+        </main>
       </div>
     </div>
 
-    <!-- Dashboard Screen -->
-    <div id="dashboard-screen" class="screen hidden">
-      <header class="topbar">
-        <h2 id="panel-title">Contact Submissions</h2>
-        <nav class="tab-nav">
-          <button id="tab-submissions" class="tab-btn active">Submissions</button>
-          <button id="tab-security" class="tab-btn">Security</button>
-        </nav>
-        <div class="topbar-actions">
-          <span id="user-email"></span>
-          <button id="logout-btn" class="btn-secondary">Logout</button>
-        </div>
-      </header>
-
-      <!-- Submissions Panel -->
-      <main class="dashboard-main" id="submissions-panel">
-        <!-- Filters -->
-        <div class="filters">
-          <input type="text" id="search-input" placeholder="Search name, email, company, message...">
-          <select id="status-filter">
-            <option value="">All Statuses</option>
-            <option value="new">New</option>
-            <option value="read">Read</option>
-            <option value="replied">Replied</option>
-            <option value="archived">Archived</option>
-          </select>
-          <button id="apply-filters" class="btn-primary">Filter</button>
-          <button id="clear-filters" class="btn-secondary">Clear</button>
-        </div>
-
-        <!-- Stats -->
-        <div class="stats-bar">
-          <div class="stat">
-            <span class="stat-value" id="stat-total">0</span>
-            <span class="stat-label">Total</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value" id="stat-showing">0</span>
-            <span class="stat-label">Showing</span>
-          </div>
-        </div>
-
-        <!-- Table -->
-        <div class="table-wrapper">
-          <table id="submissions-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Company</th>
-                <th>Message</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="submissions-body">
-              <!-- Rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="pagination" id="pagination">
-          <button id="prev-page" class="btn-secondary">← Prev</button>
-          <span id="page-info">Page 1 of 1</span>
-          <button id="next-page" class="btn-secondary">Next →</button>
-        </div>
-      </main>
-
-      <!-- Security Panel (Shield) -->
-      <main class="dashboard-main hidden" id="security-panel">
-        <!-- Stats -->
-        <div class="stats-bar">
-          <div class="stat">
-            <span class="stat-value" id="stat-active-blocks">0</span>
-            <span class="stat-label">Active Blocks</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value" id="stat-recent-events">0</span>
-            <span class="stat-label">Recent Events</span>
-          </div>
-          <button id="refresh-security" class="btn-secondary">Refresh</button>
-        </div>
-
-        <h3 class="section-heading">Active Blocks</h3>
-        <div class="table-wrapper">
-          <table id="blocks-table">
-            <thead>
-              <tr>
-                <th>IP Address</th>
-                <th>Reason</th>
-                <th>Severity</th>
-                <th>Blocked At</th>
-                <th>Expires</th>
-                <th>Hits</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="blocks-body">
-              <!-- Rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-
-        <h3 class="section-heading">Recent Events</h3>
-        <div class="filters">
-          <select id="event-type-filter">
-            <option value="">All Types</option>
-            <option value="sqli">SQL Injection</option>
-            <option value="xss">XSS</option>
-            <option value="path_traversal">Path Traversal</option>
-            <option value="brute_force">Brute Force</option>
-            <option value="rate_abuse">Rate Abuse</option>
-          </select>
-          <button id="apply-event-filter" class="btn-primary">Filter</button>
-        </div>
-        <div class="table-wrapper">
-          <table id="events-table">
-            <thead>
-              <tr>
-                <th>IP Address</th>
-                <th>Type</th>
-                <th>Severity</th>
-                <th>Path</th>
-                <th>Method</th>
-                <th>Blocked</th>
-                <th>When</th>
-              </tr>
-            </thead>
-            <tbody id="events-body">
-              <!-- Rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-      </main>
-    </div>
-  </div>
-
-  <script src="dashboard.js"></script>
-</body>
+    <script src="dashboard.js"></script>
+  </body>
 </html>

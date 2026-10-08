@@ -162,7 +162,10 @@ export default function Hero() {
       />
 
       {/* Content */}
-      <div ref={contentRef} className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-24 pb-16">
+      <div
+        ref={contentRef}
+        className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-24 pb-16"
+      >
         {/* Badge */}
         <div className="inline-flex items-center px-4 py-2 rounded-full bg-alux-cyan/10 border border-alux-cyan/30 text-alux-cyan text-sm font-medium mb-8">
           <span className="w-2 h-2 bg-alux-cyan rounded-full mr-2 animate-pulse"></span>
@@ -188,7 +191,9 @@ export default function Hero() {
           <span className="text-alux-cyan font-semibold">incident response plans</span>,{' '}
           <span className="text-alux-purple font-semibold">compliance assessments</span>, and
           vulnerability reviews built on real standards —{' '}
-          <span className="text-white font-semibold">NIST, PCI DSS, and Kenya's Data Protection Act</span>{' '}
+          <span className="text-white font-semibold">
+            NIST, PCI DSS, and Kenya's Data Protection Act
+          </span>{' '}
           — with deliverables you can hand to an auditor.
         </p>
 

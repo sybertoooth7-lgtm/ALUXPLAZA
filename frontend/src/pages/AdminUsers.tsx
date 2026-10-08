@@ -113,12 +113,17 @@ export default function AdminUsers() {
             <>
               {tempPassword && (
                 <div className="bg-alux-gold/10 border border-alux-gold/30 rounded-xl p-4 mb-6">
-                  <p className="text-alux-gold text-sm font-medium mb-1">Temporary password (share securely):</p>
+                  <p className="text-alux-gold text-sm font-medium mb-1">
+                    Temporary password (share securely):
+                  </p>
                   <code className="text-lg font-mono text-white">{tempPassword}</code>
                 </div>
               )}
 
-              <form onSubmit={createUser} className="bg-navy-surface border border-white/10 rounded-xl p-4 mb-8 flex gap-3 items-end">
+              <form
+                onSubmit={createUser}
+                className="bg-navy-surface border border-white/10 rounded-xl p-4 mb-8 flex gap-3 items-end"
+              >
                 <div className="flex-1">
                   <label className="text-xs text-white/40 block mb-1">Email</label>
                   <input
@@ -133,7 +138,9 @@ export default function AdminUsers() {
                   <label className="text-xs text-white/40 block mb-1">Role</label>
                   <select
                     value={newRole}
-                    onChange={(e) => setNewRole(e.target.value as 'readonly' | 'admin' | 'superadmin')}
+                    onChange={(e) =>
+                      setNewRole(e.target.value as 'readonly' | 'admin' | 'superadmin')
+                    }
                     className="bg-navy-base border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
                   >
                     <option value="readonly">Read-only</option>
@@ -151,10 +158,15 @@ export default function AdminUsers() {
 
               <div className="space-y-2">
                 {users.map((u) => (
-                  <div key={u.id} className="bg-navy-surface border border-white/10 rounded-lg px-4 py-3 flex items-center justify-between">
+                  <div
+                    key={u.id}
+                    className="bg-navy-surface border border-white/10 rounded-lg px-4 py-3 flex items-center justify-between"
+                  >
                     <div>
                       <p className="text-white font-medium">{u.email}</p>
-                      <p className="text-white/40 text-xs">{u.role} · {new Date(u.created_at).toLocaleDateString()}</p>
+                      <p className="text-white/40 text-xs">
+                        {u.role} · {new Date(u.created_at).toLocaleDateString()}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <select

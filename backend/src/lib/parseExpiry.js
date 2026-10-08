@@ -9,7 +9,9 @@
  */
 export function parseExpiryToMs(value, fallbackMs) {
   if (!value) return fallbackMs;
-  const match = String(value).trim().match(/^(\d+)\s*(ms|s|m|h|d)?$/i);
+  const match = String(value)
+    .trim()
+    .match(/^(\d+)\s*(ms|s|m|h|d)?$/i);
   if (!match) return fallbackMs;
   const amount = Number(match[1]);
   const unit = (match[2] || 's').toLowerCase();

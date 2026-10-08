@@ -40,10 +40,7 @@ export default function CTA() {
   }, []);
 
   return (
-    <section
-      ref={sectionRef}
-      className="py-24 md:py-32 relative overflow-hidden"
-    >
+    <section ref={sectionRef} className="py-24 md:py-32 relative overflow-hidden">
       {/* Background gradient */}
       <div
         className="absolute inset-0"
@@ -73,8 +70,8 @@ export default function CTA() {
         </h2>
 
         <p className="cta-animate text-lg md:text-xl text-[#94a3b8] mb-10 max-w-2xl mx-auto">
-          Tell us what you're trying to protect, and we'll scope the engagement — no automated
-          sales pitch, just a conversation about what you actually need.
+          Tell us what you're trying to protect, and we'll scope the engagement — no automated sales
+          pitch, just a conversation about what you actually need.
         </p>
 
         <div className="cta-animate flex flex-col sm:flex-row gap-4 justify-center">

@@ -55,8 +55,8 @@ export default function MfaSetup({ onComplete }: { onComplete: () => void }) {
       <div className="bg-navy-surface border border-white/10 rounded-2xl p-6 max-w-md">
         <h3 className="font-serif text-lg text-alux-gold mb-2">Enable Two-Factor Authentication</h3>
         <p className="text-white/60 text-sm mb-4">
-          Add an extra layer of security to your admin account using an authenticator app
-          (Google Authenticator, Authy, 1Password, etc.).
+          Add an extra layer of security to your admin account using an authenticator app (Google
+          Authenticator, Authy, 1Password, etc.).
         </p>
         {error && <p className="text-alux-red text-sm mb-3">{error}</p>}
         <button
@@ -128,7 +128,9 @@ export default function MfaSetup({ onComplete }: { onComplete: () => void }) {
       </p>
       <div className="bg-navy-base border border-alux-gold/30 rounded-lg p-4 mb-4 space-y-2">
         {backupCodes.map((c, i) => (
-          <code key={i} className="block text-sm text-alux-gold font-mono tracking-wider">{c}</code>
+          <code key={i} className="block text-sm text-alux-gold font-mono tracking-wider">
+            {c}
+          </code>
         ))}
       </div>
       <button

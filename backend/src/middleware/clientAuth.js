@@ -53,10 +53,7 @@ export async function requireClientAuth(req, res, next) {
   try {
     decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
   } catch (err) {
-    logger.warn(
-      { ip: req.ip, error: err.message },
-      '[clientAuth] Token verification failed'
-    );
+    logger.warn({ ip: req.ip, error: err.message }, '[clientAuth] Token verification failed');
     return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
   }
 
@@ -71,7 +68,7 @@ export async function requireClientAuth(req, res, next) {
 
   // Check token age against policy maximum
   const now = Math.floor(Date.now() / 1000);
-  const issuedAt = decoded.iat || decoded.exp - (60 * 60);
+  const issuedAt = decoded.iat || decoded.exp - 60 * 60;
   if (now - issuedAt > MAX_TOKEN_AGE_SECONDS) {
     logger.warn(
       { ip: req.ip, sub: decoded.sub, age: now - issuedAt },
@@ -90,7 +87,7 @@ export async function requireClientAuth(req, res, next) {
   }
 
   // Token was explicitly revoked
-  if (decoded.jti && await isBlocklisted(decoded.jti)) {
+  if (decoded.jti && (await isBlocklisted(decoded.jti))) {
     logger.warn(
       { ip: req.ip, sub: decoded.sub, jti: decoded.jti },
       '[clientAuth] Revoked token used'
@@ -100,15 +97,11 @@ export async function requireClientAuth(req, res, next) {
 
   // Verify the client account still exists
   try {
-    const { rows } = await db.query(
-      'SELECT email, disabled_at FROM clients WHERE id = $1',
-      [decoded.sub]
-    );
+    const { rows } = await db.query('SELECT email, disabled_at FROM clients WHERE id = $1', [
+      decoded.sub,
+    ]);
     if (rows.length === 0) {
-      logger.warn(
-        { ip: req.ip, sub: decoded.sub },
-        '[clientAuth] Client account no longer exists'
-      );
+      logger.warn({ ip: req.ip, sub: decoded.sub }, '[clientAuth] Client account no longer exists');
       return res.status(401).json({ error: 'Unauthorized: Account no longer exists' });
     }
     const client = rows[0];
@@ -121,10 +114,7 @@ export async function requireClientAuth(req, res, next) {
       return res.status(401).json({ error: 'Unauthorized: Account has been disabled' });
     }
   } catch (err) {
-    logger.error(
-      { error: err.message, sub: decoded.sub },
-      '[clientAuth] Failed to verify account'
-    );
+    logger.error({ error: err.message, sub: decoded.sub }, '[clientAuth] Failed to verify account');
     return res.status(500).json({ error: 'Internal server error' });
   }
 

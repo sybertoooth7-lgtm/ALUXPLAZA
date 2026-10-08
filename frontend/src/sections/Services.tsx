@@ -1,16 +1,7 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import {
-  Shield,
-  BarChart3,
-  Database,
-  Zap,
-  Fingerprint,
-  FileCheck,
-  Bug,
-  Globe,
-} from 'lucide-react';
+import { Shield, BarChart3, Database, Zap, Fingerprint, FileCheck, Bug, Globe } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -45,10 +36,10 @@ const services = [
   {
     title: 'Data Protection & Access Audit',
     description:
-      'Review of access controls and data handling against Kenya\'s Data Protection Act 2019, so client and employee data is handled lawfully.',
+      "Review of access controls and data handling against Kenya's Data Protection Act 2019, so client and employee data is handled lawfully.",
     icon: Fingerprint,
     accent: '#ff3366',
-    tags: ["Kenya DPA 2019", 'Deliverable: audit report'],
+    tags: ['Kenya DPA 2019', 'Deliverable: audit report'],
     wide: false,
   },
   {
@@ -81,7 +72,7 @@ const services = [
   {
     title: 'Backup & Encryption Audit',
     description:
-      'Review of backup recoverability and encryption-at-rest practices, so a ransomware event or hardware failure doesn\'t become a data-loss event too.',
+      "Review of backup recoverability and encryption-at-rest practices, so a ransomware event or hardware failure doesn't become a data-loss event too.",
     icon: Database,
     accent: '#00ff88',
     tags: ['Recoverability tested', 'Deliverable: audit report'],
@@ -145,10 +136,7 @@ export default function Services() {
   };
 
   return (
-    <section
-      id="services"
-      className="py-24 md:py-32 bg-navy-base relative overflow-hidden"
-    >
+    <section id="services" className="py-24 md:py-32 bg-navy-base relative overflow-hidden">
       {/* Subtle radial glow */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -210,12 +198,8 @@ export default function Services() {
               >
                 <service.icon className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-lg font-serif font-semibold text-white mb-2">
-                {service.title}
-              </h3>
-              <p className="text-[#94a3b8] text-sm leading-relaxed mb-4">
-                {service.description}
-              </p>
+              <h3 className="text-lg font-serif font-semibold text-white mb-2">{service.title}</h3>
+              <p className="text-[#94a3b8] text-sm leading-relaxed mb-4">{service.description}</p>
               <div className="flex flex-wrap gap-2">
                 {service.tags.map((tag, ti) => (
                   <span

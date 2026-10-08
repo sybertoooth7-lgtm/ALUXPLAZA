@@ -129,9 +129,7 @@ export default function VerifyEmail() {
         {/* Brand header */}
         <div className="text-center mb-6">
           <span className="font-serif text-lg text-alux-gold">ALUX PLAZA</span>
-          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">
-            Email Verification
-          </p>
+          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">Email Verification</p>
         </div>
 
         {/* Card */}
@@ -159,18 +157,12 @@ export default function VerifyEmail() {
                   stroke="currentColor"
                   strokeWidth={2}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M5 13l4 4L19 7"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <p className="text-alux-green font-medium mb-2">Email Verified</p>
               <p className="text-white/60 text-sm mb-2">{message}</p>
-              <p className="text-white/40 text-xs mb-6">
-                Redirecting to login in {countdown}s…
-              </p>
+              <p className="text-white/40 text-xs mb-6">Redirecting to login in {countdown}s…</p>
               <Link
                 to="/client/login"
                 className="inline-block bg-alux-cyan text-navy-base font-semibold px-6 py-2.5 rounded-lg hover:bg-alux-cyan/90 transition-colors"
@@ -191,16 +183,10 @@ export default function VerifyEmail() {
                   stroke="currentColor"
                   strokeWidth={2}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <p className="text-alux-red font-medium mb-2">
-                Verification Failed
-              </p>
+              <p className="text-alux-red font-medium mb-2">Verification Failed</p>
               <p className="text-white/60 text-sm mb-6">{message}</p>
 
               {resendStatus !== 'sent' ? (
@@ -248,8 +234,7 @@ export default function VerifyEmail() {
                   role="status"
                 >
                   <p className="text-alux-green text-sm">
-                    If this account exists and is unverified, a new link has been
-                    sent.
+                    If this account exists and is unverified, a new link has been sent.
                   </p>
                 </div>
               )}
@@ -259,8 +244,7 @@ export default function VerifyEmail() {
 
         {/* Footer hint */}
         <p className="text-center text-xs text-white/30 mt-6">
-          Didn&apos;t receive an email? Check your spam folder or request a new
-          link above.
+          Didn&apos;t receive an email? Check your spam folder or request a new link above.
         </p>
       </div>
     </div>

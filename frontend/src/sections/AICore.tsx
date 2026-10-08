@@ -159,7 +159,13 @@ function NeuralCoreSVG() {
 
       {/* Data packets on links */}
       {links.map((link, i) => (
-        <circle key={`packet-${i}`} className="data-packet" r="4" fill={link.color} filter="url(#neuralGlow)">
+        <circle
+          key={`packet-${i}`}
+          className="data-packet"
+          r="4"
+          fill={link.color}
+          filter="url(#neuralGlow)"
+        >
           <animateMotion dur={`${3 + i * 0.5}s`} repeatCount="indefinite" path={link.d} />
         </circle>
       ))}
@@ -236,7 +242,7 @@ const featureCards = [
     iconGradient: 'from-alux-purple to-purple-700',
     title: 'Standards-Based Assessment',
     description:
-      'Every engagement is scored against a named standard — NIST SP 800-61, PCI DSS SAQ A, Kenya\'s DPA 2019, or OWASP LLM Top 10 — so findings map directly to something you can hand an auditor.',
+      "Every engagement is scored against a named standard — NIST SP 800-61, PCI DSS SAQ A, Kenya's DPA 2019, or OWASP LLM Top 10 — so findings map directly to something you can hand an auditor.",
     tagLeft: 'NIST · PCI DSS · OWASP',
     tagRight: 'Kenya DPA 2019',
   },
@@ -310,8 +316,8 @@ export default function AICore() {
             How We <span className="gradient-text-purple">Actually Work</span>
           </h2>
           <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
-            Three pillars, each grounded in a real standard — not a black-box AI claim you have
-            to take on faith.
+            Three pillars, each grounded in a real standard — not a black-box AI claim you have to
+            take on faith.
           </p>
         </div>
 

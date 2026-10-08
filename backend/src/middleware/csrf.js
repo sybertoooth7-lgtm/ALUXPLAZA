@@ -114,10 +114,7 @@ export function verifyCsrfToken(req, res, next) {
       return res.status(403).json({ error: 'Invalid CSRF token' });
     }
   } catch (err) {
-    logger.warn(
-      { ip: req.ip, path: req.path, error: err.message },
-      'CSRF token parsing error'
-    );
+    logger.warn({ ip: req.ip, path: req.path, error: err.message }, 'CSRF token parsing error');
     return res.status(403).json({ error: 'Invalid CSRF token' });
   }
 

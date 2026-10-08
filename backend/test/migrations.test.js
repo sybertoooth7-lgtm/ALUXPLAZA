@@ -37,7 +37,9 @@ describe('migrations-runner.js', () => {
         `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
       );
       const tables = rows.map((r) => r.table_name);
-      expect(tables).toEqual(expect.arrayContaining(['contacts', 'admin_users', 'metrics', '_migrations']));
+      expect(tables).toEqual(
+        expect.arrayContaining(['contacts', 'admin_users', 'metrics', '_migrations'])
+      );
     } finally {
       await cleanup();
     }
@@ -60,7 +62,9 @@ describe('migrations-runner.js', () => {
       await runMigrations(pool);
       const { rows } = await pool.query('SELECT filename FROM _migrations');
       const applied = rows.map((r) => r.filename);
-      expect(applied).toEqual(expect.arrayContaining(['001_init.sql', '002_add_metrics_table.sql']));
+      expect(applied).toEqual(
+        expect.arrayContaining(['001_init.sql', '002_add_metrics_table.sql'])
+      );
     } finally {
       await cleanup();
     }

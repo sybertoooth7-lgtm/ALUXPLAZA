@@ -1,6 +1,6 @@
 # Threat Intelligence Briefing — Service Methodology
 
-*A real, deliverable research/reporting service. Replaces "Federated Intelligence" fiction with an honest aggregation-and-summary product grounded in named, current sources.*
+_A real, deliverable research/reporting service. Replaces "Federated Intelligence" fiction with an honest aggregation-and-summary product grounded in named, current sources._
 
 ## What this service actually is
 
@@ -12,13 +12,13 @@ E-commerce and small web-business operators (a natural first client base: Shopif
 
 ## Scope of a typical engagement
 
-| Phase | What happens | Deliverable |
-|---|---|---|
-| 1. Scoping | Confirm the client's industry/platform (e-commerce/Shopify, SaaS, etc.) and what they most care about (fraud losses? data breaches? uptime?) | Scoping note |
-| 2. Research | Pull current material from vendor threat reports (e.g. Verizon DBIR, Kaspersky, MRC, Recorded Future), government advisories (CISA), and reputable security news, filtered to what's relevant to the client's specific business type | Raw research notes |
-| 3. Synthesis | Distill into a short, plain-English briefing: what's trending, why it matters for this specific business, and what to actually do about it | Draft briefing |
-| 4. Delivery | Reviewed, finalized briefing document, plus a short verbal/written walkthrough of the top 2-3 items the client should act on | Final briefing (PDF/Word) |
-| 5. Cadence | Repeat on an agreed schedule (quarterly is typical — threat landscape reports themselves are mostly published annually/quarterly, so more frequent than that adds little signal) | Recurring briefing |
+| Phase        | What happens                                                                                                                                                                                                                         | Deliverable               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
+| 1. Scoping   | Confirm the client's industry/platform (e-commerce/Shopify, SaaS, etc.) and what they most care about (fraud losses? data breaches? uptime?)                                                                                         | Scoping note              |
+| 2. Research  | Pull current material from vendor threat reports (e.g. Verizon DBIR, Kaspersky, MRC, Recorded Future), government advisories (CISA), and reputable security news, filtered to what's relevant to the client's specific business type | Raw research notes        |
+| 3. Synthesis | Distill into a short, plain-English briefing: what's trending, why it matters for this specific business, and what to actually do about it                                                                                           | Draft briefing            |
+| 4. Delivery  | Reviewed, finalized briefing document, plus a short verbal/written walkthrough of the top 2-3 items the client should act on                                                                                                         | Final briefing (PDF/Word) |
+| 5. Cadence   | Repeat on an agreed schedule (quarterly is typical — threat landscape reports themselves are mostly published annually/quarterly, so more frequent than that adds little signal)                                                     | Recurring briefing        |
 
 ## What's in the actual briefing (see `threat-intelligence-briefing-sample.docx`)
 
@@ -44,6 +44,7 @@ E-commerce and small web-business operators (a natural first client base: Shopif
 - A flat fee per briefing, or a lower recurring quarterly retainer if the client wants ongoing coverage — pricing should reflect research time (typically a few hours per briefing for a well-scoped industry), not a "live AI monitoring" premium.
 
 ## Sources used in the sample briefing
+
 - Verizon 2026 Data Breach Investigations Report
 - Kaspersky 2026 Retail Threat Outlook
 - Merchant Risk Council (MRC) 2026 Global eCommerce Payments & Fraud Report (with Visa Acceptance Solutions)

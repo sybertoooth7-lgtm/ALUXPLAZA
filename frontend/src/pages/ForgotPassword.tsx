@@ -46,15 +46,10 @@ export default function ForgotPassword() {
           throw new Error(data.error || 'Request failed');
         }
 
-        setSuccess(
-          data.message ||
-            'If this account exists, a password reset link has been sent.'
-        );
+        setSuccess(data.message || 'If this account exists, a password reset link has been sent.');
         setEmail('');
       } catch (err: unknown) {
-        setError(
-          err instanceof Error ? err.message : 'Something went wrong'
-        );
+        setError(err instanceof Error ? err.message : 'Something went wrong');
         // Return focus to the input so screen-reader users know where to act
         setTimeout(() => emailInputRef.current?.focus(), 50);
       } finally {
@@ -70,9 +65,7 @@ export default function ForgotPassword() {
         {/* Brand header */}
         <div className="text-center mb-6">
           <span className="font-serif text-lg text-alux-gold">ALUX PLAZA</span>
-          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">
-            Client Portal
-          </p>
+          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">Client Portal</p>
         </div>
 
         {/* Card */}
@@ -85,8 +78,7 @@ export default function ForgotPassword() {
 
           <h2 className="text-xl font-bold mb-2">Reset Password</h2>
           <p className="text-sm text-white/50 mb-6">
-            Enter your email and we&apos;ll send you a link to reset your
-            password.
+            Enter your email and we&apos;ll send you a link to reset your password.
           </p>
 
           {/* Error */}
@@ -125,26 +117,15 @@ export default function ForgotPassword() {
                 stroke="currentColor"
                 strokeWidth={2}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
               <span>{success}</span>
             </div>
           )}
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4"
-            aria-label="Password reset request"
-          >
+          <form onSubmit={handleSubmit} className="space-y-4" aria-label="Password reset request">
             <div>
-              <label
-                htmlFor="reset-email"
-                className="block text-sm text-white/70 mb-1"
-              >
+              <label htmlFor="reset-email" className="block text-sm text-white/70 mb-1">
                 Email
               </label>
               <input
@@ -179,10 +160,7 @@ export default function ForgotPassword() {
           </form>
 
           <p className="text-center text-sm text-white/40 mt-6">
-            <Link
-              to="/client/login"
-              className="text-alux-cyan hover:underline transition-colors"
-            >
+            <Link to="/client/login" className="text-alux-cyan hover:underline transition-colors">
               Back to login
             </Link>
           </p>
@@ -190,8 +168,7 @@ export default function ForgotPassword() {
 
         {/* Footer hint */}
         <p className="text-center text-xs text-white/30 mt-6">
-          If you don&apos;t see the email within a few minutes, check your spam
-          folder.
+          If you don&apos;t see the email within a few minutes, check your spam folder.
         </p>
       </div>
     </div>

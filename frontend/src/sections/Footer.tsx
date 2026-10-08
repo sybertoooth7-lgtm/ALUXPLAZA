@@ -50,8 +50,8 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-[#94a3b8] text-sm max-w-xs mb-6 leading-relaxed">
-              Cybersecurity consulting based in Nairobi, Kenya. Practical deliverables built on
-              real standards — not black-box claims.
+              Cybersecurity consulting based in Nairobi, Kenya. Practical deliverables built on real
+              standards — not black-box claims.
             </p>
             <div className="flex space-x-3">
               <a
@@ -135,14 +135,10 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-white/[0.06] pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-[#475569] text-xs">
-            &copy; 2026 Alux Plaza. All rights reserved.
-          </p>
+          <p className="text-[#475569] text-xs">&copy; 2026 Alux Plaza. All rights reserved.</p>
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-alux-green rounded-full animate-pulse" />
-            <span className="text-alux-cyan font-mono text-xs">
-              Nairobi, Kenya
-            </span>
+            <span className="text-alux-cyan font-mono text-xs">Nairobi, Kenya</span>
           </div>
         </div>
       </div>

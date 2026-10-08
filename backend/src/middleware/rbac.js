@@ -10,7 +10,11 @@ export function requireRole(minRole) {
   return async (req, res, next) => {
     const userRole = req.user?.role || 'readonly';
     if (!hasRole(userRole, minRole)) {
-      return res.status(403).json({ error: 'Forbidden: insufficient privileges.', required: minRole, current: userRole });
+      return res.status(403).json({
+        error: 'Forbidden: insufficient privileges.',
+        required: minRole,
+        current: userRole,
+      });
     }
     next();
   };

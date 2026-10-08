@@ -43,18 +43,14 @@ router.get('/', (req, res) => {
 // NEW endpoint — matches exactly what the frontend expects
 router.get('/defense-matrix', async (req, res) => {
   const persisted = await getPersistedTotals().catch(() => ({}));
-  
+
   res.json({
     requestCount: persisted.requestCount ?? stats.requestCount,
     errorCount: persisted.errorCount ?? stats.errorCount,
-    averageLatencyMs: stats.latencies.length > 0 
-      ? parseFloat(getAverageLatencyMs()) 
-      : null,
+    averageLatencyMs: stats.latencies.length > 0 ? parseFloat(getAverageLatencyMs()) : null,
     requestsPerSecond: parseFloat(getRequestsPerSecond()),
     uptimeSeconds: getUptimeSeconds(),
-    contactSuccessRate: stats.contactAttempts > 0 
-      ? parseFloat(getContactSuccessRate()) 
-      : null,
+    contactSuccessRate: stats.contactAttempts > 0 ? parseFloat(getContactSuccessRate()) : null,
     honeypotBlocked: persisted.honeypotBlocked ?? stats.honeypotBlocked,
   });
 });

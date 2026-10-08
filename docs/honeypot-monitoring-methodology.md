@@ -1,6 +1,6 @@
 # Honeypot & Intrusion-Attempt Monitoring — Service Methodology
 
-*A real, deliverable security service. Replaces "Neural Deception" fiction with an actual, well-established technique.*
+_A real, deliverable security service. Replaces "Neural Deception" fiction with an actual, well-established technique._
 
 ## What this service actually is
 
@@ -11,19 +11,20 @@ This is a decades-old, industry-standard technique (canary tokens / honeypot rou
 ## Who it's for
 
 Any site or API that's a plausible scanning target — which is nearly all public-facing sites. Particularly useful for:
+
 - Shopify/e-commerce admin panels (attackers scan for `/wp-admin`, `/admin` reflexively even on non-WordPress stores)
 - Small business sites with a login system
 - Anyone who wants early warning before a real attack, not just after
 
 ## Scope of a typical engagement
 
-| Phase | What happens | Deliverable |
-|---|---|---|
-| 1. Scoping | Confirm the site's real routes so decoys never collide with them; agree on log retention and alerting preferences | Written scope note |
-| 2. Deployment | Install `honeypot.js` middleware (Node/Express) or an equivalent decoy set for the client's stack; configure logging path and optional webhook alert | Deployed decoys, confirmed live with a test hit |
-| 3. Monitoring period | Decoys run silently in production, logging any hits | Ongoing JSONL/DB log |
-| 4. Report | Run `report.js` against the log; deliver a plain-English summary: total hits, top source IPs, most-probed paths, timeline | Written report (weekly/monthly, per agreement) |
-| 5. Escalation (as needed) | If a hit pattern suggests active targeting (same IP hitting multiple decoys rapidly), flag it immediately rather than waiting for the scheduled report | Real-time alert |
+| Phase                     | What happens                                                                                                                                           | Deliverable                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| 1. Scoping                | Confirm the site's real routes so decoys never collide with them; agree on log retention and alerting preferences                                      | Written scope note                              |
+| 2. Deployment             | Install `honeypot.js` middleware (Node/Express) or an equivalent decoy set for the client's stack; configure logging path and optional webhook alert   | Deployed decoys, confirmed live with a test hit |
+| 3. Monitoring period      | Decoys run silently in production, logging any hits                                                                                                    | Ongoing JSONL/DB log                            |
+| 4. Report                 | Run `report.js` against the log; deliver a plain-English summary: total hits, top source IPs, most-probed paths, timeline                              | Written report (weekly/monthly, per agreement)  |
+| 5. Escalation (as needed) | If a hit pattern suggests active targeting (same IP hitting multiple decoys rapidly), flag it immediately rather than waiting for the scheduled report | Real-time alert                                 |
 
 ## What the tool actually does (see `honeypot.js` + `report.js`)
 

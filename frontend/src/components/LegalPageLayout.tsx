@@ -30,9 +30,7 @@ export default function LegalPageLayout({ title, lastUpdated, children }: LegalP
       <main className="max-w-3xl mx-auto px-6 py-12">
         <h1 className="font-serif text-3xl text-alux-gold mb-2">{title}</h1>
         <p className="text-sm text-white/40 mb-10">Last updated: {lastUpdated}</p>
-        <div className="prose-legal space-y-6 text-[#c5cdd8] leading-relaxed">
-          {children}
-        </div>
+        <div className="prose-legal space-y-6 text-[#c5cdd8] leading-relaxed">{children}</div>
       </main>
     </div>
   );

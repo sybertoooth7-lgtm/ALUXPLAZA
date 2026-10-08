@@ -1,6 +1,6 @@
 # Firewall & Network Hardening Audit — Service Methodology
 
-*A real, deliverable network security service. Replaces "Neural Perimeter Defense" fiction with an actual, tested review of a domain's network exposure.*
+_A real, deliverable network security service. Replaces "Neural Perimeter Defense" fiction with an actual, tested review of a domain's network exposure._
 
 ## What this service actually is
 
@@ -12,13 +12,13 @@ Any business running its own server/VPS/backend (a fit for the Alux Plaza Node.j
 
 ## Scope of a typical engagement
 
-| Phase | What happens | Deliverable |
-|---|---|---|
-| 1. Scoping | Confirm the domain(s)/IP(s) in scope and get written authorization — required every time, even for a client's own site | Signed scope-of-work |
-| 2. Automated pass | Run the audit tool: capped port scan, SPF/DMARC check, CAA check, TLS expiry check | Raw findings |
-| 3. Manual review | Review anything flagged, plus checks the tool can't do (firewall rule review if you have server access, VPN configuration review, network segmentation) | Annotated findings |
-| 4. Report | Plain-English report: what's exposed, why it matters, how to fix it, prioritized | Written report |
-| 5. Follow-up (optional) | Re-scan after remediation | Confirmation report |
+| Phase                   | What happens                                                                                                                                            | Deliverable          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| 1. Scoping              | Confirm the domain(s)/IP(s) in scope and get written authorization — required every time, even for a client's own site                                  | Signed scope-of-work |
+| 2. Automated pass       | Run the audit tool: capped port scan, SPF/DMARC check, CAA check, TLS expiry check                                                                      | Raw findings         |
+| 3. Manual review        | Review anything flagged, plus checks the tool can't do (firewall rule review if you have server access, VPN configuration review, network segmentation) | Annotated findings   |
+| 4. Report               | Plain-English report: what's exposed, why it matters, how to fix it, prioritized                                                                        | Written report       |
+| 5. Follow-up (optional) | Re-scan after remediation                                                                                                                               | Confirmation report  |
 
 ## What the automated tool checks (see `network_audit.py`)
 
@@ -32,7 +32,7 @@ Any business running its own server/VPS/backend (a fit for the Alux Plaza Node.j
 - Actual firewall rule review (requires server/console access, not just an external scan) — e.g. reviewing security group rules on a cloud provider, or `iptables`/`ufw` rules on a VPS
 - VPN configuration review, if the client uses one to access management ports instead of exposing them directly
 - Network segmentation — whether internal services are properly isolated from public-facing ones
-- Interpreting *why* a port is open — sometimes there's a legitimate reason (e.g. a load balancer health check) that the client needs to confirm rather than you assuming it's a mistake
+- Interpreting _why_ a port is open — sometimes there's a legitimate reason (e.g. a load balancer health check) that the client needs to confirm rather than you assuming it's a mistake
 
 ## Framing this honestly to clients
 

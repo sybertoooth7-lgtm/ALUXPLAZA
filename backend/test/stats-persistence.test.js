@@ -56,7 +56,12 @@ describe('stats persistence across a simulated restart', () => {
     const { rows } = await db.query('SELECT key, value FROM metrics');
     const keys = rows.map((r) => r.key);
     expect(keys).toEqual(
-      expect.arrayContaining(['requestCount', 'honeypotBlocked', 'contactAttempts', 'contactSuccesses'])
+      expect.arrayContaining([
+        'requestCount',
+        'honeypotBlocked',
+        'contactAttempts',
+        'contactSuccesses',
+      ])
     );
   });
 });

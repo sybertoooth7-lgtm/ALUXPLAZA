@@ -1,7 +1,8 @@
 [access-control-audit-methodology.md](https://github.com/user-attachments/files/30592160/access-control-audit-methodology.md)
+
 # Access Control & Authentication Audit — Service Methodology
 
-*A real, deliverable security service. Replaces "Behavioral Biometric AI" fiction with an actual auditable process.*
+_A real, deliverable security service. Replaces "Behavioral Biometric AI" fiction with an actual auditable process._
 
 ## What this service actually is
 
@@ -13,18 +14,17 @@ Small businesses running their own login system — e-commerce admin panels, Saa
 
 ## Scope of a typical engagement
 
-| Phase | What happens | Deliverable |
-|---|---|---|
-| 1. Scoping call | Confirm what's in scope (which domains/subdomains, is production or staging okay to test, any login credentials provided for authenticated testing) and get **written authorization** | Signed scope-of-work / authorization letter |
-| 2. Automated pass | Run the audit tool against the target: transport security, headers, cookies, JWT hygiene (if applicable), login endpoint hardening probe | Raw findings (JSON) |
-| 3. Manual review | Human review of anything the tool flagged WARN/FAIL, plus manual checks the tool can't do (password reset flow, account enumeration, MFA presence, role/permission boundaries) | Annotated findings |
-| 4. Report | Plain-English report: what was found, why it matters, how to fix it, ranked by real-world risk | PDF/Word report |
-| 5. Follow-up (optional) | Re-test after client applies fixes | Confirmation letter / before-after summary |
+| Phase                   | What happens                                                                                                                                                                          | Deliverable                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 1. Scoping call         | Confirm what's in scope (which domains/subdomains, is production or staging okay to test, any login credentials provided for authenticated testing) and get **written authorization** | Signed scope-of-work / authorization letter |
+| 2. Automated pass       | Run the audit tool against the target: transport security, headers, cookies, JWT hygiene (if applicable), login endpoint hardening probe                                              | Raw findings (JSON)                         |
+| 3. Manual review        | Human review of anything the tool flagged WARN/FAIL, plus manual checks the tool can't do (password reset flow, account enumeration, MFA presence, role/permission boundaries)        | Annotated findings                          |
+| 4. Report               | Plain-English report: what was found, why it matters, how to fix it, ranked by real-world risk                                                                                        | PDF/Word report                             |
+| 5. Follow-up (optional) | Re-test after client applies fixes                                                                                                                                                    | Confirmation letter / before-after summary  |
 
 ## What the automated tool checks (see `auth_audit.py`)
 
 **Delivery path:** this tool is runnable directly from the admin dashboard (`/admin` → Tools tab) — enter a target URL, get results rendered inline, saved to a persistent run history. It no longer requires terminal/CLI access to deliver, closing the gap between "a client asks for this service via the contact form" and "someone actually runs it."
-
 
 1. **Transport security** — is everything forced over HTTPS, does the TLS cert validate
 2. **Security headers** — HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and whether server/version info is leaking

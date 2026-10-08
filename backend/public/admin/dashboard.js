@@ -19,15 +19,17 @@ let state = {
   activeTab: 'submissions',
   blocks: [],
   events: [],
-  eventTypeFilter: ''
+  eventTypeFilter: '',
 };
 
 /* ---------- Helpers ---------- */
 
-function $(id) { return document.getElementById(id); }
+function $(id) {
+  return document.getElementById(id);
+}
 
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   $(id).classList.remove('hidden');
 }
 
@@ -67,7 +69,7 @@ function renderSubmissions() {
     return;
   }
 
-  state.submissions.forEach(sub => {
+  state.submissions.forEach((sub) => {
     const tr = document.createElement('tr');
 
     // Name
@@ -93,7 +95,7 @@ function renderSubmissions() {
 
     // Status dropdown
     const statusSelect = document.createElement('select');
-    ['new', 'read', 'replied', 'archived'].forEach(s => {
+    ['new', 'read', 'replied', 'archived'].forEach((s) => {
       const opt = createEl('option', s);
       opt.value = s;
       if (s === (sub.status || 'new')) opt.selected = true;
@@ -139,7 +141,7 @@ function renderBlocks() {
     return;
   }
 
-  state.blocks.forEach(block => {
+  state.blocks.forEach((block) => {
     const tr = document.createElement('tr');
 
     tr.appendChild(createEl('td', block.ip_address));
@@ -181,7 +183,7 @@ function renderEvents() {
     return;
   }
 
-  state.events.forEach(ev => {
+  state.events.forEach((ev) => {
     const tr = document.createElement('tr');
 
     tr.appendChild(createEl('td', ev.ip_address));
@@ -214,7 +216,8 @@ function switchTab(tab) {
   $('submissions-panel').classList.toggle('hidden', tab !== 'submissions');
   $('security-panel').classList.toggle('hidden', tab !== 'security');
 
-  $('panel-title').textContent = tab === 'submissions' ? 'Contact Submissions' : 'Security — Shield';
+  $('panel-title').textContent =
+    tab === 'submissions' ? 'Contact Submissions' : 'Security — Shield';
 
   if (tab === 'security') {
     fetchSecurityData();
@@ -227,7 +230,7 @@ async function api(path, opts = {}) {
   const res = await fetch(path, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...opts.headers },
-    ...opts
+    ...opts,
   });
   if (res.status === 401) {
     state.token = null;
@@ -266,7 +269,7 @@ async function updateStatus(id, status) {
   try {
     await api(`${API_BASE}/submissions/${id}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ status }),
     });
     // Refresh to show updated state
     await fetchSubmissions();
@@ -323,7 +326,7 @@ async function login(email, password) {
   try {
     await api(`${API_BASE}/login`, {
       method: 'POST',
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password }),
     });
     showScreen('dashboard-screen');
     await fetchMe();

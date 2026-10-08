@@ -6,7 +6,8 @@ const posts = [
   {
     slug: 'kenya-data-protection-act-checklist',
     title: 'The Kenya Data Protection Act 2019: A Practical Compliance Checklist for SMEs',
-    excerpt: 'Most Kenyan SMEs know they need to comply — few know where to start. Here is a ground-level checklist mapped directly to the Act\'s obligations.',
+    excerpt:
+      "Most Kenyan SMEs know they need to comply — few know where to start. Here is a ground-level checklist mapped directly to the Act's obligations.",
     date: '2026-08-12',
     readTime: '8 min read',
     tags: ['Compliance', 'Kenya DPA'],
@@ -15,7 +16,8 @@ const posts = [
   {
     slug: 'incident-response-retainers',
     title: 'Why Your SME Needs an Incident Response Retainer Before You Need Incident Response',
-    excerpt: 'When a breach happens, the first 24 hours determine the next 24 months. We break down what a retainer actually covers and why it pays for itself.',
+    excerpt:
+      'When a breach happens, the first 24 hours determine the next 24 months. We break down what a retainer actually covers and why it pays for itself.',
     date: '2026-07-28',
     readTime: '6 min read',
     tags: ['Incident Response', 'SME'],
@@ -24,7 +26,8 @@ const posts = [
   {
     slug: 'nist-vs-pci-dss',
     title: 'NIST CSF vs. PCI DSS: Which Framework Should East African Fintechs Prioritize?',
-    excerpt: 'Fintechs in Nairobi face dual pressure: global card-network rules and local regulator expectations. We compare the two frameworks side by side.',
+    excerpt:
+      'Fintechs in Nairobi face dual pressure: global card-network rules and local regulator expectations. We compare the two frameworks side by side.',
     date: '2026-07-14',
     readTime: '10 min read',
     tags: ['Fintech', 'Frameworks'],
@@ -33,7 +36,8 @@ const posts = [
   {
     slug: 'shield-waf-internals',
     title: 'Inside Shield: How We Built an Evasion-Resistant WAF in Pure Node.js',
-    excerpt: 'A deep dive into the normalization pipeline, signature design, and false-positive tuning that powers our in-house request inspector.',
+    excerpt:
+      'A deep dive into the normalization pipeline, signature design, and false-positive tuning that powers our in-house request inspector.',
     date: '2026-06-30',
     readTime: '12 min read',
     tags: ['Engineering', 'WAF'],
@@ -42,7 +46,8 @@ const posts = [
   {
     slug: 'password-policy-myths',
     title: 'Why "Complex Passwords" Are No Longer Enough (And What to Do Instead)',
-    excerpt: 'NIST SP 800-63B changed the game on password policy. We explain why length beats complexity, and how to implement modern auth without friction.',
+    excerpt:
+      'NIST SP 800-63B changed the game on password policy. We explain why length beats complexity, and how to implement modern auth without friction.',
     date: '2026-06-15',
     readTime: '7 min read',
     tags: ['Authentication', 'NIST'],
@@ -64,7 +69,8 @@ export default function BlogPage() {
               The <span className="gradient-text-cyan">Signal</span>
             </h1>
             <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
-              Practical security writing for East African SMEs. No FUD, no vendor fluff — just standards, code, and field notes.
+              Practical security writing for East African SMEs. No FUD, no vendor fluff — just
+              standards, code, and field notes.
             </p>
           </div>
 
@@ -73,7 +79,10 @@ export default function BlogPage() {
               <div className="bg-gradient-to-br from-alux-cyan/10 via-alux-purple/5 to-transparent border border-white/[0.06] rounded-3xl p-8 md:p-12 hover:border-alux-cyan/30 transition-colors">
                 <div className="flex flex-wrap gap-2 mb-4">
                   {featured.tags.map((t) => (
-                    <span key={t} className="text-xs font-mono bg-alux-cyan/10 text-alux-cyan px-3 py-1 rounded-full">
+                    <span
+                      key={t}
+                      className="text-xs font-mono bg-alux-cyan/10 text-alux-cyan px-3 py-1 rounded-full"
+                    >
                       {t}
                     </span>
                   ))}
@@ -81,7 +90,9 @@ export default function BlogPage() {
                 <h2 className="text-2xl md:text-4xl font-serif font-bold mb-4 max-w-3xl">
                   {featured.title}
                 </h2>
-                <p className="text-[#94a3b8] text-lg mb-6 max-w-2xl leading-relaxed">{featured.excerpt}</p>
+                <p className="text-[#94a3b8] text-lg mb-6 max-w-2xl leading-relaxed">
+                  {featured.excerpt}
+                </p>
                 <div className="flex items-center gap-4 text-sm text-[#64748b] mb-6">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
@@ -107,7 +118,10 @@ export default function BlogPage() {
               >
                 <div className="flex flex-wrap gap-2 mb-3">
                   {post.tags.map((t) => (
-                    <span key={t} className="text-xs font-mono bg-white/[0.05] text-[#94a3b8] px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span
+                      key={t}
+                      className="text-xs font-mono bg-white/[0.05] text-[#94a3b8] px-2 py-0.5 rounded-full flex items-center gap-1"
+                    >
                       <Tag className="w-3 h-3" />
                       {t}
                     </span>
@@ -116,7 +130,9 @@ export default function BlogPage() {
                 <h3 className="text-lg font-semibold mb-3 leading-snug hover:text-alux-cyan transition-colors cursor-pointer">
                   {post.title}
                 </h3>
-                <p className="text-[#94a3b8] text-sm mb-4 leading-relaxed flex-grow">{post.excerpt}</p>
+                <p className="text-[#94a3b8] text-sm mb-4 leading-relaxed flex-grow">
+                  {post.excerpt}
+                </p>
                 <div className="flex items-center justify-between text-xs text-[#64748b] pt-4 border-t border-white/[0.06]">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
