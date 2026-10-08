@@ -37,6 +37,7 @@ import toolsRoutes from './routes/tools.js';
 import adminRoutes from './routes/admin.js';
 import adminMfaRoutes from './routes/adminMfa.js';
 import adminUsersRoutes from './routes/adminUsers.js';
+import adminDataSubjectsRoutes from './routes/adminDataSubjects.js';
 import adminSecurityRoutes from './routes/adminSecurity.js';
 import adminClientsRoutes from './routes/adminClients.js';
 import adminRiskScoreRoutes from './routes/adminRiskScore.js';
@@ -156,6 +157,7 @@ async function startServer() {
 
   // Superadmin-only routes
   app.use('/api/admin/users', requireAuth, requireSuperAdmin, adminUsersRoutes);
+  app.use('/api/admin/data-subjects', requireAuth, requireSuperAdmin, adminDataSubjectsRoutes);
 
   // Client routes
   app.use('/api/client', clientAuthRoutes);
