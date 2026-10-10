@@ -9,6 +9,8 @@ import { body, param, query, validationResult, matchedData } from 'express-valid
 import db from '../db.js';
 import { recordAuditLog } from '../middleware/auditLog.js';
 import { computeRiskScoreBulk } from '../shield/riskScore.js';
+import { revokeAllSessions } from './clientAuth.js';
+import { RETENTION } from '../jobs/retention.js';
 
 const router = Router();
 
@@ -258,6 +260,85 @@ router.patch(
       res.json({ success: true, status: result.rows[0] });
     } catch (err) {
       console.error('[adminClients] Failed to update compliance status:', err.message);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/clients/:id/close
+ * Closes a client account: it can no longer sign in, reset its password or
+ * verify its email, and every active session and outstanding link is revoked.
+ * Nothing is deleted here. The account and its records are deleted by the
+ * retention job once the closed-account period in the privacy policy has
+ * passed (when RETENTION_MODE=enforce), counted from the moment of closure.
+ *
+ * Idempotent: closing an already-closed account changes nothing, so the
+ * retention clock keeps running from the first closure. The audit entry
+ * records the client id only, never the company name or email.
+ */
+router.post(
+  '/:id/close',
+  [param('id').isInt().withMessage('Invalid client id.')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const clientId = Number(req.params.id);
+    const adminEmail = req.user?.email || 'unknown';
+
+    try {
+      const outcome = await db.transaction(async (tx) => {
+        const found = await tx.query(
+          'SELECT id, disabled_at FROM clients WHERE id = $1 FOR UPDATE',
+          [clientId]
+        );
+        if (found.rows.length === 0) return { notFound: true };
+
+        if (found.rows[0].disabled_at) {
+          const existing = await tx.query(
+            `SELECT disabled_at, disabled_at + make_interval(months => $2::int) AS deletes_after
+             FROM clients WHERE id = $1`,
+            [clientId, RETENTION.closedClientMonths]
+          );
+          return { alreadyClosed: true, ...existing.rows[0] };
+        }
+
+        const closed = await tx.query(
+          `UPDATE clients SET disabled_at = NOW() WHERE id = $1
+           RETURNING disabled_at, disabled_at + make_interval(months => $2::int) AS deletes_after`,
+          [clientId, RETENTION.closedClientMonths]
+        );
+        await revokeAllSessions(tx, clientId);
+        await tx.query('DELETE FROM client_email_verifications WHERE client_id = $1', [clientId]);
+        await tx.query('DELETE FROM client_password_resets WHERE client_id = $1', [clientId]);
+        return { alreadyClosed: false, ...closed.rows[0] };
+      });
+
+      if (outcome.notFound) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+
+      if (!outcome.alreadyClosed) {
+        await recordAuditLog({
+          adminEmail,
+          action: 'client.close',
+          targetTable: 'clients',
+          targetId: clientId,
+          newValue: { closed: true },
+        });
+      }
+
+      res.json({
+        success: true,
+        alreadyClosed: outcome.alreadyClosed,
+        closedAt: outcome.disabled_at,
+        deletesAfter: outcome.deletes_after,
+      });
+    } catch (err) {
+      console.error('[adminClients] Failed to close client:', err.message);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
