@@ -19,15 +19,21 @@ export const QUEUE_EMAIL = 'email';
 // user out of their own account. 5 attempts with exponential backoff spans
 // roughly 1s -> 2s -> 4s -> 8s -> 16s, then gives up and the job lands in
 // `failed` where it can be found and redriven.
-const QUEUE_OPTIONS = {
+export const QUEUE_OPTIONS = {
   retryLimit: 5,
   retryDelay: 1,
   retryBackoff: true,
   retryDelayMax: 60,
   // A send that is still in flight after 5 minutes is presumed wedged.
   expireInSeconds: 300,
-  // Keep completed jobs briefly for debugging, then let pg-boss reap them.
+  // A job that is still waiting (created or retrying) after 24 hours is dropped.
   retentionSeconds: 86400,
+  // A job that has FINISHED, whether it completed or failed for good, is deleted
+  // 24 hours later. This is a data-retention setting, not housekeeping: each job
+  // holds the recipient's address and, for contact notifications, the sender's
+  // name, email and message. The privacy policy promises about 24 hours;
+  // pg-boss's own default is 7 days.
+  deleteAfterSeconds: 86400,
 };
 
 let boss = null;
@@ -36,6 +42,28 @@ let disabled = false;
 
 export function isEmailQueueDisabled() {
   return disabled;
+}
+
+/**
+ * Creates the email queue if it is missing, and applies QUEUE_OPTIONS either way.
+ *
+ * createQueue() does nothing for a queue that already exists, so on its own it
+ * would leave a queue created by an earlier release on its old settings (a
+ * 7-day deletion window) forever. updateQueue() applies the current options to
+ * both new and existing queues, and is safe to repeat on every boot.
+ */
+export async function ensureEmailQueue(bossInstance) {
+  await bossInstance.createQueue(QUEUE_EMAIL, QUEUE_OPTIONS);
+  try {
+    await bossInstance.updateQueue(QUEUE_EMAIL, QUEUE_OPTIONS);
+  } catch (err) {
+    // Delivery still works without this, so don't take the queue down over it,
+    // but say loudly that the retention setting was not applied.
+    console.error(
+      `[email-queue] Could not apply queue options (${err.message}). Email delivery still works, ` +
+        'but finished jobs may be kept longer than the privacy policy states (pg-boss default: 7 days).'
+    );
+  }
 }
 
 /**
@@ -66,7 +94,7 @@ export async function startEmailQueue() {
     });
     boss.on('error', (err) => console.error('[email-queue] error:', err.message));
     await boss.start();
-    await boss.createQueue(QUEUE_EMAIL, QUEUE_OPTIONS);
+    await ensureEmailQueue(boss);
     started = true;
     console.log('[email-queue] Started.');
   } catch (err) {
