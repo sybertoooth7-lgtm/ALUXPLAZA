@@ -2,6 +2,7 @@
 import db from '../db.js';
 import { logger } from '../logger.js';
 import { sweepExpiredCounters } from '../shield/bruteForceGuard.js';
+import { runRetention } from './retention.js';
 
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
@@ -20,6 +21,27 @@ async function cleanupClientSessions() {
   );
   if (result.rowCount > 0)
     logger.info(`[cleanup] Purged ${result.rowCount} expired client sessions`);
+  return result.rowCount;
+}
+
+// Verification and password-reset links are useless once expired, and each row
+// ties a token hash to a client. The privacy policy says they live "until they
+// expire", so remove them at expiry.
+async function cleanupEmailVerifications() {
+  const result = await db.query(
+    `DELETE FROM client_email_verifications WHERE expires_at < NOW() RETURNING id`
+  );
+  if (result.rowCount > 0)
+    logger.info(`[cleanup] Purged ${result.rowCount} expired email verification links`);
+  return result.rowCount;
+}
+
+async function cleanupPasswordResets() {
+  const result = await db.query(
+    `DELETE FROM client_password_resets WHERE expires_at < NOW() RETURNING id`
+  );
+  if (result.rowCount > 0)
+    logger.info(`[cleanup] Purged ${result.rowCount} expired password reset links`);
   return result.rowCount;
 }
 
@@ -60,19 +82,29 @@ async function cleanupShieldCounters() {
 export async function runCleanup() {
   logger.info('[cleanup] Starting periodic cleanup job...');
   try {
-    const [tokens, sessions, rates, ips, attempts, counters] = await Promise.all([
-      cleanupTokenBlocklist(),
-      cleanupClientSessions(),
-      cleanupRateLimits(),
-      cleanupBlockedIps(),
-      cleanupLoginAttempts(),
-      cleanupShieldCounters(),
-    ]);
+    const [tokens, sessions, verifications, resets, rates, ips, attempts, counters] =
+      await Promise.all([
+        cleanupTokenBlocklist(),
+        cleanupClientSessions(),
+        cleanupEmailVerifications(),
+        cleanupPasswordResets(),
+        cleanupRateLimits(),
+        cleanupBlockedIps(),
+        cleanupLoginAttempts(),
+        cleanupShieldCounters(),
+      ]);
     logger.info(
-      `[cleanup] Complete. tokens=${tokens}, sessions=${sessions}, rateLimits=${rates}, ipBlocks=${ips}, loginAttempts=${attempts}, shieldCounters=${counters}`
+      `[cleanup] Complete. tokens=${tokens}, sessions=${sessions}, verificationLinks=${verifications}, resetLinks=${resets}, rateLimits=${rates}, ipBlocks=${ips}, loginAttempts=${attempts}, shieldCounters=${counters}`
     );
   } catch (err) {
     logger.error('[cleanup] Error during cleanup:', err.message);
+  }
+
+  // Retention runs on its own so a failure in either half never hides the other.
+  try {
+    await runRetention();
+  } catch (err) {
+    logger.error('[retention] Error during retention run:', err.message);
   }
 }
 
