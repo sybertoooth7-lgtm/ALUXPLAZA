@@ -105,8 +105,11 @@ export async function requireClientAuth(req, res, next) {
       return res.status(401).json({ error: 'Unauthorized: Account no longer exists' });
     }
     const client = rows[0];
-    // Check if account was disabled since token was issued
-    if (client.disabled_at && new Date(client.disabled_at) < new Date(decoded.iat * 1000)) {
+    // A disabled (closed) account can never use a token, however recently or
+    // long ago it was issued. This used to compare disabled_at with the token's
+    // issue time the wrong way round, so a token issued BEFORE the account was
+    // disabled kept working until it expired.
+    if (client.disabled_at) {
       logger.warn(
         { ip: req.ip, sub: decoded.sub, disabledAt: client.disabled_at },
         '[clientAuth] Disabled account used'
