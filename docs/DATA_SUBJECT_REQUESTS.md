@@ -104,5 +104,28 @@ Email matching is case-insensitive and uses the same normalisation as the forms 
 
 - There is no admin-screen for this yet; it is API only.
 - Free-text fields can contain personal data the tool cannot find by email: compliance `notes`, and the body of a contact message about someone else. Read the export before sending it.
-- Automatic retention (`backend/src/jobs/retention.js`) runs daily but only **reports** what it would delete until `RETENTION_MODE=enforce` is set on the server. Until then, contact messages, closed client accounts and audit entries are not deleted automatically, and the periods you state in a reply are not yet being enforced. Client accounts are only deleted once they are marked closed, and there is currently no admin action that closes one (see `docs/COMPLIANCE_MAPPING.md`, item 4.8).
+- Automatic retention (`backend/src/jobs/retention.js`) runs daily but only **reports** what it would delete until `RETENTION_MODE=enforce` is set on the server. Until then, contact messages, closed client accounts and audit entries are not deleted automatically, and the periods you state in a reply are not yet being enforced. Client accounts are only deleted once they are marked closed. Close one with `POST /api/admin/clients/:id/close` (section 8).
 - Rectification (correcting data) and portability are done by hand.
+
+## 8. Closing a client account
+
+Use this when a client's engagement ends or they ask to stop using their account but you are not erasing their data.
+
+```
+POST /api/admin/clients/:id/close
+```
+
+It needs an admin session and a CSRF token, like the other admin endpoints. The `:id` is the client's numeric id from the client list.
+
+What it does:
+
+- The account can no longer sign in, reset its password or verify its email. Existing sessions stop working immediately.
+- Active sessions are revoked, and any outstanding verification or reset links are deleted.
+- **Nothing else is deleted.** The account and its records stay until the retention job removes them, 24 months after closure, once `RETENTION_MODE=enforce` is set.
+- The response gives `closedAt` and `deletesAfter` so you can tell the client the date.
+- Closing an account that is already closed changes nothing, so the 24 months keep counting from the first closure.
+- The audit entry records the client id only, never the company name or email.
+
+To reopen an account closed by mistake, run `UPDATE clients SET disabled_at = NULL WHERE id = <id>;` in the database. Its old sessions stay revoked, so the person signs in again.
+
+Closing is different from erasing: use the erase tool (section 6) when someone asks for their data to be deleted.
