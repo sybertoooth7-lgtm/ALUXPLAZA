@@ -41,7 +41,7 @@ The clock starts when the request arrives, not when you read it. Requesters may 
 > - **Why we hold it:** _[purposes, as stated in the Privacy Policy, e.g. to respond to your enquiry; to provide and secure your client account]_
 > - **Categories of data:** contact details you gave us, account details, login history (including IP address and browser), and consent records.
 > - **Who receives it:** _[confirm the current list before sending: e.g. our email provider (Resend), our error-monitoring provider (Sentry), our hosting and database providers]_
-> - **How long we keep it:** login attempts are deleted automatically after 90 days. _[Add your retention periods for contact messages, client accounts and audit records once they are decided.]_
+> - **How long we keep it:** contact messages are deleted 12 months after they were last updated; client accounts 24 months after the account is closed; records of staff actions 24 months; sign-in attempts 90 days. _(Check these still match the Privacy Policy before sending.)_
 > - **Where it came from:** you gave it to us through our contact form or signup form; login history is recorded automatically when you sign in.
 >
 > You can ask us to correct or erase it by replying to this email. If you are unhappy with our response you may complain to the Office of the Data Protection Commissioner.
@@ -104,5 +104,5 @@ Email matching is case-insensitive and uses the same normalisation as the forms 
 
 - There is no admin-screen for this yet; it is API only.
 - Free-text fields can contain personal data the tool cannot find by email: compliance `notes`, and the body of a contact message about someone else. Read the export before sending it.
-- `contacts`, client records and audit logs have no automatic retention limit yet (only login attempts, expired tokens and expired IP blocks are cleaned up). Reg. 19 expects a written retention schedule; deciding those periods is separate work.
+- Automatic retention (`backend/src/jobs/retention.js`) runs daily but only **reports** what it would delete until `RETENTION_MODE=enforce` is set on the server. Until then, contact messages, closed client accounts and audit entries are not deleted automatically, and the periods you state in a reply are not yet being enforced. Client accounts are only deleted once they are marked closed, and there is currently no admin action that closes one (see `docs/COMPLIANCE_MAPPING.md`, item 4.8).
 - Rectification (correcting data) and portability are done by hand.
