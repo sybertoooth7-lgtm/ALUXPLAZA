@@ -99,8 +99,11 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({ error: 'Unauthorized: Account no longer exists' });
     }
     const user = rows[0];
-    // Check if account was disabled since token was issued
-    if (user.disabled_at && new Date(user.disabled_at) < new Date(decoded.iat * 1000)) {
+    // A disabled account can never use a token, however recently or long ago it
+    // was issued. This used to compare disabled_at with the token's issue time
+    // the wrong way round, so a token issued BEFORE the account was disabled
+    // kept working until it expired.
+    if (user.disabled_at) {
       logger.warn(
         { ip: req.ip, sub: decoded.sub, disabledAt: user.disabled_at },
         '[auth] Disabled account used'
