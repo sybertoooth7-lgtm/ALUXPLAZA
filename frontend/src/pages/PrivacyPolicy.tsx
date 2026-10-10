@@ -107,7 +107,7 @@ const link = 'text-alux-cyan hover:underline';
 
 export default function PrivacyPolicy() {
   return (
-    <LegalPageLayout title="Privacy Policy" lastUpdated="October 8, 2026">
+    <LegalPageLayout title="Privacy Policy" lastUpdated="October 10, 2026">
       <p>
         Alux Plaza (&quot;we&quot;, &quot;us&quot;) is a cybersecurity consultancy based in Nairobi,
         Kenya, and is the data controller for the personal data described in this policy. It
