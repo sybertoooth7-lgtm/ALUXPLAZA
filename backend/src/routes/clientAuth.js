@@ -135,7 +135,7 @@ const ENUM_MSG = Object.freeze({
 async function findClientByEmail(conn, email) {
   const result = await conn.query(
     `SELECT id, company_name, email, password_hash, email_verified,
-            failed_login_count, locked_until
+            failed_login_count, locked_until, disabled_at
      FROM clients WHERE email = $1`,
     [email]
   );
@@ -214,7 +214,7 @@ async function updatePassword(conn, clientId, passwordHash) {
   );
 }
 
-async function revokeAllSessions(conn, clientId) {
+export async function revokeAllSessions(conn, clientId) {
   const sessions = await conn.query(
     `SELECT jti, expires_at FROM client_sessions
      WHERE client_id = $1 AND expires_at > NOW()`,
@@ -314,6 +314,12 @@ router.post(
       if (new Date(row.expires_at) < new Date())
         throw new AuthError('Verification link has expired.', 400);
 
+      const owner = await client.query('SELECT disabled_at FROM clients WHERE id = $1', [
+        row.client_id,
+      ]);
+      if (owner.rows[0]?.disabled_at)
+        throw new AuthError('Invalid or expired verification link.', 400);
+
       // Single-use: burn every outstanding token for this client
       await client.query(
         `UPDATE client_email_verifications SET used_at = NOW() WHERE client_id = $1`,
@@ -335,10 +341,12 @@ router.post(
 
     await withTransaction(async (client) => {
       const result = await client.query(
-        `SELECT id, email_verified FROM clients WHERE email = $1 FOR UPDATE`,
+        `SELECT id, email_verified, disabled_at FROM clients WHERE email = $1 FOR UPDATE`,
         [email]
       );
-      if (result.rows.length === 0 || result.rows[0].email_verified) return;
+      // Unknown, already verified, or closed: all get the same generic reply.
+      if (result.rows.length === 0 || result.rows[0].email_verified || result.rows[0].disabled_at)
+        return;
 
       const clientId = result.rows[0].id;
       await invalidateVerificationTokens(client, clientId);
@@ -373,10 +381,12 @@ router.post(
     const { email } = req.body;
 
     await withTransaction(async (client) => {
-      const result = await client.query(`SELECT id FROM clients WHERE email = $1 FOR UPDATE`, [
-        email,
-      ]);
-      if (result.rows.length === 0) return;
+      const result = await client.query(
+        `SELECT id, disabled_at FROM clients WHERE email = $1 FOR UPDATE`,
+        [email]
+      );
+      // Unknown or closed: same generic reply, and no reset link is created.
+      if (result.rows.length === 0 || result.rows[0].disabled_at) return;
 
       const clientId = result.rows[0].id;
       await invalidatePasswordResetTokens(client, clientId);
@@ -417,6 +427,12 @@ router.post(
       if (new Date(row.expires_at) < new Date())
         throw new AuthError('Reset link has expired.', 400);
 
+      // A link issued before the account was closed must not reopen it.
+      const owner = await client.query('SELECT disabled_at FROM clients WHERE id = $1', [
+        row.client_id,
+      ]);
+      if (owner.rows[0]?.disabled_at) throw new AuthError('Invalid or expired reset link.', 400);
+
       const newHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
       await revokeAllSessions(client, row.client_id);
@@ -454,6 +470,12 @@ router.post(
     // first makes both paths pay the same price.
     const passwordMatches = await bcrypt.compare(password, client?.password_hash || DUMMY_HASH);
 
+    // A closed (disabled) account is treated exactly like a wrong password or an
+    // unknown email: same status, same message, same work done, and it never
+    // reaches the lockout disclosure below. Saying "this account is closed"
+    // would tell anyone holding the password which emails belong to accounts.
+    const accountUsable = Boolean(client) && !client.disabled_at;
+
     // 2. Lockout is only disclosed once the password is proven correct.
     //
     // The legitimate user who typed the right password learns their account
@@ -462,7 +484,12 @@ router.post(
     // from one that does not exist. This is the only ordering that keeps
     // both properties, and it is the reason the check sits after bcrypt
     // rather than merely being wrapped in it.
-    if (client?.locked_until && new Date(client.locked_until) > new Date() && passwordMatches) {
+    if (
+      accountUsable &&
+      client.locked_until &&
+      new Date(client.locked_until) > new Date() &&
+      passwordMatches
+    ) {
       const remainingSec = Math.ceil((new Date(client.locked_until) - new Date()) / 1000);
       const minutes = Math.ceil(remainingSec / 60);
       const wait =
@@ -476,7 +503,7 @@ router.post(
       );
     }
 
-    if (!client || !passwordMatches) {
+    if (!accountUsable || !passwordMatches) {
       await logLoginAttempt({
         clientId: client?.id ?? null,
         email,
