@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const send = vi.fn();
 const createQueue = vi.fn();
+const updateQueue = vi.fn();
 const work = vi.fn();
 const stop = vi.fn();
 const getQueueStats = vi.fn();
@@ -22,6 +23,7 @@ vi.mock('pg-boss', () => ({
       this.start = start;
       this.send = send;
       this.createQueue = createQueue;
+      this.updateQueue = updateQueue;
       this.work = work;
       this.stop = stop;
       this.getQueueStats = getQueueStats;
@@ -42,6 +44,7 @@ describe('lib/email-queue.js', () => {
     process.env.DATABASE_URL = 'postgres://u:p@localhost:5432/db';
     start.mockResolvedValue(undefined);
     createQueue.mockResolvedValue(undefined);
+    updateQueue.mockResolvedValue(undefined);
     work.mockResolvedValue('worker-id');
     stop.mockResolvedValue(undefined);
   });
@@ -64,6 +67,44 @@ describe('lib/email-queue.js', () => {
         retryBackoff: true,
       })
     );
+  });
+
+  it('keeps finished jobs for 24 hours, not the pg-boss default of 7 days', async () => {
+    // Each job holds a recipient address and, for contact notifications, the
+    // sender's message. The privacy policy says about 24 hours.
+    const mod = await load();
+    expect(mod.QUEUE_OPTIONS.deleteAfterSeconds).toBe(86400);
+    expect(mod.QUEUE_OPTIONS.retentionSeconds).toBe(86400);
+    await mod.startEmailQueue();
+    expect(createQueue).toHaveBeenCalledWith(
+      'email',
+      expect.objectContaining({ deleteAfterSeconds: 86400 })
+    );
+  });
+
+  it('applies the options to a queue that already exists, via updateQueue after createQueue', async () => {
+    // createQueue() is a no-op for an existing queue, so without updateQueue() a
+    // queue made by an earlier release would keep its old 7-day window forever.
+    const mod = await load();
+    await mod.startEmailQueue();
+    expect(updateQueue).toHaveBeenCalledWith(
+      'email',
+      expect.objectContaining({ deleteAfterSeconds: 86400, retryLimit: 5 })
+    );
+    expect(createQueue.mock.invocationCallOrder[0]).toBeLessThan(
+      updateQueue.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('keeps delivering and logs loudly if updateQueue fails, instead of disabling the queue', async () => {
+    updateQueue.mockRejectedValueOnce(new Error('permission denied'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mod = await load();
+    const result = await mod.startEmailQueue();
+    expect(result).not.toBeNull();
+    expect(mod.isEmailQueueDisabled()).toBe(false);
+    expect(errorSpy.mock.calls.flat().join(' ')).toMatch(/Could not apply queue options/);
+    errorSpy.mockRestore();
   });
 
   it('does not let pg-boss create the schema', async () => {
