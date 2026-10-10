@@ -123,4 +123,58 @@ describe('email queue: pgboss schema', () => {
       await cleanup();
     }
   }, 60_000);
+
+  it('moves an existing queue from the 7-day default to the 24-hour deletion window', async () => {
+    // The regression this guards: createQueue() is a no-op for a queue that
+    // already exists, so a queue created by an earlier release (deleteAfter
+    // left at pg-boss's 7-day default) kept holding recipient addresses and
+    // contact messages for a week after the code was changed. The privacy
+    // policy promises about 24 hours.
+    const { pool, connectionString, cleanup } = await createFreshDb('alux_pgboss_retention');
+    let boss = null;
+    try {
+      await runMigrations(pool);
+      const { PgBoss } = await import('pg-boss');
+      const { ensureEmailQueue, QUEUE_OPTIONS } = await import('../src/lib/email-queue.js');
+      boss = new PgBoss({ connectionString, schema: 'pgboss', createSchema: false });
+      await boss.start();
+
+      // The queue exactly as the previous release created it.
+      await boss.createQueue('email', {
+        retryLimit: 5,
+        retryDelay: 1,
+        retryBackoff: true,
+        retryDelayMax: 60,
+        expireInSeconds: 300,
+        retentionSeconds: 86400,
+      });
+      const read = async () =>
+        (
+          await pool.query(
+            `SELECT retry_limit, retention_seconds, deletion_seconds FROM pgboss.queue WHERE name = 'email'`
+          )
+        ).rows[0];
+      expect((await read()).deletion_seconds).toBe(604800); // the 7-day problem, reproduced
+
+      await ensureEmailQueue(boss);
+      expect(await read()).toEqual({
+        retry_limit: 5,
+        retention_seconds: QUEUE_OPTIONS.retentionSeconds,
+        deletion_seconds: QUEUE_OPTIONS.deleteAfterSeconds,
+      });
+      expect((await read()).deletion_seconds).toBe(86400);
+
+      // Safe to run on every boot.
+      await ensureEmailQueue(boss);
+      expect((await read()).deletion_seconds).toBe(86400);
+
+      // And it also works when the queue does not exist yet.
+      await pool.query(`DELETE FROM pgboss.queue WHERE name = 'email'`);
+      await ensureEmailQueue(boss);
+      expect((await read()).deletion_seconds).toBe(86400);
+    } finally {
+      if (boss) await boss.stop().catch(() => {});
+      await cleanup();
+    }
+  }, 60_000);
 });
