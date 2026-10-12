@@ -23,8 +23,9 @@ A cybersecurity consultancy for small and medium businesses in Kenya and East Af
 - **Consent boxes** on the contact form and client signup, linked to the privacy policy. The exact wording is quoted in section 6.
 - **A rewritten privacy policy** covering what is collected, why, which providers receive it, transfers abroad and their risks, cookies, retention, rights, response times and how to complain to the Data Commissioner.
 - **Tools for access and erasure requests**: export everything held about a person by email address, or erase it (a dry run first). Client accounts are anonymised, not deleted, so compliance records survive without a name. A written procedure sets the deadlines from the General Regulations (access 7 days, erasure 14).
+- **A written breach-response procedure** (`docs/BREACH_RESPONSE.md`): the 72-hour clock, how to decide whether a breach is notifiable, containment steps that use the platform's real controls, evidence preservation, the Commissioner's online form, message templates, and a breach register. Not yet merged.
 - **Automatic retention**: a daily job that deletes data past the periods in section 4. It reports only, and deletes nothing, until the owner switches it on.
-- **A "close account" action** that ends a client's access and starts the closed-account retention clock (built and tested, not yet merged).
+- **A "close account" action** that ends a client's access and starts the closed-account retention clock.
 
 ## 4. Proposed retention periods
 
@@ -72,7 +73,7 @@ For each question, "Our assumption" is what the current build does, so the lawye
 
 7. **Handling requests.** Is the written procedure sound on identity checks (we reply only to the address on file), refusal wording, and the free-of-charge rule? For a security consultancy, which erasure refusals are safe to rely on (security logs, an open dispute, a legal claim)?
 
-8. **Breach notification.** Is the plan to notify the Data Commissioner within 72 hours and the plan for notifying affected clients adequate? We have not yet written the procedure; what should it contain beyond the content list in regulation 38(1)?
+8. **Breach notification.** Is the plan to notify the Data Commissioner within 72 hours and the plan for notifying affected clients adequate? The procedure is now written (`docs/BREACH_RESPONSE.md`). Please review its judgement calls: does a hashed password count as a "password" under regulation 37(1)(b); when may we rely on section 43(6) to skip telling people; how should we treat a breach that starts at a provider; should we ask the Commissioner to hold the particulars in confidence; and how long should we keep the breach register?
 
 9. **Anything missing.** Do we need a data protection impact assessment for the audit tools or the compliance records (regulation 49)? Anything on children's data, cookies, or the fonts loaded from Google that the policy should say?
 
@@ -80,6 +81,7 @@ For each question, "Our assumption" is what the current build does, so the lawye
 
 - The rendered privacy policy page (source: `frontend/src/pages/PrivacyPolicy.tsx`).
 - `docs/DATA_SUBJECT_REQUESTS.md` (the request procedure).
+- `docs/BREACH_RESPONSE.md` (the breach procedure).
 - `docs/COMPLIANCE_MAPPING.md` (a technical status against the Act and Regulations, with its own list of open items).
 - The two consent wordings in section 6, question 1.
 - The completed checklist in section 5.
