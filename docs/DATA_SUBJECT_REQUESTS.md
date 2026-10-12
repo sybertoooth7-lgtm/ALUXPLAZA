@@ -59,6 +59,8 @@ If you can erase:
 3. Do the **third-party cleanup** in section 5. The tool cannot reach these.
 4. Reply to the person: what was erased, what was kept and why (see below), and the date.
 
+If the data may be needed as evidence in a breach investigation, do not erase it. The Act says to restrict its processing instead and to tell the person within a reasonable time (s.40(3)). See `docs/BREACH_RESPONSE.md`.
+
 What the tool does when confirmed:
 
 - Deletes their contact-form messages.
@@ -126,6 +128,6 @@ What it does:
 - Closing an account that is already closed changes nothing, so the 24 months keep counting from the first closure.
 - The audit entry records the client id only, never the company name or email.
 
-To reopen an account closed by mistake, run `UPDATE clients SET disabled_at = NULL WHERE id = <id>;` in the database. Its old sessions stay revoked, so the person signs in again.
+To reopen an account closed by mistake, run `UPDATE clients SET disabled_at = NULL WHERE id = <id>;` in the database. Its old sessions stay revoked, so the person signs in again. If the account was closed because it was compromised, also set `password_hash = '!'` in the same statement so the old password cannot be used and the person has to reset it (see `docs/BREACH_RESPONSE.md`).
 
 Closing is different from erasing: use the erase tool (section 6) when someone asks for their data to be deleted.
