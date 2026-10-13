@@ -43,18 +43,18 @@ From the Data Protection Act, 2019 (section 43) and the Data Protection (General
 
 ### Where a breach shows up
 
-| Source                                                                 | What it tells you                                                            | How long it is kept                                                |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Discord alert channel (`ALERT_WEBHOOK_URL`)                            | Suspected attacks, auto-blocked IP addresses, server errors                  | Set by Discord                                                     |
-| `GET /api/admin/security/events` (`security_events` table)             | Attack and abuse events: type, IP, path, whether blocked                     | **No automatic deletion today** (see `docs/COMPLIANCE_MAPPING.md`) |
-| `GET /api/admin/security/blocks`                                       | IP addresses currently blocked                                               | Removed 7 days after the block ends                                |
-| `client_login_attempts`                                                | Every sign-in attempt: email, IP, browser, success                           | **90 days**                                                        |
-| `client_sessions`                                                      | Sessions that are active now                                                 | Removed when they expire                                           |
-| `audit_logs`                                                           | What each staff member did and when                                          | 24 months once `RETENTION_MODE=enforce` is on                      |
-| New-device emails and replies from clients ("this was not me")         | A client's account may be in someone else's hands                            | Your mailbox                                                       |
-| Notices from providers (Render, Vercel, Neon, Resend, Sentry, Discord) | A breach on their side. They must tell you within 48 hours where practicable | Your mailbox                                                       |
-| Render and Vercel logs, Sentry events                                  | Requests and errors around the time                                          | Set by each provider                                               |
-| `privacy@aluxplaza.com`, or a researcher or stranger who contacts you  | Someone says they found or hold your data                                    | Your mailbox                                                       |
+| Source                                                                 | What it tells you                                                            | How long it is kept                           |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------- |
+| Discord alert channel (`ALERT_WEBHOOK_URL`)                            | Suspected attacks, auto-blocked IP addresses, server errors                  | Set by Discord                                |
+| `GET /api/admin/security/events` (`security_events` table)             | Attack and abuse events: type, IP, path, whether blocked                     | 90 days once `RETENTION_MODE=enforce` is on   |
+| `GET /api/admin/security/blocks`                                       | IP addresses currently blocked                                               | Removed 7 days after the block ends           |
+| `client_login_attempts`                                                | Every sign-in attempt: email, IP, browser, success                           | **90 days**                                   |
+| `client_sessions`                                                      | Sessions that are active now                                                 | Removed when they expire                      |
+| `audit_logs`                                                           | What each staff member did and when                                          | 24 months once `RETENTION_MODE=enforce` is on |
+| New-device emails and replies from clients ("this was not me")         | A client's account may be in someone else's hands                            | Your mailbox                                  |
+| Notices from providers (Render, Vercel, Neon, Resend, Sentry, Discord) | A breach on their side. They must tell you within 48 hours where practicable | Your mailbox                                  |
+| Render and Vercel logs, Sentry events                                  | Requests and errors around the time                                          | Set by each provider                          |
+| `privacy@aluxplaza.com`, or a researcher or stranger who contacts you  | Someone says they found or hold your data                                    | Your mailbox                                  |
 
 ### Triage questions
 
@@ -96,7 +96,7 @@ SET reason = EXCLUDED.reason,
 
 ### Preserve evidence
 
-1. **Set `RETENTION_MODE=off` on Render and redeploy.** This stops the daily job deleting contact messages, closed client accounts and audit entries while you investigate.
+1. **Set `RETENTION_MODE=off` on Render and redeploy.** This stops the daily job deleting contact messages, closed client accounts, audit entries and security events while you investigate.
 2. **That does not stop everything.** The daily cleanup still deletes sign-in attempts older than 90 days, IP blocks 7 days after they end, expired sessions and links, and finished email jobs after 24 hours. **Export the tables below on day one.** From a terminal with your database URL:
 
 ```bash
@@ -363,5 +363,4 @@ Fill these in and keep them in your offline copy:
 
 - This is a procedure, not legal advice. Several judgement calls above (whether a hashed password counts, when you may withhold notice from affected people, whether to ask for confidentiality) need your lawyer.
 - The platform has no admin screen for blocking an IP or for incident handling. Everything here is SQL, API calls or provider dashboards.
-- `security_events` is never deleted automatically, and the policy's retention table does not list it. See `docs/COMPLIANCE_MAPPING.md`.
 - Evidence held by providers (Render, Vercel, Sentry, Discord) is kept on their schedules. Ask them early.
