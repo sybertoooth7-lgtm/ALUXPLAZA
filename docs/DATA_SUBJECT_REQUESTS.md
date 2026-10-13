@@ -108,6 +108,7 @@ Email matching is case-insensitive and uses the same normalisation as the forms 
 - Free-text fields can contain personal data the tool cannot find by email: compliance `notes`, and the body of a contact message about someone else. Read the export before sending it.
 - Automatic retention (`backend/src/jobs/retention.js`) runs daily but only **reports** what it would delete until `RETENTION_MODE=enforce` is set on the server. Until then, contact messages, closed client accounts and audit entries are not deleted automatically, and the periods you state in a reply are not yet being enforced. Client accounts are only deleted once they are marked closed. Close one with `POST /api/admin/clients/:id/close` (section 8).
 - Rectification (correcting data) and portability are done by hand.
+- Attack and abuse records (IP address, page requested, a short sample of what triggered a firewall rule) are not searched by email address, so they are not in an export and the erase tool does not remove them. They are deleted automatically after 90 days once `RETENTION_MODE=enforce` is on.
 
 ## 8. Closing a client account
 
