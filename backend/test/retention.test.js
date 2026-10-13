@@ -50,6 +50,15 @@ async function insertAudit({ action, months }) {
   return rows[0].id;
 }
 
+async function insertSecurityEvent({ days, type = 'sqli', ip = '198.51.100.7' }) {
+  const { rows } = await db.query(
+    `INSERT INTO security_events (ip_address, event_type, severity, request_path, blocked, created_at)
+     VALUES ($1, $2, 'high', '/probe', TRUE, ${agoDays(days)}) RETURNING id`,
+    [ip, type]
+  );
+  return rows[0].id;
+}
+
 const exists = async (table, id) =>
   (await db.query(`SELECT 1 FROM ${table} WHERE id = $1`, [id])).rowCount === 1;
 
@@ -64,6 +73,7 @@ beforeEach(async () => {
   await db.query('DELETE FROM clients');
   await db.query('DELETE FROM client_login_attempts');
   await db.query('DELETE FROM blocked_ips');
+  await db.query('DELETE FROM security_events');
 });
 
 afterEach(() => {
@@ -249,6 +259,70 @@ describe('runRetention — per-run cap', () => {
   });
 });
 
+describe('runRetention — security events (90 days)', () => {
+  it('deletes events older than 90 days and keeps newer ones (days, not months)', async () => {
+    const old = await insertSecurityEvent({ days: 91 });
+    const older = await insertSecurityEvent({ days: 400, type: 'xss' });
+    const recent = await insertSecurityEvent({ days: 89 });
+    const fresh = await insertSecurityEvent({ days: 1, type: 'brute_force' });
+
+    const { results } = await runRetention({ mode: 'enforce' });
+
+    expect(results.securityEvents).toEqual({ eligible: 2, deleted: 2, capped: false });
+    expect(await exists('security_events', old)).toBe(false);
+    expect(await exists('security_events', older)).toBe(false);
+    // If the period were read as 90 MONTHS these would both be wrongly kept above;
+    // if it were read as fewer days these would be wrongly deleted.
+    expect(await exists('security_events', recent)).toBe(true);
+    expect(await exists('security_events', fresh)).toBe(true);
+  });
+
+  it('dry-run counts them and deletes nothing', async () => {
+    const old = await insertSecurityEvent({ days: 120 });
+    const { results } = await runRetention({ mode: 'dry-run' });
+    expect(results.securityEvents).toEqual({ eligible: 1, deleted: 0, capped: false });
+    expect(await exists('security_events', old)).toBe(true);
+  });
+
+  it('allows ten times the usual per-run cap, deleting oldest first, and drains over later runs', async () => {
+    const ids = [];
+    for (let i = 0; i < 25; i += 1) {
+      ids.push(await insertSecurityEvent({ days: 400 - i })); // ids[0] is the oldest
+    }
+
+    const first = await runRetention({ mode: 'enforce', maxRows: 2 }); // 2 x 10 = 20 for this table
+    expect(first.results.securityEvents).toEqual({ eligible: 25, deleted: 20, capped: true });
+    expect(await exists('security_events', ids[0])).toBe(false);
+    expect(await exists('security_events', ids[19])).toBe(false);
+    expect(await exists('security_events', ids[20])).toBe(true);
+
+    const second = await runRetention({ mode: 'enforce', maxRows: 2 });
+    expect(second.results.securityEvents).toEqual({ eligible: 5, deleted: 5, capped: false });
+    expect((await db.query('SELECT 1 FROM security_events')).rowCount).toBe(0);
+  });
+
+  it('is counted in the counts-only purge audit entry', async () => {
+    await insertSecurityEvent({ days: 100 });
+    await insertSecurityEvent({ days: 101 });
+    await runRetention({ mode: 'enforce' });
+    const purge = await db.query(
+      `SELECT new_value FROM audit_logs WHERE action = 'retention.purge'`
+    );
+    expect(purge.rowCount).toBe(1);
+    expect(purge.rows[0].new_value).toMatchObject({ security_events: 2 });
+  });
+
+  it('through the daily job: kept by default (dry-run), deleted once RETENTION_MODE=enforce', async () => {
+    const old = await insertSecurityEvent({ days: 200 });
+    await runCleanup();
+    expect(await exists('security_events', old)).toBe(true);
+
+    process.env.RETENTION_MODE = 'enforce';
+    await runCleanup();
+    expect(await exists('security_events', old)).toBe(false);
+  });
+});
+
 describe('runCleanup — the daily job end to end', () => {
   it('default (no RETENTION_MODE): clears expired links but only reports retention, deleting no personal data', async () => {
     const stale = await insertContact({ label: 'stale', updatedMonths: 13 });
@@ -359,6 +433,12 @@ describe('the privacy policy page and the code state the same periods', () => {
     );
   });
 
+  it('attack and abuse records match the code constant', () => {
+    expect(find(policyRows(), 'Attack and abuse records').kept).toBe(
+      `${RETENTION.securityEventDays} days`
+    );
+  });
+
   it('the queued-email row matches the queue setting', () => {
     const row = find(policyRows(), 'Emails waiting in or recently sent');
     expect(row.kept).toBe('About 24 hours after sending');
@@ -384,6 +464,7 @@ describe('the privacy policy page and the code state the same periods', () => {
       'Active sessions, email verification links',
       'Records of actions taken by our staff',
       'Emails waiting in or recently sent',
+      'Attack and abuse records',
     ];
     const unknown = policyRows().filter((r) => !known.some((k) => r.data.startsWith(k)));
     expect(
