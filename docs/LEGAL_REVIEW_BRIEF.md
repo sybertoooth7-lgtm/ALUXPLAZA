@@ -8,15 +8,15 @@ A cybersecurity consultancy for small and medium businesses in Kenya and East Af
 
 ## 2. What the system does with personal data
 
-| Area               | What happens                                                                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Contact form       | Collects name, email, optional company, message, and the time the sender ticked a consent box. A notification email with the same content is sent to the owner.                      |
-| Client accounts    | Company name, email, password (hashed), sign-up consent time. Clients can sign up themselves or be created by the owner (no consent recorded for those).                             |
-| Engagement records | Compliance checklist status and free-text notes per client, risk scores, share links that publicly show the company name.                                                            |
-| Security records   | IP address, browser and result of every sign-in attempt, active sessions, security alerts to the owner, blocked IP addresses.                                                        |
-| Staff action log   | Records which staff member did what and when.                                                                                                                                        |
-| Service providers  | Vercel (website), Render (application server), Neon (database), Resend (email), Sentry (error reports), Discord (alerts), Google Fonts. See section 5 for what is still unconfirmed. |
-| Cookies            | A sign-in cookie, a CSRF security cookie, and a display-theme setting kept on the visitor's device. No analytics or advertising.                                                     |
+| Area               | What happens                                                                                                                                                                                                                       |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contact form       | Collects name, email, optional company, message, and the time the sender ticked a consent box. A notification email with the same content is sent to the owner.                                                                    |
+| Client accounts    | Company name, email, password (hashed), sign-up consent time. Clients can sign up themselves or be created by the owner (no consent recorded for those).                                                                           |
+| Engagement records | Compliance checklist status and free-text notes per client, risk scores, share links that publicly show the company name.                                                                                                          |
+| Security records   | IP address, browser and result of every sign-in attempt, active sessions, security alerts to the owner, blocked IP addresses, and a record of each attack the firewall detects (IP address, page, type of attack, a short sample). |
+| Staff action log   | Records which staff member did what and when.                                                                                                                                                                                      |
+| Service providers  | Vercel (website), Render (application server), Neon (database), Resend (email), Sentry (error reports), Discord (alerts), Google Fonts. See section 5 for what is still unconfirmed.                                               |
+| Cookies            | A sign-in cookie, a CSRF security cookie, and a display-theme setting kept on the visitor's device. No analytics or advertising.                                                                                                   |
 
 ## 3. What has already been built
 
@@ -29,15 +29,16 @@ A cybersecurity consultancy for small and medium businesses in Kenya and East Af
 
 ## 4. Proposed retention periods
 
-| Data                                           | Proposed period                               |
-| ---------------------------------------------- | --------------------------------------------- |
-| Contact form messages                          | 12 months after the enquiry was last updated  |
-| Client accounts and engagement records         | 24 months after the account is closed         |
-| Staff action log                               | 24 months                                     |
-| Sign-in attempts (IP address, browser, result) | 90 days                                       |
-| Blocked IP addresses                           | 7 days after the block ends                   |
-| Queued emails                                  | 24 hours after they finish sending            |
-| Database backups                               | Set by the database provider; not yet decided |
+| Data                                                        | Proposed period                               |
+| ----------------------------------------------------------- | --------------------------------------------- |
+| Contact form messages                                       | 12 months after the enquiry was last updated  |
+| Client accounts and engagement records                      | 24 months after the account is closed         |
+| Staff action log                                            | 24 months                                     |
+| Sign-in attempts (IP address, browser, result)              | 90 days                                       |
+| Blocked IP addresses                                        | 7 days after the block ends                   |
+| Attack and abuse records (IP address, page, type of attack) | 90 days                                       |
+| Queued emails                                               | 24 hours after they finish sending            |
+| Database backups                                            | Set by the database provider; not yet decided |
 
 These are the owner's proposals. No lawyer has checked them.
 
