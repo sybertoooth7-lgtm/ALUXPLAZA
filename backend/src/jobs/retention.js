@@ -11,7 +11,9 @@
 //     "off" skips the job entirely.
 //   * Each rule deletes at most `maxRows` rows per run (default 500), oldest
 //     first, so a mistake in a period or in the data cannot wipe a table in one
-//     pass. A backlog simply drains over the following daily runs.
+//     pass. A backlog simply drains over the following daily runs. Security
+//     events, which one scan can create thousands of in a day, get ten times
+//     that, or the cap would never let the job catch up.
 //   * Logs contain counts only, never names, emails or message text.
 //
 // The periods below MUST match the policy page. test/retention.test.js reads
@@ -29,6 +31,9 @@ export const RETENTION = Object.freeze({
   closedClientMonths: 24,
   // Records of actions taken by staff (audit_logs): months since written.
   auditLogMonths: 24,
+  // Attack and abuse records from the Shield (security_events): days since
+  // written. Matches the 90 days sign-in attempts are kept.
+  securityEventDays: 90,
 });
 
 export const DEFAULT_MAX_ROWS_PER_RUN = 500;
@@ -50,37 +55,58 @@ export function retentionMode(raw = process.env.RETENTION_MODE) {
 }
 
 // Table, column and clause text below is constant: nothing user-supplied is
-// ever interpolated into SQL. $1 is always the period in months.
+// ever interpolated into SQL. $1 is always the period, counted in `unit`s.
+const UNITS = ['months', 'days'];
+
 const RULES = [
   {
     key: 'contacts',
     table: 'contacts',
-    months: RETENTION.contactMonths,
+    unit: 'months',
+    period: RETENTION.contactMonths,
     // contacts.updated_at is NOT NULL and moves whenever an admin touches the row.
-    where: `updated_at < NOW() - make_interval(months => $1::int)`,
+    where: (age) => `updated_at < NOW() - ${age}`,
     order: 'updated_at, id',
   },
   {
     key: 'closedClients',
     table: 'clients',
-    months: RETENTION.closedClientMonths,
+    unit: 'months',
+    period: RETENTION.closedClientMonths,
     // Deleting a client cascades to its compliance records, share links, login
     // attempts, sessions and verification/reset links (all ON DELETE CASCADE).
-    where: `disabled_at IS NOT NULL AND disabled_at < NOW() - make_interval(months => $1::int)`,
+    where: (age) => `disabled_at IS NOT NULL AND disabled_at < NOW() - ${age}`,
     order: 'disabled_at, id',
   },
   {
     key: 'auditLogs',
     table: 'audit_logs',
-    months: RETENTION.auditLogMonths,
-    where: `created_at < NOW() - make_interval(months => $1::int)`,
+    unit: 'months',
+    period: RETENTION.auditLogMonths,
+    where: (age) => `created_at < NOW() - ${age}`,
+    order: 'created_at, id',
+  },
+  {
+    key: 'securityEvents',
+    table: 'security_events',
+    unit: 'days',
+    period: RETENTION.securityEventDays,
+    // One row per flagged request, with no de-duplication, so allow a bigger
+    // batch than the other tables. Nothing references this table.
+    capMultiplier: 10,
+    where: (age) => `created_at < NOW() - ${age}`,
     order: 'created_at, id',
   },
 ];
 
 async function applyRule(rule, { mode, maxRows }) {
-  const { rows } = await db.query(`SELECT COUNT(*) AS n FROM ${rule.table} WHERE ${rule.where}`, [
-    rule.months,
+  if (!UNITS.includes(rule.unit)) throw new Error(`Unknown retention unit: ${rule.unit}`);
+  const age = `make_interval(${rule.unit} => $1::int)`;
+  const where = rule.where(age);
+  const cap = maxRows * (rule.capMultiplier ?? 1);
+
+  const { rows } = await db.query(`SELECT COUNT(*) AS n FROM ${rule.table} WHERE ${where}`, [
+    rule.period,
   ]);
   const eligible = Number(rows[0].n);
 
@@ -91,9 +117,9 @@ async function applyRule(rule, { mode, maxRows }) {
   const result = await db.query(
     `DELETE FROM ${rule.table}
      WHERE id IN (
-       SELECT id FROM ${rule.table} WHERE ${rule.where} ORDER BY ${rule.order} LIMIT $2
+       SELECT id FROM ${rule.table} WHERE ${where} ORDER BY ${rule.order} LIMIT $2
      )`,
-    [rule.months, maxRows]
+    [rule.period, cap]
   );
   return { eligible, deleted: result.rowCount, capped: eligible > result.rowCount };
 }
@@ -143,6 +169,7 @@ export async function runRetention({
           contacts: results.contacts.deleted,
           closed_clients: results.closedClients.deleted,
           audit_logs: results.auditLogs.deleted,
+          security_events: results.securityEvents.deleted,
           max_rows_per_rule: maxRows,
         },
       });
