@@ -1,10 +1,14 @@
 import LegalPageLayout from '../components/LegalPageLayout';
 
-// Retention periods shown in the policy. Items marked "enforced today" match
-// what backend/src/jobs/cleanup.js already deletes; the rest are PROPOSED
-// periods that cleanup.js does not enforce yet. Change the text here and make
-// cleanup.js enforce the same values (docs/COMPLIANCE_MAPPING.md, item 4.6)
-// before relying on them.
+// Retention periods shown in the policy. Each one is enforced in code, and
+// backend/test/retention.test.js reads this table and fails if a period here
+// differs from the code, or if a row is added here without enforcement:
+//   - contact messages, closed client accounts, staff-action records and attack
+//     records: backend/src/jobs/retention.js (deletes only when the server runs
+//     with RETENTION_MODE=enforce)
+//   - sign-in attempts, blocked IPs, expired sessions and links:
+//     backend/src/jobs/cleanup.js
+//   - queued emails: the queue settings in backend/src/lib/email-queue.js
 const RETENTION: { data: string; kept: string }[] = [
   {
     data: 'Messages sent through the contact form',
@@ -15,12 +19,16 @@ const RETENTION: { data: string; kept: string }[] = [
     kept: '24 months after the account is closed',
   },
   {
-    data: 'Sign-in attempts (IP address, browser, result)', // enforced today
+    data: 'Sign-in attempts (IP address, browser, result)',
     kept: '90 days',
   },
   {
-    data: 'Blocked IP addresses', // enforced today
+    data: 'Blocked IP addresses',
     kept: 'Removed 7 days after the block ends',
+  },
+  {
+    data: 'Attack and abuse records (IP address, page requested, type of attack)',
+    kept: '90 days',
   },
   {
     data: 'Active sessions, email verification links and password reset links',
@@ -135,6 +143,12 @@ export default function PrivacyPolicy() {
           <strong className="text-white">Sign-in and security records:</strong> the IP address and
           browser details of sign-in attempts, whether they succeeded, and your active sessions, so
           we can protect accounts and alert you to sign-ins from a new device.
+        </li>
+        <li>
+          <strong className="text-white">Attack and abuse records:</strong> when our firewall spots
+          a suspicious request, for example an attempt to break into the site, we record the IP
+          address it came from, the page and method requested, the type of attack, and a short
+          sample of the part of the request that matched.
         </li>
         <li>
           <strong className="text-white">Technical data when you visit:</strong> like any website,
