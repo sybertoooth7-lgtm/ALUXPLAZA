@@ -10,7 +10,9 @@ Node.js/Express (ESM) + PostgreSQL API for Alux Plaza. It handles:
   compliance tracker, risk-score sharing with verification codes
 - **Shield middleware** — request scanning for attack signatures, IP
   blocklisting, and volume abuse detection (see `src/shield/`)
-- **Admin dashboard UI** at `/admin` — plain HTML/JS (no build step)
+- **Admin dashboard UI** at `/admin` — plain HTML/JS (no build step).
+  Legacy panel; the maintained admin UI lives in the React frontend
+
 
 PostgreSQL is required — there is no SQLite fallback.
 
