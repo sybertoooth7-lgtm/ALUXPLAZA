@@ -12,6 +12,9 @@ Node.js/Express (ESM) + PostgreSQL API for Alux Plaza. It handles:
   blocklisting, and volume abuse detection (see `src/shield/`)
 - **Admin dashboard UI** at `/admin` — plain HTML/JS (no build step).
   Legacy panel; the maintained admin UI lives in the React frontend
+- **Durable email queue** (`src/lib/email-queue.js`) — pg-boss backed;
+  retries with backoff, deletes finished jobs after 24 hours
+
 
 
 PostgreSQL is required — there is no SQLite fallback.
@@ -121,3 +124,6 @@ while they linger once an admin already exists).
   unhandled errors and Shield high-severity blocks; throttled per type.
 - **Uptime monitoring**: point external checkers at
   `GET /api/health/deep` (queries the database), not `/api/health`.
+- **Durable email queue** (`src/lib/email-queue.js`) — pg-boss backed;
+  retries with backoff, deletes finished jobs after 24 hours
+
