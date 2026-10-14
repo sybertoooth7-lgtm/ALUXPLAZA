@@ -437,5 +437,30 @@ router.delete(
     }
   }
 );
+/**
+ * GET /api/admin/queue-stats
+ * Email-queue health for the admin dashboard. When the queue is disabled
+ * (no DATABASE_URL / pg-boss unavailable) it reports { disabled: true }
+ * rather than failing, so the dashboard can show a "queue off" state.
+ */
+router.get('/queue-stats', requireAuth, async (req, res) => {
+  try {
+    if (isEmailQueueDisabled()) {
+      return res.json({ disabled: true });
+    }
+    const stats = await getQueueStats();
+    const s = Array.isArray(stats) ? stats[0] : stats;
+    return res.json({
+      disabled: false,
+      queuedCount: s?.queuedCount ?? 0,
+      activeCount: s?.activeCount ?? 0,
+      failedCount: s?.failedCount ?? 0,
+      totalCount: s?.totalCount ?? 0,
+    });
+  } catch (err) {
+    req.log?.error({ err }, 'queue-stats failed');
+    return res.status(500).json({ error: 'Failed to load queue stats' });
+  }
+});
 
 export default router;
