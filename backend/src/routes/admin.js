@@ -12,7 +12,6 @@ import { recordAuditLog } from '../middleware/auditLog.js';
 import { parseExpiryToMs } from '../lib/parseExpiry.js';
 import { authCookieOptions, authCookieClearOptions } from '../lib/auth-cookie.js';
 import { computeComplianceOverview } from '../shield/riskScore.js';
-
 import { getQueueStats, isEmailQueueDisabled } from '../lib/email-queue.js';
 
 const router = Router();
