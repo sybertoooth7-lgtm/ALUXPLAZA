@@ -124,6 +124,8 @@ while they linger once an admin already exists).
   unhandled errors and Shield high-severity blocks; throttled per type.
 - **Uptime monitoring**: point external checkers at
   `GET /api/health/deep` (queries the database), not `/api/health`.
-- **Durable email queue** (`src/lib/email-queue.js`) — pg-boss backed;
-  retries with backoff, deletes finished jobs after 24 hours
+- `GET /api/admin/queue-stats` — queue depth (queued / active / failed /
+  total) and a `disabled` flag when the queue is off. Requires an admin
+  session.
+
 
