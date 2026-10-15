@@ -24,7 +24,7 @@ async function makeAdminTokenAndUser() {
     [email, hash]
   );
   const token = jwt.sign(
-    { sub: result.rows[0].id, email, jti: crypto.randomUUID() },
+    { sub: result.rows[0].id, email, role: 'admin', jti: crypto.randomUUID() },
     process.env.JWT_SECRET,
     { expiresIn: '1h' }
   );
