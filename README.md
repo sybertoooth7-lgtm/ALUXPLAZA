@@ -82,7 +82,7 @@ VITE_API_BASE_URL=http://localhost:3001 npm run dev
 (`npm run build` fails fast without it — see `scripts/check-env.js`) so
 the deployed frontend can reach a backend on a different host.
 
-Use Node **20.x** for both packages (see the root `.nvmrc` and each
+Use Node **24.x** for both packages (see the root `.nvmrc` and each
 package's `engines` field) — it's what CI and the production Docker
 images run.
 
