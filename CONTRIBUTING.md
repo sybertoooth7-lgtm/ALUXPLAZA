@@ -6,7 +6,7 @@ get set up locally and what's expected before a PR gets merged.
 ## Local setup
 
 Follow the [README](README.md#local-setup) for both `backend/` and
-`frontend/`. Use Node **20.x** — see the root `.nvmrc` and each
+`frontend/`. Use Node **24.x** — see the root `.nvmrc` and each
 package's `engines` field. If you use `nvm`:
 
 ```bash
