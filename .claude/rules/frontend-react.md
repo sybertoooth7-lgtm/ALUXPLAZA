@@ -1,3 +1,4 @@
+
 # Frontend Rules (React / TypeScript)
 
 Project-specific rules for `frontend/`. Extends `aluxplaza-guardrails.md`.
@@ -20,7 +21,7 @@ Project-specific rules for `frontend/`. Extends `aluxplaza-guardrails.md`.
 - **Styling**: Tailwind CSS 3.4 with `tailwindcss-animate`; `clsx` + `tailwind-merge` for conditional classes
 - **Other**: `gsap` (animation), `lucide-react` (icons), `next-themes` (dark mode), `@sentry/react`, `vite-plugin-pwa`
 - **Linter**: ESLint flat config (`eslint.config.js`) with `typescript-eslint`, `react-hooks`, and `react-refresh`
-- **Engines**: Node 20, ESM (`"type": "module"`)
+- **Engines**: Node 24, ESM (`"type": "module"`)
 
 ## Layout
 
