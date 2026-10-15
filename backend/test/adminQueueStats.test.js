@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import crypto from 'crypto';
 
@@ -10,14 +10,40 @@ vi.mock('../src/lib/email-queue.js', () => ({
   isEmailQueueDisabled: () => mockIsDisabled(),
 }));
 
-import { buildApp } from './helpers.js'; // adjust to match adminAudit.test.js
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import bcrypt from 'bcryptjs';
+import adminRoutes from '../src/routes/admin.js';
+import db from '../src/db.js';
 
 import jwt from 'jsonwebtoken';
 import { config } from '../src/config.js';
 
+function buildApp() {
+  const app = express();
+  app.use(express.json());
+  app.use(cookieParser());
+  app.use('/api/admin', adminRoutes);
+  return app;
+}
+
+// requireAuth re-reads the admin's role from the DB, so the token's `sub` must be
+// a real admin_users row (a hard-coded id of 1 only works by accident).
+let adminId;
+
+beforeAll(async () => {
+  const email = `queue-stats-${crypto.randomUUID()}@example.com`;
+  const hash = bcrypt.hashSync('irrelevant-for-this-test', 10);
+  const result = await db.query(
+    'INSERT INTO admin_users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id',
+    [email, hash, 'admin']
+  );
+  adminId = result.rows[0].id;
+});
+
 function adminCookie() {
   const token = jwt.sign(
-    { sub: 1, email: 'admin@example.com', jti: crypto.randomUUID(), role: 'admin' },
+    { sub: adminId, email: 'admin@example.com', jti: crypto.randomUUID(), role: 'admin' },
     config.jwtSecret,
     { expiresIn: '2h' }
   );
