@@ -14,13 +14,13 @@ and an admin dashboard (client management, security operations, triage).
 | File                                    | Covers                                                                                              |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `.claude/rules/aluxplaza-guardrails.md` | Repository-wide invariants: security posture, commit style, architecture, CI gates. **Start here.** |
-| `.claude/rules/backend-node.md`         | `backend/` — Node 20, Express 5, ESM, PostgreSQL, vitest                                            |
+| `.claude/rules/backend-node.md`         | `backend/` — Node 24, Express 5, ESM, PostgreSQL, vitest                                            |
 | `.claude/rules/frontend-react.md`       | `frontend/` — React 19, Vite, TypeScript, Tailwind                                                  |
 | `.claude/enterprise/controls.md`        | Approval expectations, data handling, escalation                                                    |
 
 ## Stack
 
-- **Backend** (`backend/`): Node 20, Express 5, ESM (`"type": "module"`),
+- **Backend** (`backend/`): Node 24, Express 5, ESM (`"type": "module"`),
   PostgreSQL via `pg`, JWT auth with separate `adminToken` / `clientToken`
   cookies, CSRF double-submit, Postgres-backed rate limiting, in-house request
   scanner in `src/shield/`, `pg-boss` for the durable email queue, `pino`
