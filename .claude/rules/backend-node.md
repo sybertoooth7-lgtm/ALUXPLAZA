@@ -13,7 +13,7 @@ Project-specific rules for `backend/`. Extends `aluxplaza-guardrails.md`.
 
 ## Stack
 
-- **Runtime**: Node.js 20 (`engines.node: "20.x"`, `.nvmrc` = `20`)
+- **Runtime**: Node.js 24 (`engines.node: "24.x"`, `.nvmrc` = `24`)
 - **Module system**: ESM only — `"type": "module"`. Use `import`/`export`; there is no CommonJS in this package.
 - **Framework**: Express 5
 - **Database**: PostgreSQL via `pg`; schema changes are numbered SQL files in
