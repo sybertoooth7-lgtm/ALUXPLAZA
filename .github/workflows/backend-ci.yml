@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -55,11 +55,10 @@ jobs:
       - name: Boot the server and smoke-test the API
         run: |
           cp .env.example .env
-          # .env.example ships NODE_ENV=production as a reminder for real
-          # deploys — left as-is here, cookies go Secure-only and curl never
-          # sends them back over plain http://localhost, silently breaking
-          # the CSRF-cookie contact-form step below.
-          sed -i "s/NODE_ENV=production/NODE_ENV=development/" .env
+          # Force NODE_ENV=development regardless of what .env.example ships:
+          # under production, cookies go Secure-only and curl never sends them
+          # back over plain http://localhost, silently breaking the CSRF step.
+          sed -i "s/^NODE_ENV=.*/NODE_ENV=development/" .env
           # NOTE: this must match the literal placeholder text currently in
           # .env.example. If that file's placeholder ever changes, update
           # this sed pattern too, or the JWT_SECRET silently never gets
@@ -128,7 +127,7 @@ jobs:
           curl -sS -f -b cookies.txt -X POST http://localhost:3001/api/contact \
             -H "Content-Type: application/json" \
             -H "x-csrf-token: $CSRF" \
-            -d '{"name":"CI Test","email":"ci@example.com","message":"automated smoke test"}'
+            -d '{"name":"CI Test","email":"ci@example.com","message":"automated smoke test","consent":true}'
 
           # Oversized body must be rejected as 413 — and, critically, must NOT
           # reach captureError/sendAlert. Those used to fire for every oversized
@@ -160,7 +159,7 @@ jobs:
           # (routes/contact.js), so this is the largest body the API can
           # legitimately produce — and it is ~50x under the 256 KiB cap.
           echo "Checking a max-length valid body is still accepted (expect 201)..."
-          node -e 'require("fs").writeFileSync("ok.json", JSON.stringify({name:"CI",email:"ci@example.com",message:"x".repeat(5000)}))'
+          node -e 'require("fs").writeFileSync("ok.json", JSON.stringify({name:"CI",email:"ci@example.com",message:"x".repeat(5000),consent:true}))'
           OK_CODE=$(curl -sS -o ok-resp.json -w '%{http_code}' -b cookies.txt -X POST http://localhost:3001/api/contact \
             -H "Content-Type: application/json" \
             -H "x-csrf-token: $CSRF" \
