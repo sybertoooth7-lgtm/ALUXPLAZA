@@ -10,6 +10,12 @@ version number.
 
 ## [Unreleased]
 
+### Changed
+
+- Runtime moved to Node.js 24.x (Vercel discontinued 20.x): `engines` in root,
+  `frontend/` and `backend/` `package.json`, `.nvmrc`, all GitHub Actions
+  workflows, and both Dockerfiles (`node:24-alpine`). Docs updated to match.
+
 ### Added
 
 - React admin dashboard (`/admin/dashboard`, `/admin/submissions`,
