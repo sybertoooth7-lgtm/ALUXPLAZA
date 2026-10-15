@@ -45,7 +45,7 @@ collection, findings, remediation, and the standards it maps to.
 ## Repo Signals
 
 - Primary languages: JavaScript (ESM) and TypeScript
-- Backend: Node 20, Express 5, PostgreSQL (`pg`), vitest, pino, Sentry, pg-boss
+- Backend: Node 24, Express 5, PostgreSQL (`pg`), vitest, pino, Sentry, pg-boss
 - Frontend: React 19, Vite, TypeScript, Tailwind, react-router
 - Tooling: Python scripts in `tools/`, Node scripts in `tools/`
 - Frameworks: Express (backend), React Router (frontend)
