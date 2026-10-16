@@ -4,7 +4,7 @@
 // State-changing methods must echo it back in the x-csrf-token header.
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { logger } from '../logger.js';
-import { config } from '../config.js';
+import { isAllowedOrigin, getAllowedOrigins } from '../lib/origins.js';
 
 const CSRF_COOKIE = 'csrfToken';
 const CSRF_HEADER = 'x-csrf-token';
@@ -22,14 +22,6 @@ function getOrigin(req) {
   return `${protocol}://${host}`;
 }
 
-// Allowed origins for CSRF validation (configurable, defaults to frontend domain)
-function getAllowedOrigins() {
-  if (!config.allowedOrigins) {
-    return [config.frontendUrl].filter(Boolean);
-  }
-  return Array.isArray(config.allowedOrigins) ? config.allowedOrigins : [config.allowedOrigins];
-}
-
 // Validate origin header against whitelist to prevent CSRF at the transport layer
 function validateOrigin(req) {
   const origin = req.headers.origin || req.headers.referer;
@@ -45,13 +37,11 @@ function validateOrigin(req) {
     return true;
   }
 
-  const allowed = getAllowedOrigins();
-  const originUrl = typeof origin === 'string' ? new URL(origin).origin : origin;
-  const isAllowed = allowed.some((a) => originUrl === new URL(a).origin);
-
-  if (!isAllowed) {
+  // Same allowlist as CORS (lib/origins.js). An unparseable value such as the
+  // literal "null" sent by sandboxed iframes is rejected, never thrown on.
+  if (!isAllowedOrigin(origin)) {
     logger.warn(
-      { origin: originUrl, allowed, ip: req.ip, path: req.path },
+      { origin, allowed: getAllowedOrigins(), ip: req.ip, path: req.path },
       'CSRF origin validation failed'
     );
     return false;
