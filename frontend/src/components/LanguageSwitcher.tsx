@@ -1,4 +1,4 @@
-import { useLanguage } from '@/i18n/LanguageProvider';
+import { useLanguage } from '@/i18n/languageContext';
 
 interface LanguageSwitcherProps {
   className?: string;
