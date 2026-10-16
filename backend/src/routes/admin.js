@@ -69,7 +69,19 @@ router.post(
       // attacker nothing to distinguish.
       const passwordMatches = await bcrypt.compare(password, user?.password_hash || DUMMY_HASH);
 
-      if (user?.locked_until && new Date(user.locked_until) > new Date() && passwordMatches) {
+      // A disabled account is treated exactly like a wrong password or an
+      // unknown email: same status, same message, same work done, and it
+      // never reaches the lockout disclosure below. Saying "this account is
+      // disabled" would tell anyone holding the password which emails belong
+      // to admin accounts.
+      const accountUsable = Boolean(user) && !user.disabled_at;
+
+      if (
+        accountUsable &&
+        user.locked_until &&
+        new Date(user.locked_until) > new Date() &&
+        passwordMatches
+      ) {
         const remainingSec = Math.ceil((new Date(user.locked_until) - new Date()) / 1000);
         return res.status(423).json({
           error: 'Account temporarily locked due to repeated failed login attempts.',
@@ -77,7 +89,7 @@ router.post(
         });
       }
 
-      if (!user || !passwordMatches) {
+      if (!accountUsable || !passwordMatches) {
         if (user) {
           const newCount = (user.failed_login_count || 0) + 1;
           const lockoutMinutes = computeLockoutMinutes(newCount);
