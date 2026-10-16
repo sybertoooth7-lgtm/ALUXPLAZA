@@ -23,6 +23,7 @@ import {
 
 import { attachCspNonce, helmetMiddleware } from './middleware/helmetConfig.js';
 import { setCsrfCookie, verifyCsrfToken } from './middleware/csrf.js';
+import { isAllowedOrigin } from './lib/origins.js';
 import { shield } from './middleware/shieldMiddleware.js';
 import { limiter, statusLimiter, authLimiter, signupLimiter } from './middleware/rate-limit.js';
 import { verifyLimiter } from './middleware/verify-rate-limit.js';
@@ -63,23 +64,12 @@ async function startServer() {
   app.use(attachCspNonce);
   app.use(helmetMiddleware);
 
-  const allowedOrigins =
-    config.corsOrigins.length > 0 ? config.corsOrigins : ['http://localhost:3000'];
-
-  // Vercel gives every preview deployment a unique, unpredictable hostname
-  // (jinarous-<hash>-sybertoooth7-lgtms-projects.vercel.app), so it can
-  // never be fully enumerated in a static CORS_ORIGIN allowlist. Match the
-  // pattern instead, scoped to this exact Vercel project/org so it can't
-  // accidentally allow someone else's Vercel-hosted site.
-  const VERCEL_PREVIEW_ORIGIN_RE =
-    /^https:\/\/jinarous-[a-z0-9]+-sybertoooth7-lgtms-projects\.vercel\.app$/;
-
   app.use(
     cors({
       origin(origin, callback) {
         // No Origin header (curl, server-to-server, same-origin) — allow.
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin) || VERCEL_PREVIEW_ORIGIN_RE.test(origin)) {
+        if (isAllowedOrigin(origin)) {
           return callback(null, true);
         }
         return callback(new Error(`Not allowed by CORS: ${origin}`));
