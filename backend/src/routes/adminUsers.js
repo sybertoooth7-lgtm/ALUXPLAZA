@@ -178,4 +178,84 @@ router.delete('/:id', requireAuth, requireSuperAdmin, [param('id').isInt()], asy
   }
 });
 
+/**
+ * POST /api/admin/users/:id/disable
+ * Disables a staff account: it can no longer be used, but nothing is deleted.
+ * middleware/auth.js already rejects every request from a disabled account,
+ * whatever the token's age, so setting the flag is all that is needed.
+ *
+ * Idempotent: disabling an already-disabled account changes nothing, so
+ * disabled_at keeps its first value. The audit entry records the target's
+ * email and role.
+ */
+router.post(
+  '/:id/disable',
+  requireAuth,
+  requireSuperAdmin,
+  [param('id').isInt()],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const targetId = parseInt(req.params.id, 10);
+    if (targetId === req.user.sub)
+      return res.status(403).json({ error: 'You cannot disable your own account.' });
+
+    try {
+      const outcome = await db.transaction(async (tx) => {
+        const found = await tx.query(
+          'SELECT id, email, role, disabled_at FROM admin_users WHERE id = $1 FOR UPDATE',
+          [targetId]
+        );
+        if (found.rows.length === 0) return { notFound: true };
+
+        const target = found.rows[0];
+        if (target.disabled_at) return { alreadyDisabled: true, disabledAt: target.disabled_at };
+
+        if (target.role === 'superadmin') {
+          // Only count superadmins that are still active, because disabling is
+          // how one stops being usable without being deleted.
+          const { rows: activeSuperadmins } = await tx.query(
+            "SELECT COUNT(*) FROM admin_users WHERE role = 'superadmin' AND disabled_at IS NULL"
+          );
+          if (parseInt(activeSuperadmins[0].count, 10) <= 1) {
+            return { lastSuperadmin: true };
+          }
+        }
+
+        const disabled = await tx.query(
+          'UPDATE admin_users SET disabled_at = NOW() WHERE id = $1 RETURNING disabled_at',
+          [targetId]
+        );
+        return { alreadyDisabled: false, disabledAt: disabled.rows[0].disabled_at, target };
+      });
+
+      if (outcome.notFound) return res.status(404).json({ error: 'Admin not found.' });
+      if (outcome.lastSuperadmin) {
+        return res.status(409).json({ error: 'Cannot disable the last remaining superadmin.' });
+      }
+
+      if (!outcome.alreadyDisabled) {
+        await recordAuditLog({
+          adminEmail: req.user.email,
+          action: 'admin_user.disable',
+          targetTable: 'admin_users',
+          targetId,
+          oldValue: { email: outcome.target.email, role: outcome.target.role },
+          newValue: { email: outcome.target.email, role: outcome.target.role, disabled: true },
+        });
+      }
+
+      res.json({
+        success: true,
+        alreadyDisabled: outcome.alreadyDisabled,
+        disabledAt: outcome.disabledAt,
+      });
+    } catch (err) {
+      console.error('[adminUsers] Disable error:', err.message);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
 export default router;
