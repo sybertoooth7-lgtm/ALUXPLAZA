@@ -4,17 +4,16 @@
 // gets consistent auth-gating for free - a 401 redirects to /client/login
 // without each page needing to duplicate that check.
 //
-// This mirrors components/AdminLayout.tsx, with one deliberate difference: the
-// admin area is themed with the shared `bg-background`/`text-foreground` tokens
-// while the client area uses the fixed `bg-navy-base`/`text-white` palette.
-// Copying the admin class names verbatim would have rendered this header
-// against the wrong background, so the structure is shared but the colours
-// follow the client pages it has to sit on top of.
+// Mirrors components/AdminLayout.tsx, including its theming: surfaces and text
+// use the shared `bg-background` / `text-foreground` / `border-border` tokens,
+// so the header's theme toggle actually changes the client area. (An earlier
+// version used the fixed navy palette, which made the toggle a no-op here.)
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router';
 import { API_BASE } from '@/lib/api';
 import { secureFetch } from '@/lib/security';
+import { GOLD_TEXT } from '@/lib/clientStatus';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { setSentryUser, clearSentryUser } from '@/hooks/useAuthSentry';
 
@@ -27,6 +26,12 @@ export interface ClientInfo {
 interface ClientLayoutProps {
   children: (client: ClientInfo) => ReactNode;
 }
+
+const NAV_LINKS = [
+  { to: '/client/dashboard', label: 'Dashboard' },
+  { to: '/client/compliance', label: 'Compliance' },
+  { to: '/client/security', label: 'Security' },
+];
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const navigate = useNavigate();
@@ -79,44 +84,40 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-navy-base text-white flex items-center justify-center">
-        <p className="text-white/50">Loading.</p>
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <p className="text-muted-foreground">Loading…</p>
       </div>
     );
   }
 
   if (error || !client) {
     return (
-      <div className="min-h-screen bg-navy-base text-white flex items-center justify-center px-4">
-        <p className="text-alux-red">{error || 'Not signed in.'}</p>
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
+        <p className="text-destructive">{error || 'Not signed in.'}</p>
       </div>
     );
   }
 
-  // One destination today. The backend already exposes /api/client/compliance,
-  // /risk-score, /security-events and /sessions, so splitting those into their
-  // own pages later is a matter of adding entries here.
-  const navLinks = [{ to: '/client/dashboard', label: 'Dashboard' }];
-
   return (
-    <div className="min-h-screen bg-navy-base text-white">
-      <header className="border-b border-white/10 px-6 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-8">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border px-6 py-5 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
           <div>
-            <h1 className="font-serif text-lg text-alux-gold">ALUX PLAZA</h1>
-            <p className="text-xs text-white/50 uppercase tracking-wider">Client</p>
+            <h1 className={`font-serif text-lg ${GOLD_TEXT}`}>ALUX PLAZA</h1>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Client</p>
           </div>
-          <nav className="flex items-center gap-1">
-            {navLinks.map((link) => {
+          <nav className="flex items-center gap-1" aria-label="Client area">
+            {NAV_LINKS.map((link) => {
               const isActive = location.pathname === link.to;
               return (
                 <Link
                   key={link.to}
                   to={link.to}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
                     isActive
-                      ? 'bg-white/10 text-white'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                      ? 'bg-secondary text-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                   }`}
                 >
                   {link.label}
@@ -128,12 +129,12 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-sm">{client.company_name}</p>
-            <p className="text-xs text-white/50">{client.email}</p>
+            <p className="text-xs text-muted-foreground">{client.email}</p>
           </div>
           <ThemeToggle />
           <button
             onClick={handleLogout}
-            className="text-sm text-white/60 hover:text-white border border-white/15 rounded-lg px-4 py-2 transition-colors"
+            className="text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg px-4 py-2 transition-colors"
           >
             Logout
           </button>
