@@ -68,21 +68,23 @@ export default function ClientSignup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-dark px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <span className="font-serif text-lg text-alux-gold">ALUX PLAZA</span>
-          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">Client Portal</p>
+          <span className="font-serif text-lg text-amber-700 dark:text-alux-gold">ALUX PLAZA</span>
+          <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">
+            Client Portal
+          </p>
         </div>
 
-        <div className="bg-navy border border-white/10 rounded-2xl p-8 relative">
+        <div className="bg-navy border border-border rounded-2xl p-8 relative">
           <SecurityHoneypot />
 
-          <h2 className="text-2xl font-bold text-white mb-6">Create Account</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-6">Create Account</h2>
 
           {error && (
             <div
-              className="mb-4 p-3 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
+              className="mb-4 p-3 rounded bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 text-sm"
               aria-live="polite"
             >
               {error}
@@ -91,14 +93,14 @@ export default function ClientSignup() {
 
           {success && (
             <div
-              className="mb-4 p-3 rounded bg-green-500/10 border border-green-500/30 text-green-400 text-sm"
+              className="mb-4 p-3 rounded bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400 text-sm"
               aria-live="polite"
             >
               <p className="mb-2">{success}</p>
               <button
                 type="button"
                 onClick={() => navigate('/client/login')}
-                className="text-alux-cyan hover:underline font-medium"
+                className="text-cyan-800 dark:text-alux-cyan hover:underline font-medium"
               >
                 Go to Sign In →
               </button>
@@ -107,7 +109,7 @@ export default function ClientSignup() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="companyName" className="block text-sm text-white/70 mb-1">
+              <label htmlFor="companyName" className="block text-sm text-muted-foreground mb-1">
                 Company Name
               </label>
               <input
@@ -117,14 +119,14 @@ export default function ClientSignup() {
                 autoComplete="organization"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                className="w-full bg-navy-light border border-white/10 rounded-lg px-3.5 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-alux-gold"
+                className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-600 dark:focus:border-alux-gold"
                 placeholder="Acme Corp"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm text-white/70 mb-1">
+              <label htmlFor="email" className="block text-sm text-muted-foreground mb-1">
                 Email
               </label>
               <input
@@ -134,14 +136,14 @@ export default function ClientSignup() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-navy-light border border-white/10 rounded-lg px-3.5 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-alux-gold"
+                className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-600 dark:focus:border-alux-gold"
                 placeholder="you@company.com"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm text-white/70 mb-1">
+              <label htmlFor="password" className="block text-sm text-muted-foreground mb-1">
                 Password
               </label>
               <input
@@ -152,17 +154,17 @@ export default function ClientSignup() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-navy-light border border-white/10 rounded-lg px-3.5 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-alux-gold"
+                className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-600 dark:focus:border-alux-gold"
                 placeholder="••••••••"
                 required
               />
-              <p className="text-xs text-white/30 mt-1">Minimum 8 characters</p>
+              <p className="text-xs text-muted-foreground mt-1">Minimum 8 characters</p>
             </div>
 
             <div>
               <label
                 htmlFor="consent"
-                className="flex items-start gap-2 text-sm text-white/70 cursor-pointer"
+                className="flex items-start gap-2 text-sm text-muted-foreground cursor-pointer"
               >
                 <input
                   id="consent"
@@ -184,7 +186,7 @@ export default function ClientSignup() {
                     href="/privacy-policy"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-alux-cyan hover:underline"
+                    className="text-cyan-800 dark:text-alux-cyan hover:underline"
                   >
                     Privacy Policy
                   </a>
@@ -196,15 +198,15 @@ export default function ClientSignup() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-alux-cyan text-navy-dark font-semibold py-2.5 rounded-lg hover:bg-alux-cyan/90 disabled:opacity-50 transition-colors"
+              className="w-full bg-alux-cyan text-navy-base font-semibold py-2.5 rounded-lg hover:bg-alux-cyan/90 disabled:opacity-50 transition-colors"
             >
               {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
 
-          <p className="text-center text-sm text-white/40 mt-6">
+          <p className="text-center text-sm text-muted-foreground mt-6">
             Already have an account?{' '}
-            <Link to="/client/login" className="text-alux-cyan hover:underline">
+            <Link to="/client/login" className="text-cyan-800 dark:text-alux-cyan hover:underline">
               Sign in
             </Link>
           </p>
