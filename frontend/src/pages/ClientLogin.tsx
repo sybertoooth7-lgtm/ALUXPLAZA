@@ -117,20 +117,24 @@ export default function ClientLogin() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-base px-4">
-      <div className="w-full max-w-md p-8 bg-navy-surface rounded-2xl border border-white/10 relative shadow-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md p-8 bg-card rounded-2xl border border-border relative shadow-2xl">
         <SecurityHoneypot />
 
         <header className="text-center mb-8">
-          <h1 className="font-serif text-lg text-alux-gold tracking-wide">ALUX PLAZA</h1>
-          <p className="text-xs text-white/40 mt-1 uppercase tracking-widest">Client Portal</p>
+          <h1 className="font-serif text-lg text-amber-700 dark:text-alux-gold tracking-wide">
+            ALUX PLAZA
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">
+            Client Portal
+          </p>
         </header>
 
         {error && (
           <div
             role="alert"
             aria-live="polite"
-            className="mb-5 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
+            className="mb-5 p-3 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 text-sm"
           >
             <p>{error}</p>
 
@@ -141,7 +145,7 @@ export default function ClientLogin() {
                     type="button"
                     onClick={handleResend}
                     disabled={resendStatus === 'sending'}
-                    className="text-alux-cyan hover:underline text-xs disabled:opacity-50 disabled:no-underline"
+                    className="text-cyan-800 dark:text-alux-cyan hover:underline text-xs disabled:opacity-50 disabled:no-underline"
                   >
                     {resendStatus === 'sending'
                       ? 'Sending verification email…'
@@ -150,13 +154,13 @@ export default function ClientLogin() {
                 )}
 
                 {resendStatus === 'sent' && (
-                  <p className="text-green-400 text-xs">
+                  <p className="text-green-700 dark:text-green-400 text-xs">
                     If this account exists and is unverified, a new link has been sent.
                   </p>
                 )}
 
                 {resendStatus === 'error' && (
-                  <p className="text-red-300 text-xs">
+                  <p className="text-red-700 dark:text-red-300 text-xs">
                     Could not resend email right now. Please try again shortly.
                   </p>
                 )}
@@ -167,7 +171,7 @@ export default function ClientLogin() {
 
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           <div>
-            <label htmlFor="email" className="block text-sm text-white/70 mb-1.5">
+            <label htmlFor="email" className="block text-sm text-muted-foreground mb-1.5">
               Email
             </label>
             <input
@@ -182,13 +186,13 @@ export default function ClientLogin() {
                 setEmail(e.target.value);
                 if (error) clearError();
               }}
-              className="w-full bg-navy-light border border-white/10 rounded-lg px-3.5 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-alux-cyan/50 focus:border-alux-cyan/50 transition"
+              className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-alux-cyan/50 focus:border-alux-cyan/50 transition"
               placeholder="you@company.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm text-white/70 mb-1.5">
+            <label htmlFor="password" className="block text-sm text-muted-foreground mb-1.5">
               Password
             </label>
             <input
@@ -202,7 +206,7 @@ export default function ClientLogin() {
                 setPassword(e.target.value);
                 if (error) clearError();
               }}
-              className="w-full bg-navy-light border border-white/10 rounded-lg px-3.5 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-alux-cyan/50 focus:border-alux-cyan/50 transition"
+              className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-alux-cyan/50 focus:border-alux-cyan/50 transition"
               placeholder="••••••••"
             />
           </div>
@@ -217,12 +221,15 @@ export default function ClientLogin() {
         </form>
 
         <footer className="flex items-center justify-between mt-6 text-sm">
-          <Link to="/client/signup" className="text-alux-cyan hover:underline underline-offset-2">
+          <Link
+            to="/client/signup"
+            className="text-cyan-800 dark:text-alux-cyan hover:underline underline-offset-2"
+          >
             Create account
           </Link>
           <Link
-            to="/client/forgot-password"
-            className="text-white/40 hover:text-white/70 transition underline-offset-2"
+            to="/forgot-password"
+            className="text-muted-foreground hover:text-foreground transition underline-offset-2"
           >
             Forgot password?
           </Link>
