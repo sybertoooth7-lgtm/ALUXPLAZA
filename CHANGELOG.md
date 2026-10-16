@@ -18,6 +18,7 @@ version number.
 
 ### Added
 
+- Staff accounts can be re-enabled (`POST /api/admin/users/:id/enable`, superadmin only, audited), and the Users page has Disable / Enable buttons and a "Disabled" label. `GET /api/admin/users` now includes `disabled_at`.
 - React admin dashboard (`/admin/dashboard`, `/admin/submissions`,
   `/admin/security`, `/admin/users`) with client list + risk scores,
   contact submission management, IP block/unblock, and security event
@@ -46,6 +47,10 @@ version number.
 
 ### Fixed
 
+- The frontend build failed because `src/lib/clientStatus.ts`, imported by the client pages, was missing from the repo; it is added.
+- The built site used `base: './'`, so opening a nested route directly (including emailed `/client/verify-email/...` and `/client/reset-password/...` links) requested its scripts from the wrong path and showed a blank page. The base is now `/`.
+- The client sign-in, sign-up, forgot-password, reset-password and verify-email pages now follow the light/dark theme.
+- `react-refresh/only-export-components` lint error in `src/i18n/LanguageProvider.tsx`: the context and hook moved to `languageContext.ts`.
 - `adminClients.js`: client creation had lost its `email_verified=TRUE`
   flag, and the compliance-status PATCH route had been overwritten
   with an unrelated `INSERT INTO clients` fragment referencing
