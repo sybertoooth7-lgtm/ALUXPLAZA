@@ -25,6 +25,8 @@ export default defineConfig({
       // caveat applies here too: the wrong Path is only observable in the raw
       // Set-Cookie header, never through supertest's path-less .set('Cookie').
       'test/auth-cookie.test.js',
+      // CSRF origin allowlist. Child-process probes, no database.
+      'test/csrf-origin.test.js',
     ],
     fileParallelism: false,
   },
