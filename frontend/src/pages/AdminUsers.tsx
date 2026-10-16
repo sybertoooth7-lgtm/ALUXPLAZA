@@ -1,5 +1,5 @@
 // frontend/src/pages/AdminUsers.tsx
-// Superadmin-only: list, create, edit roles, delete admin users.
+// Superadmin-only: list, create, edit roles, disable/enable, delete admin users.
 
 import { useEffect, useState } from 'react';
 import { secureFetch } from '@/lib/security';
@@ -9,6 +9,7 @@ interface AdminUserRow {
   id: number;
   email: string;
   role: 'readonly' | 'admin' | 'superadmin';
+  disabled_at: string | null;
   created_at: string;
 }
 
@@ -88,6 +89,31 @@ export default function AdminUsers() {
     }
   }
 
+  // Disabling ends the person's access at once but keeps the account (and the
+  // audit trail that names it), which is what to do when someone leaves. Delete
+  // is for accounts created by mistake.
+  async function setDisabled(user: AdminUserRow, disabled: boolean) {
+    if (
+      disabled &&
+      !confirm(`Disable ${user.email}? They will be signed out and unable to log in.`)
+    )
+      return;
+    setError('');
+    try {
+      const res = await secureFetch(
+        `/api/admin/users/${user.id}/${disabled ? 'disable' : 'enable'}`,
+        { method: 'POST' }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to ${disabled ? 'disable' : 'enable'}`);
+      }
+      loadUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update');
+    }
+  }
+
   async function deleteUser(id: number) {
     if (!confirm('Delete this admin? This cannot be undone.')) return;
     try {
@@ -101,7 +127,7 @@ export default function AdminUsers() {
 
   return (
     <AdminLayout>
-      {() => (
+      {(me) => (
         <div className="max-w-3xl mx-auto px-6 py-10">
           <h2 className="font-serif text-lg text-alux-gold mb-6">Admin Users</h2>
 
@@ -160,12 +186,21 @@ export default function AdminUsers() {
                 {users.map((u) => (
                   <div
                     key={u.id}
-                    className="bg-navy-surface border border-white/10 rounded-lg px-4 py-3 flex items-center justify-between"
+                    className={`bg-navy-surface border border-white/10 rounded-lg px-4 py-3 flex items-center justify-between ${u.disabled_at ? 'opacity-60' : ''}`}
                   >
                     <div>
-                      <p className="text-white font-medium">{u.email}</p>
+                      <p className="text-white font-medium">
+                        {u.email}
+                        {u.disabled_at && (
+                          <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-alux-red/15 text-alux-red">
+                            Disabled
+                          </span>
+                        )}
+                      </p>
                       <p className="text-white/40 text-xs">
                         {u.role} · {new Date(u.created_at).toLocaleDateString()}
+                        {u.disabled_at &&
+                          ` · disabled ${new Date(u.disabled_at).toLocaleDateString()}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -178,6 +213,14 @@ export default function AdminUsers() {
                         <option value="admin">Admin</option>
                         <option value="superadmin">Superadmin</option>
                       </select>
+                      {u.email !== me.email && (
+                        <button
+                          onClick={() => setDisabled(u, !u.disabled_at)}
+                          className="text-white/70 text-xs border border-white/20 rounded-lg px-2 py-1 hover:bg-white/10"
+                        >
+                          {u.disabled_at ? 'Enable' : 'Disable'}
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteUser(u.id)}
                         className="text-alux-red text-xs border border-alux-red/30 rounded-lg px-2 py-1 hover:bg-alux-red/10"
