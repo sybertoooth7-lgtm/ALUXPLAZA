@@ -221,7 +221,7 @@ export default function ClientLogin() {
             Create account
           </Link>
           <Link
-            to="/forgot-password"
+            to="/client/forgot-password"
             className="text-white/40 hover:text-white/70 transition underline-offset-2"
           >
             Forgot password?
