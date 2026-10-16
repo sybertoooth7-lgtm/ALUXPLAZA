@@ -35,7 +35,7 @@ router.get(
       const total = parseInt(countResult.rows[0].count, 10);
 
       const { rows } = await db.query(
-        'SELECT id, email, role, created_at FROM admin_users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+        'SELECT id, email, role, disabled_at, created_at FROM admin_users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
         [limit, offset]
       );
       res.json({ users: rows, total, page, limit, totalPages: Math.ceil(total / limit) });
@@ -253,6 +253,68 @@ router.post(
       });
     } catch (err) {
       console.error('[adminUsers] Disable error:', err.message);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/users/:id/enable
+ * Re-enables a staff account that was disabled. The other half of
+ * POST /:id/disable: without it the only way back from a disabled account
+ * was editing the database.
+ *
+ * Idempotent: enabling an account that is not disabled changes nothing and
+ * writes no audit entry. It also clears the failed-login counter and any
+ * lockout, because a refused sign-in on a disabled account counts as a failed
+ * login (see routes/admin.js), so a disabled account that was tried a few times
+ * would otherwise come back already locked out.
+ */
+router.post(
+  '/:id/enable',
+  requireAuth,
+  requireSuperAdmin,
+  [param('id').isInt()],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const targetId = parseInt(req.params.id, 10);
+
+    try {
+      const outcome = await db.transaction(async (tx) => {
+        const found = await tx.query(
+          'SELECT id, email, role, disabled_at FROM admin_users WHERE id = $1 FOR UPDATE',
+          [targetId]
+        );
+        if (found.rows.length === 0) return { notFound: true };
+
+        const target = found.rows[0];
+        if (!target.disabled_at) return { alreadyEnabled: true };
+
+        await tx.query(
+          'UPDATE admin_users SET disabled_at = NULL, failed_login_count = 0, locked_until = NULL WHERE id = $1',
+          [targetId]
+        );
+        return { alreadyEnabled: false, target };
+      });
+
+      if (outcome.notFound) return res.status(404).json({ error: 'Admin not found.' });
+
+      if (!outcome.alreadyEnabled) {
+        await recordAuditLog({
+          adminEmail: req.user.email,
+          action: 'admin_user.enable',
+          targetTable: 'admin_users',
+          targetId,
+          oldValue: { email: outcome.target.email, role: outcome.target.role, disabled: true },
+          newValue: { email: outcome.target.email, role: outcome.target.role, disabled: false },
+        });
+      }
+
+      res.json({ success: true, alreadyEnabled: outcome.alreadyEnabled });
+    } catch (err) {
+      console.error('[adminUsers] Enable error:', err.message);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
