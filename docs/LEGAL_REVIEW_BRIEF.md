@@ -1,6 +1,18 @@
 # Legal review brief: Alux Plaza data protection
 
-Prepared 10 October 2026 for a Kenyan data-protection lawyer. It states what the platform does, what has already been built, and the questions that need a legal answer, not a technical one. It is not legal advice, and nothing here has been reviewed by a lawyer yet.
+Prepared 10 October 2026, status updated 16 October 2026, for a Kenyan data-protection lawyer. It states what the platform does, what has already been built, and the questions that need a legal answer, not a technical one. It is not legal advice, and nothing here has been reviewed by a lawyer yet.
+
+## How to answer
+
+Questions are in section 6. If you can, answer each with one of: **fine as is**, **change to X**, or **need more facts (which)**, plus the rule you rely on. A short reply to the five "before go-live" questions is more useful than a full opinion on all ten.
+
+| Priority        | Questions                                                                                    | Why                                                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Before go-live  | 1 (lawful basis), 2 (retention), 3 (transfers), 5 (registration), 8 (breach judgement calls) | The retention job only reports until the owner switches deletion on, and the published policy already states these periods. |
+| Soon after      | 4 (controller or processor), 6 (policy text), 7 (handling requests)                          | The wording is published and the procedure is written, but a lawyer has not checked either.                                 |
+| When convenient | 9 (anything missing), 10 (closed accounts)                                                   | Not blocking.                                                                                                               |
+
+---
 
 ## 1. What Alux Plaza is
 
@@ -23,7 +35,7 @@ A cybersecurity consultancy for small and medium businesses in Kenya and East Af
 - **Consent boxes** on the contact form and client signup, linked to the privacy policy. The exact wording is quoted in section 6.
 - **A rewritten privacy policy** covering what is collected, why, which providers receive it, transfers abroad and their risks, cookies, retention, rights, response times and how to complain to the Data Commissioner.
 - **Tools for access and erasure requests**: export everything held about a person by email address, or erase it (a dry run first). Client accounts are anonymised, not deleted, so compliance records survive without a name. A written procedure sets the deadlines from the General Regulations (access 7 days, erasure 14).
-- **A written breach-response procedure** (`docs/BREACH_RESPONSE.md`): the 72-hour clock, how to decide whether a breach is notifiable, containment steps that use the platform's real controls, evidence preservation, the Commissioner's online form, message templates, and a breach register. Not yet merged.
+- **A written breach-response procedure** (`docs/BREACH_RESPONSE.md`): the 72-hour clock, how to decide whether a breach is notifiable, containment steps that use the platform's real controls, evidence preservation, the Commissioner's online form, message templates, and a breach register. On `main`; the owner has not yet filled in its contacts or done a dry run.
 - **Automatic retention**: a daily job that deletes data past the periods in section 4. It reports only, and deletes nothing, until the owner switches it on.
 - **A "close account" action** that ends a client's access and starts the closed-account retention clock.
 
@@ -38,6 +50,7 @@ A cybersecurity consultancy for small and medium businesses in Kenya and East Af
 | Blocked IP addresses                                        | 7 days after the block ends                   |
 | Attack and abuse records (IP address, page, type of attack) | 90 days                                       |
 | Queued emails                                               | 24 hours after they finish sending            |
+| Breach register (record of every breach, s.43(8))           | Not decided; the Act sets no period           |
 | Database backups                                            | Set by the database provider; not yet decided |
 
 These are the owner's proposals. No lawyer has checked them.
@@ -77,6 +90,8 @@ For each question, "Our assumption" is what the current build does, so the lawye
 8. **Breach notification.** Is the plan to notify the Data Commissioner within 72 hours and the plan for notifying affected clients adequate? The procedure is now written (`docs/BREACH_RESPONSE.md`). Please review its judgement calls: does a hashed password count as a "password" under regulation 37(1)(b); when may we rely on section 43(6) to skip telling people; how should we treat a breach that starts at a provider; should we ask the Commissioner to hold the particulars in confidence; and how long should we keep the breach register?
 
 9. **Anything missing.** Do we need a data protection impact assessment for the audit tools or the compliance records (regulation 49)? Anything on children's data, cookies, or the fonts loaded from Google that the policy should say?
+
+10. **Closed and erased client accounts.** When a client account is closed, the email address stays for 24 months, so the person cannot sign up again with the same email until the account is deleted. When a person asks for erasure, the account is anonymised instead of deleted, so the compliance records survive without a name. Our assumption: both are lawful. Is keeping the email for 24 months after closure justified, and is anonymised data still personal data in this case? Should the closed-account period be shorter for a person who has asked for erasure?
 
 ## 7. What to send the lawyer
 
