@@ -19,6 +19,8 @@ import HomePage from './pages/HomePage';
 const ClientLogin = lazy(() => import('./pages/ClientLogin'));
 const ClientSignup = lazy(() => import('./pages/ClientSignup'));
 const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
+const ClientCompliance = lazy(() => import('./pages/ClientCompliance'));
+const ClientSecurity = lazy(() => import('./pages/ClientSecurity'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
@@ -63,6 +65,8 @@ function App() {
           <Route path="/client/forgot-password" element={<ForgotPassword />} />
           <Route path="/client/reset-password/:token" element={<ResetPassword />} />
           <Route path="/client/dashboard" element={<ClientDashboard />} />
+          <Route path="/client/compliance" element={<ClientCompliance />} />
+          <Route path="/client/security" element={<ClientSecurity />} />
           <Route path="/client/verify-email/:token" element={<VerifyEmail />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
