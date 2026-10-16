@@ -231,7 +231,7 @@ Found while building 4.6: `disabled_at` is the only marker the retention job can
 **Remaining:**
 
 - There is no admin screen for closing; it is API-only. Reopening an account closed by mistake is a one-line SQL statement (see `docs/DATA_SUBJECT_REQUESTS.md`, section 8).
-- There is no admin screen for disabling staff; it is API-only: `POST /api/admin/users/:id/disable` (added 16 October 2026, with tests). Idempotent; refuses to disable your own account or the last remaining active superadmin; writes an `admin_user.disable` audit entry. A disabled account can no longer sign in, and no token it holds is accepted. Re-enabling is a one-line SQL statement: `UPDATE admin_users SET disabled_at = NULL WHERE id = <id>;`.
+- Staff accounts are disabled and re-enabled from the Users page (a Disable / Enable button on each row, with a "Disabled" label), backed by `POST /api/admin/users/:id/disable` and `POST /api/admin/users/:id/enable` (superadmin only). Both are idempotent and write an audit entry (`admin_user.disable`, `admin_user.enable`). Disabling refuses your own account and the last remaining active superadmin. A disabled account can no longer sign in, and no token it holds is accepted. Enabling also clears the failed-login counter and any lockout, because refused sign-ins on a disabled account count as failed logins.
 
 ### 4.9 Security-event records were kept forever and were not in the policy — DONE (merged)
 
