@@ -231,7 +231,7 @@ Found while building 4.6: `disabled_at` is the only marker the retention job can
 **Remaining:**
 
 - There is no admin screen for closing; it is API-only. Reopening an account closed by mistake is a one-line SQL statement (see `docs/DATA_SUBJECT_REQUESTS.md`, section 8).
-- Nothing sets `admin_users.disabled_at`, so there is still no way to disable a staff account short of deleting it. The middleware now honours the flag if you set it.
+- There is no admin screen for disabling staff; it is API-only: `POST /api/admin/users/:id/disable` (added 16 October 2026, with tests). Idempotent; refuses to disable your own account or the last remaining active superadmin; writes an `admin_user.disable` audit entry. Re-enabling is a one-line SQL statement: `UPDATE admin_users SET disabled_at = NULL WHERE id = <id>;`.
 
 ### 4.9 Security-event records were kept forever and were not in the policy — DONE (merged)
 
