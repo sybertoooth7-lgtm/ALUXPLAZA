@@ -6,7 +6,8 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  // Must stay absolute: './' makes nested routes like /client/* request /client/assets/* and render blank.
+  base: '/',
   build: {
     // Only generate source maps when they'll actually be uploaded and
     // then deleted (see the conditional Sentry plugin below) — without
