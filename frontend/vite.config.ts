@@ -6,7 +6,11 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 // https://vite.dev/config/
 export default defineConfig({
-  // Must stay absolute: './' makes nested routes like /client/* request /client/assets/* and render blank.
+  // Absolute, not './'. With a relative base, a direct visit to a nested route
+  // (/client/dashboard, or an emailed /client/verify-email/<token> link) asks for
+  // its scripts at /client/assets/..., which vercel.json's catch-all rewrite
+  // answers with index.html, so the page loads blank. The app is served from the
+  // domain root, so '/' is correct for every route.
   base: '/',
   build: {
     // Only generate source maps when they'll actually be uploaded and
