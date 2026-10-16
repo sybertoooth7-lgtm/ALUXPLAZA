@@ -60,31 +60,33 @@ export default function ForgotPassword() {
   );
 
   return (
-    <div className="min-h-screen bg-navy-base text-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
       <div className="w-full max-w-md animate-fade-in-up">
         {/* Brand header */}
         <div className="text-center mb-6">
-          <span className="font-serif text-lg text-alux-gold">ALUX PLAZA</span>
-          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">Client Portal</p>
+          <span className="font-serif text-lg text-amber-700 dark:text-alux-gold">ALUX PLAZA</span>
+          <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">
+            Client Portal
+          </p>
         </div>
 
         {/* Card */}
         <div
-          className="bg-navy-surface border border-white/10 rounded-2xl p-8 relative"
+          className="bg-card border border-border rounded-2xl p-8 relative"
           aria-live="polite"
           aria-busy={loading}
         >
           <SecurityHoneypot />
 
           <h2 className="text-xl font-bold mb-2">Reset Password</h2>
-          <p className="text-sm text-white/50 mb-6">
+          <p className="text-sm text-muted-foreground mb-6">
             Enter your email and we&apos;ll send you a link to reset your password.
           </p>
 
           {/* Error */}
           {error && (
             <div
-              className="mb-4 flex items-start gap-3 p-3 rounded-lg bg-alux-red/5 border border-alux-red/20 text-alux-red text-sm"
+              className="mb-4 flex items-start gap-3 p-3 rounded-lg bg-red-50 dark:bg-alux-red/5 border border-red-200 dark:border-alux-red/20 text-red-700 dark:text-alux-red text-sm"
               role="alert"
             >
               <svg
@@ -107,7 +109,7 @@ export default function ForgotPassword() {
           {/* Success */}
           {success && (
             <div
-              className="mb-4 flex items-start gap-3 p-3 rounded-lg bg-alux-green/5 border border-alux-green/20 text-alux-green text-sm"
+              className="mb-4 flex items-start gap-3 p-3 rounded-lg bg-green-50 dark:bg-alux-green/5 border border-green-200 dark:border-alux-green/20 text-green-700 dark:text-alux-green text-sm"
               role="status"
             >
               <svg
@@ -125,7 +127,7 @@ export default function ForgotPassword() {
 
           <form onSubmit={handleSubmit} className="space-y-4" aria-label="Password reset request">
             <div>
-              <label htmlFor="reset-email" className="block text-sm text-white/70 mb-1">
+              <label htmlFor="reset-email" className="block text-sm text-muted-foreground mb-1">
                 Email
               </label>
               <input
@@ -134,7 +136,7 @@ export default function ForgotPassword() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-navy-base border border-white/15 rounded-lg px-4 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-alux-gold transition-colors disabled:opacity-50"
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-600 dark:focus:border-alux-gold transition-colors disabled:opacity-50"
                 placeholder="you@company.com"
                 required
                 autoComplete="email"
@@ -159,15 +161,18 @@ export default function ForgotPassword() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-white/40 mt-6">
-            <Link to="/client/login" className="text-alux-cyan hover:underline transition-colors">
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            <Link
+              to="/client/login"
+              className="text-cyan-800 dark:text-alux-cyan hover:underline transition-colors"
+            >
               Back to login
             </Link>
           </p>
         </div>
 
         {/* Footer hint */}
-        <p className="text-center text-xs text-white/30 mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-6">
           If you don&apos;t see the email within a few minutes, check your spam folder.
         </p>
       </div>
