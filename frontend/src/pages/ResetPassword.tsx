@@ -59,27 +59,31 @@ export default function ResetPassword() {
   );
 
   return (
-    <div className="min-h-screen bg-navy-base text-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
       <div className="w-full max-w-md animate-fade-in-up">
         {/* Brand header */}
         <div className="text-center mb-6">
-          <span className="font-serif text-lg text-alux-gold">ALUX PLAZA</span>
-          <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">Client Portal</p>
+          <span className="font-serif text-lg text-amber-700 dark:text-alux-gold">ALUX PLAZA</span>
+          <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">
+            Client Portal
+          </p>
         </div>
 
         {/* Card */}
         <div
-          className="bg-navy-surface border border-white/10 rounded-2xl p-8"
+          className="bg-card border border-border rounded-2xl p-8"
           aria-live="polite"
           aria-busy={loading}
         >
           <h2 className="text-xl font-bold mb-2">Set New Password</h2>
-          <p className="text-sm text-white/50 mb-6">Choose a strong password for your account.</p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Choose a strong password for your account.
+          </p>
 
           {/* Error */}
           {error && (
             <div
-              className="mb-4 flex items-start gap-3 p-3 rounded-lg bg-alux-red/5 border border-alux-red/20 text-alux-red text-sm"
+              className="mb-4 flex items-start gap-3 p-3 rounded-lg bg-red-50 dark:bg-alux-red/5 border border-red-200 dark:border-alux-red/20 text-red-700 dark:text-alux-red text-sm"
               role="alert"
             >
               <svg
@@ -102,7 +106,7 @@ export default function ResetPassword() {
           {/* Success */}
           {success && (
             <div
-              className="mb-4 flex items-start gap-3 p-3 rounded-lg bg-alux-green/5 border border-alux-green/20 text-alux-green text-sm"
+              className="mb-4 flex items-start gap-3 p-3 rounded-lg bg-green-50 dark:bg-alux-green/5 border border-green-200 dark:border-alux-green/20 text-green-700 dark:text-alux-green text-sm"
               role="status"
             >
               <svg
@@ -121,7 +125,7 @@ export default function ResetPassword() {
           {!success && (
             <form onSubmit={handleSubmit} className="space-y-4" aria-label="Reset password">
               <div>
-                <label htmlFor="new-password" className="block text-sm text-white/70 mb-1">
+                <label htmlFor="new-password" className="block text-sm text-muted-foreground mb-1">
                   New Password
                 </label>
                 <input
@@ -130,7 +134,7 @@ export default function ResetPassword() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-navy-base border border-white/15 rounded-lg px-4 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-alux-gold transition-colors"
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-600 dark:focus:border-alux-gold transition-colors"
                   placeholder="••••••••"
                   minLength={8}
                   required
@@ -140,7 +144,9 @@ export default function ResetPassword() {
                 <p
                   id="password-hint"
                   className={`text-xs mt-1 ${
-                    password.length > 0 && !minLengthMet ? 'text-alux-red' : 'text-white/30'
+                    password.length > 0 && !minLengthMet
+                      ? 'text-red-700 dark:text-alux-red'
+                      : 'text-muted-foreground'
                   }`}
                 >
                   Must be at least 8 characters
@@ -148,7 +154,10 @@ export default function ResetPassword() {
               </div>
 
               <div>
-                <label htmlFor="confirm-password" className="block text-sm text-white/70 mb-1">
+                <label
+                  htmlFor="confirm-password"
+                  className="block text-sm text-muted-foreground mb-1"
+                >
                   Confirm Password
                 </label>
                 <input
@@ -156,12 +165,12 @@ export default function ResetPassword() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full bg-navy-base border rounded-lg px-4 py-2.5 text-white placeholder:text-white/30 focus:outline-none transition-colors ${
+                  className={`w-full bg-background border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none transition-colors ${
                     confirmPassword.length > 0
                       ? passwordsMatch
-                        ? 'border-alux-green/50 focus:border-alux-green'
-                        : 'border-alux-red/50 focus:border-alux-red'
-                      : 'border-white/15 focus:border-alux-gold'
+                        ? 'border-green-600/60 focus:border-green-600 dark:border-alux-green/50 dark:focus:border-alux-green'
+                        : 'border-red-600/60 focus:border-red-600 dark:border-alux-red/50 dark:focus:border-alux-red'
+                      : 'border-border focus:border-amber-600 dark:focus:border-alux-gold'
                   }`}
                   placeholder="••••••••"
                   minLength={8}
@@ -170,7 +179,9 @@ export default function ResetPassword() {
                   disabled={!token}
                 />
                 {confirmPassword.length > 0 && !passwordsMatch && (
-                  <p className="text-xs text-alux-red mt-1">Passwords do not match</p>
+                  <p className="text-xs text-red-700 dark:text-alux-red mt-1">
+                    Passwords do not match
+                  </p>
                 )}
               </div>
 
@@ -205,7 +216,7 @@ export default function ResetPassword() {
 
         {/* Footer hint */}
         {!success && (
-          <p className="text-center text-xs text-white/30 mt-6">
+          <p className="text-center text-xs text-muted-foreground mt-6">
             Your reset link expires after 1 hour for security.
           </p>
         )}
