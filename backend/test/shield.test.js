@@ -52,6 +52,46 @@ describe('shield/detector.js — scanRequest', () => {
     ).not.toBeNull();
   });
 
+  it('does not scan the STRING value of a free-text field, but still scans its keys and nested objects', () => {
+    // Free text is skipped on purpose: it is stored and shown escaped, and
+    // scanning it flagged ordinary sentences.
+    expect(scanRequest(fakeReq({ body: { comment: '<script>alert(1)</script>' } }))).toBeNull();
+    // An object under a free-text name is not free text.
+    const nested = scanRequest(
+      fakeReq({ body: { comment: JSON.parse('{"__proto__": {"x": 1}}') } })
+    );
+    expect(nested.eventType).toBe('proto_pollution');
+  });
+
+  it('detects key-shaped signatures: a NoSQL operator and a Node serialization marker', () => {
+    expect(scanRequest(fakeReq({ body: { email: { $ne: null } } })).matchedPattern).toBe(
+      'nosql_operator'
+    );
+    expect(
+      scanRequest(fakeReq({ body: { payload: { _type: 'Function', body: 'x' } } })).matchedPattern
+    ).toBe('deser_node_json');
+  });
+
+  it('does not flag an ordinary sign-up body with ordinary keys', () => {
+    expect(
+      scanRequest(
+        fakeReq({
+          body: {
+            companyName: 'Savannah Logistics Ltd',
+            email: 'demo@savannah.example',
+            password: 'Correct-Horse-Battery-9',
+            consent: true,
+            profile: { phone: '+254 700 000000', onboarding: 'done' },
+          },
+        })
+      )
+    ).toBeNull();
+  });
+
+  it('does not match a PHP-object signature inside an ordinary word', () => {
+    expect(scanRequest(fakeReq({ body: { title: 'foo:3:"bar" is just a label' } }))).toBeNull();
+  });
+
   it('detects a classic SQL injection UNION SELECT in a query param', () => {
     const result = scanRequest(
       fakeReq({ query: { id: '1 UNION SELECT username, password FROM users' } })
@@ -68,14 +108,14 @@ describe('shield/detector.js — scanRequest', () => {
   });
 
   it('detects an XSS script tag', () => {
-    const result = scanRequest(fakeReq({ body: { comment: '<script>alert(1)</script>' } }));
+    const result = scanRequest(fakeReq({ body: { name: '<script>alert(1)</script>' } }));
     expect(result).not.toBeNull();
     expect(result.eventType).toBe('xss');
     expect(result.matchedPattern).toBe('xss_script_tag');
   });
 
   it('detects an XSS event-handler injection', () => {
-    const result = scanRequest(fakeReq({ body: { bio: '<img src=x onerror=alert(1)>' } }));
+    const result = scanRequest(fakeReq({ body: { company: '<img src=x onerror=alert(1)>' } }));
     expect(result).not.toBeNull();
     expect(result.eventType).toBe('xss');
   });
