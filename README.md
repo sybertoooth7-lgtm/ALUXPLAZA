@@ -79,7 +79,7 @@ VITE_API_BASE_URL=http://localhost:3001 npm run dev
 ```
 
 `VITE_API_BASE_URL` is required for any production build
-(`npm run build` fails fast without it — see `scripts/check-env.js`) so
+(`npm run build` fails fast without it — see `frontend/scripts/check-env.js`) so
 the deployed frontend can reach a backend on a different host.
 
 Use Node **24.x** for both packages (see the root `.nvmrc` and each
@@ -107,11 +107,11 @@ images run.
 │   └── openapi.yaml      API reference for public/client-facing endpoints
 ├── frontend/          React 19 + Vite + TypeScript + Tailwind
 │   ├── src/pages/        One file per route
-│   ├── src/components/   Shared UI, including shadcn/ui primitives
+│   ├── src/components/   Layout shells, MFA prompts, theme toggle, honeypot
 │   └── public/           Static assets, robots.txt, sitemap.xml
 ├── docs/              Service methodology docs + client deliverable templates
 ├── tools/             Standalone audit/security scripts backing docs/ methodologies
-└── .github/workflows/ CI, CodeQL, secret scanning, Vercel status reporting
+└── .github/workflows/ CI, CodeQL, secret scanning (gitleaks)
 ```
 
 ## Contributing
