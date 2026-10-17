@@ -20,6 +20,9 @@ import { logger } from '../logger.js';
 // of an oversized part stay detectable.
 const MAX_SCAN_CHARS = 65536;
 
+// Longest value that is also scanned as a `"key":"value"` pair.
+const PAIR_MAX_CHARS = 64;
+
 const BENIGN_TEXT_FIELD_RE =
   /(?:^|[_-])(?:message|comment|notes?|description|summary|search|query|content|review|report|feedback|detail|details|bio|about|text)$/i;
 
@@ -27,6 +30,17 @@ function shouldSkipField(key) {
   return typeof key === 'string' && BENIGN_TEXT_FIELD_RE.test(key);
 }
 
+// Returns the pieces of a request part worth pattern-matching: every leaf value
+// and every key. Keys matter because several signatures describe a key, not a
+// value: `"__proto__":`, `"$ne":`, `"_type":`, `"__reduce__":`. They are emitted
+// in their JSON shape (`"key":`) so those patterns match as they would in a
+// stringified body. Scanning values alone, as an earlier version did, made them
+// unmatchable.
+//
+// A benign free-text field (message, comment, bio, ...) has its STRING value
+// skipped, which is what stops "union of our two teams" from being flagged. An
+// object or array under such a name is not free text, so it is still walked:
+// otherwise `{ comment: { "__proto__": {...} } }` would bypass the scan.
 function collectScannableValues(value) {
   if (value == null) return [];
 
@@ -36,8 +50,17 @@ function collectScannableValues(value) {
 
   if (typeof value === 'object') {
     return Object.entries(value).flatMap(([key, child]) => {
-      if (shouldSkipField(key)) return [];
-      return collectScannableValues(child);
+      const keyPart = `"${key}":`;
+      const isScalar = typeof child !== 'object' || child === null;
+      if (!isScalar) return [keyPart, ...collectScannableValues(child)];
+      if (child === null || shouldSkipField(key)) return [keyPart];
+      const text = String(child);
+      // Short values are also emitted as a `"key":"value"` pair, because some
+      // signatures (deser_node_json) describe the two together. Long values are
+      // not doubled: nothing keyed on a long value is worth the extra scan.
+      return text.length <= PAIR_MAX_CHARS
+        ? [keyPart, `${keyPart}${JSON.stringify(text)}`, text]
+        : [keyPart, text];
     });
   }
 
@@ -106,7 +129,10 @@ const LOG4J_PATTERNS = [
 
 const DESER_PATTERNS = [
   { name: 'deser_java_b64', regex: /\bro0ab/i },
-  { name: 'deser_php_object', regex: /\\?"o:\d{1,4}:\\?"[^"\\]{1,64}\\?"/i },
+  // The opening quote is optional: scanned per value, a serialized object such
+  // as O:8:"stdClass":0:{} arrives without the quote a stringified body has.
+  // The \W / start anchor keeps words like "foo:3:" from matching.
+  { name: 'deser_php_object', regex: /(?:^|\W)\\?"?o:\d{1,4}:\\?"[^"\\]{1,64}\\?"/i },
   { name: 'deser_python_pickle', regex: /\\?"__reduce__\\?"\s*:/ },
   { name: 'deser_node_json', regex: /\\?"_type\\?"\s*:\s*\\?"[^"\\]{1,40}\\?"/ },
 ];
