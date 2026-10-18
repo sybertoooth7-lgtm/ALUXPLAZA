@@ -2,6 +2,7 @@
 // Client self-registration. Uses secureFetch (CSRF auto-attached) + honeypot.
 // Does NOT use broken client-side request signing.
 
+import PasswordInput from '@/components/PasswordInput';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { secureFetch, isHoneypotTriggered } from '@/lib/security';
@@ -146,10 +147,9 @@ export default function ClientSignup() {
               <label htmlFor="password" className="block text-sm text-muted-foreground mb-1">
                 Password
               </label>
-              <input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 autoComplete="new-password"
                 minLength={8}
                 value={password}
