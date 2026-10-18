@@ -1,4 +1,5 @@
 // frontend/src/pages/ClientLogin.tsx
+import PasswordInput from '@/components/PasswordInput';
 import { useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { secureFetch, isHoneypotTriggered } from '@/lib/security';
@@ -195,10 +196,9 @@ export default function ClientLogin() {
             <label htmlFor="password" className="block text-sm text-muted-foreground mb-1.5">
               Password
             </label>
-            <input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               autoComplete="current-password"
               required
               value={password}
