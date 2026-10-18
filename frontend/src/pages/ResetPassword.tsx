@@ -1,3 +1,4 @@
+import PasswordInput from '@/components/PasswordInput';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router';
 import { secureFetch } from '@/lib/security';
@@ -128,10 +129,9 @@ export default function ResetPassword() {
                 <label htmlFor="new-password" className="block text-sm text-muted-foreground mb-1">
                   New Password
                 </label>
-                <input
+                <PasswordInput
                   ref={passwordInputRef}
                   id="new-password"
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-600 dark:focus:border-alux-gold transition-colors"
@@ -160,9 +160,8 @@ export default function ResetPassword() {
                 >
                   Confirm Password
                 </label>
-                <input
+                <PasswordInput
                   id="confirm-password"
-                  type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className={`w-full bg-background border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none transition-colors ${
