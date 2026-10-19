@@ -36,7 +36,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - run: cd frontend && npm ci && npx tsc --noEmit
+      # frontend/tsconfig.json is a solution-style file ("files": [] plus references),
+      # so a bare `tsc --noEmit` against it type-checks nothing. `tsc -b` follows the
+      # references (app, node, e2e), which is what `npm run build` does too.
+      - run: cd frontend && npm ci && npx tsc -b
 
   test-backend:
     runs-on: ubuntu-latest
@@ -80,12 +83,28 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  audit:
+  # Two separate jobs on purpose. As two steps in one job, a failing frontend
+  # audit stopped the job before the backend audit ever ran, so a critical
+  # backend advisory (proxy-addr) could sit unreported behind a frontend one.
+  # Separate jobs run in parallel and each reports its own result.
+  audit-backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - run: cd frontend && npm ci && npm audit --audit-level=high
       - run: cd backend && npm ci && npm audit --audit-level=high
+
+  audit-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      # --omit=dev: audit what actually ships to browsers. The frontend's only
+      # remaining high-severity advisories are build-time, via tailwindcss 3.x
+      # (braces / micromatch / fast-glob / chokidar), and have no fix inside the
+      # 3.x line. Drop --omit=dev once Tailwind is on a version that resolves them.
+      - run: cd frontend && npm ci && npm audit --omit=dev --audit-level=high
