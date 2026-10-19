@@ -89,6 +89,26 @@ if (isProduction && process.env.DB_SSL === 'false') {
 // worth it since a missing value means every such email silently contains
 // no working link, or gets silently refused by isSafeLink.
 const frontendUrl = (process.env.FRONTEND_URL || '').replace(/\/+$/, '');
+
+/**
+ * How many reverse proxies sit between the internet and this app, i.e. how many
+ * hops of X-Forwarded-For to trust when working out req.ip (which rate limits,
+ * IP blocks, login alerts and the Shield all key on).
+ *
+ * Too LOW and every visitor looks like the host's proxy (one shared IP, so one
+ * rate-limit bucket and one ban for everyone). Too HIGH and a visitor can forge
+ * their IP by adding their own X-Forwarded-For header. Unset or invalid gives 1.
+ * GET /api/admin/diagnostics/client-ip shows what the host actually sends.
+ */
+export function parseTrustProxyHops(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return 1;
+  const hops = Number(raw);
+  if (Number.isInteger(hops) && hops >= 0 && hops <= 5) return hops;
+  console.warn(
+    `[config] Invalid TRUST_PROXY_HOPS "${String(raw).slice(0, 20)}"; using 1. Valid: a whole number from 0 to 5.`
+  );
+  return 1;
+}
 if (isProduction && !frontendUrl) {
   warnings.push(
     'FRONTEND_URL is not set. Verification and password-reset emails cannot include a working link.'
@@ -115,6 +135,7 @@ export const config = {
   mfaEncryptionKey,
   corsOrigins,
   frontendUrl,
+  trustProxyHops: parseTrustProxyHops(process.env.TRUST_PROXY_HOPS),
   adminBootstrapEmail: process.env.ADMIN_BOOTSTRAP_EMAIL,
   adminBootstrapPassword: process.env.ADMIN_BOOTSTRAP_PASSWORD,
   dbSsl: isProduction && process.env.DB_SSL !== 'false',
