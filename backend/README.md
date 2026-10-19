@@ -15,8 +15,6 @@ Node.js/Express (ESM) + PostgreSQL API for Alux Plaza. It handles:
 - **Durable email queue** (`src/lib/email-queue.js`) — pg-boss backed;
   retries with backoff, deletes finished jobs after 24 hours
 
-
-
 PostgreSQL is required — there is no SQLite fallback.
 
 ## 1. Install
@@ -127,5 +125,3 @@ while they linger once an admin already exists).
 - `GET /api/admin/queue-stats` — queue depth (queued / active / failed /
   total) and a `disabled` flag when the queue is off. Requires an admin
   session.
-
-
