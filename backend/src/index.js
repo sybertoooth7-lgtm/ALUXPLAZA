@@ -38,6 +38,7 @@ import toolsRoutes from './routes/tools.js';
 import adminRoutes from './routes/admin.js';
 import adminMfaRoutes from './routes/adminMfa.js';
 import adminUsersRoutes from './routes/adminUsers.js';
+import adminDiagnosticsRoutes from './routes/adminDiagnostics.js';
 import adminDataSubjectsRoutes from './routes/adminDataSubjects.js';
 import adminSecurityRoutes from './routes/adminSecurity.js';
 import adminClientsRoutes from './routes/adminClients.js';
@@ -52,11 +53,12 @@ import verifyScoreRoutes from './routes/verifyScore.js';
 async function startServer() {
   const app = express();
 
-  // Railway's edge is typically 1 hop and strips/normalizes X-Forwarded-For
-  // at their proxy — confirmed via Railway support docs, Aug 2026. If you
-  // ever add Cloudflare or another proxy in front of Railway, re-verify and
-  // likely bump this to 2.
-  app.set('trust proxy', 1);
+  // How many reverse-proxy hops to trust for req.ip. Defaults to 1; set
+  // TRUST_PROXY_HOPS to change it without a code change. Do not guess: open
+  // GET /api/admin/diagnostics/client-ip (superadmin) from a real device and
+  // check that the detected address is that device's public IP. See
+  // RENDER_SETUP.md, "Checking visitor IPs".
+  app.set('trust proxy', config.trustProxyHops);
 
   // attachCspNonce must run BEFORE helmetMiddleware — helmet's scriptSrc/
   // styleSrc directives read res.locals.cspNonce when building the CSP
@@ -147,6 +149,7 @@ async function startServer() {
 
   // Superadmin-only routes
   app.use('/api/admin/users', requireAuth, requireSuperAdmin, adminUsersRoutes);
+  app.use('/api/admin/diagnostics', requireAuth, requireSuperAdmin, adminDiagnosticsRoutes);
   app.use('/api/admin/data-subjects', requireAuth, requireSuperAdmin, adminDataSubjectsRoutes);
 
   // Client routes
