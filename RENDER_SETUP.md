@@ -71,6 +71,34 @@ Pushes to `main` under `backend/**` run Backend CI, then Render
 auto-deploys the new commit (GitHub App integration, no tokens stored
 in the repo — the old Railway token flow is gone).
 
+## Checking visitor IPs
+
+Rate limits, IP blocks, failed-login counts, new-device alerts and the Shield
+all work from the visitor's IP. Behind Render the app only sees that IP if it
+trusts the right number of proxy hops, set by `TRUST_PROXY_HOPS` (default `1`).
+Too low and every visitor looks like one of Render's own proxies, so one person
+hitting a rate limit locks out everyone. Too high and a visitor can forge their
+IP by sending their own `X-Forwarded-For` header. The right number depends on
+the proxies in front of the service, so check it once on the live service
+instead of assuming:
+
+1. Sign in to the admin dashboard as a **superadmin**, from a real device.
+2. In the same browser, open `<backend-url>/api/admin/diagnostics/client-ip`.
+3. Compare `detectedIp` with that device's real public IP (search "what is my
+   IP" on the same network).
+   - **They match** (and `looksInternal` is `false`): leave `TRUST_PROXY_HOPS`
+     alone.
+   - **A private or Render address** (`looksInternal` is `true`, or an address
+     that is not yours): in Render, set `TRUST_PROXY_HOPS` to one higher,
+     let it redeploy, and check again.
+4. Repeat from a second network, such as mobile data.
+5. Re-check after any change to what sits in front of the backend (a custom
+   domain, a CDN, a proxy rewrite).
+
+The page also lists the raw `X-Forwarded-For`, `True-Client-IP` and
+`CF-Connecting-IP` values it received. If you are unsure, copy that JSON when
+asking for help.
+
 ## Notes & limits
 
 - **Cold starts**: first request after idle can take ~50s. If that's
