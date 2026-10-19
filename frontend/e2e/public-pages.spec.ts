@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+// Labels are matched with `exact: true` on purpose. A bare /password/i also
+// matches the "Show password" toggle button, and a bare /email/i also matches
+// the signup consent checkbox ("...by emailing privacy@..."), which makes
+// Playwright's strict mode fail with "resolved to 2 elements".
 test.describe('Alux Plaza public client journeys', () => {
   test('home page loads and has a document title', async ({ page }) => {
     await page.goto('/');
@@ -11,27 +15,44 @@ test.describe('Alux Plaza public client journeys', () => {
     await page.goto('/client/login');
 
     await expect(page.getByRole('heading', { name: /alux plaza/i })).toBeVisible();
-    await expect(page.getByLabel(/email/i)).toBeVisible();
-    await expect(page.getByLabel(/password/i)).toBeVisible();
+    await expect(page.getByLabel('Email', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /create account/i })).toHaveAttribute(
       'href',
-      '/client/signup',
+      '/client/signup'
     );
   });
 
-  test('client signup route renders required account fields and privacy consent', async ({ page }) => {
+  test('login password field can be revealed and hidden again', async ({ page }) => {
+    await page.goto('/client/login');
+
+    const password = page.getByLabel('Password', { exact: true });
+    await expect(password).toHaveAttribute('type', 'password');
+
+    await page.getByRole('button', { name: 'Show password' }).click();
+    await expect(password).toHaveAttribute('type', 'text');
+
+    await page.getByRole('button', { name: 'Hide password' }).click();
+    await expect(password).toHaveAttribute('type', 'password');
+  });
+
+  test('client signup route renders required account fields and privacy consent', async ({
+    page,
+  }) => {
     await page.goto('/client/signup');
 
     await expect(page.getByRole('heading', { name: /create account/i })).toBeVisible();
-    await expect(page.getByLabel(/company name/i)).toBeVisible();
-    await expect(page.getByLabel(/email/i)).toBeVisible();
-    await expect(page.getByLabel(/password/i)).toBeVisible();
-    await expect(page.getByLabel(/agree.*privacy policy/i)).toBeVisible();
+    await expect(page.getByLabel('Company Name', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Email', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: /agree.*privacy policy/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /create account/i })).toBeVisible();
   });
 
-  test('invalid login input is rejected client-side without sending credentials', async ({ page }) => {
+  test('invalid login input is rejected client-side without sending credentials', async ({
+    page,
+  }) => {
     let loginRequests = 0;
     await page.route('**/api/client/login', async (route) => {
       loginRequests += 1;
@@ -39,8 +60,8 @@ test.describe('Alux Plaza public client journeys', () => {
     });
 
     await page.goto('/client/login');
-    await page.getByLabel(/email/i).fill('not-an-email');
-    await page.getByLabel(/password/i).fill('anything');
+    await page.getByLabel('Email', { exact: true }).fill('not-an-email');
+    await page.getByLabel('Password', { exact: true }).fill('anything');
     await page.getByRole('button', { name: /sign in/i }).click();
 
     await expect(page.getByRole('alert')).toContainText(/valid email/i);
