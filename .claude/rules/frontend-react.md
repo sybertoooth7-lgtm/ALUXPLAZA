@@ -1,4 +1,3 @@
-
 # Frontend Rules (React / TypeScript)
 
 Project-specific rules for `frontend/`. Extends `aluxplaza-guardrails.md`.
