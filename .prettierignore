@@ -1,9 +1,0 @@
-node_modules
-dist
-build
-coverage
-package-lock.json
-frontend/public/*.png
-frontend/dist
-backend/coverage
-*.min.js
