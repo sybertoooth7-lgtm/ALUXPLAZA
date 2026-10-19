@@ -1,0 +1,13 @@
+9fb38d60a98b04149ce8a202760bb30fb70343652f76db83ac3f29b613e03f33  ./.claude/rules/frontend-react.md
+30da64343e49cf591f2ef4fb50eb48be649ab222c2d61045ac56e280c46553c4  ./.github/workflows/ci.yml
+30d16a2da5bf4d7443508e9ad73cd9454cfbbb6e55205ff72c5bd4447c1c4dff  ./.github/workflows/frontend-ci.yml
+badd595af6e48343546e420425afcd5f3bade5b235b0d2080b69021f46e79fd9  ./.prettierignore
+bc4fb67660dfff289f1f47d83f6cab3ff6b361632ef64ad641df3c067d99446f  ./DELETE.txt
+a3e956de96353691f2c2186c21bdaad79586bd514fd71645c3cfafd927620d4c  ./backend/README.md
+e2e7e1cad799fcc121adf1c94896f82512e8aa0e05b73cbabd3f66874a32bb22  ./backend/package-lock.json
+c17055a8461c8fa8c152c9684b780af3b91f690a1c24b7b12a95a6d6c606aa25  ./frontend/.gitignore
+a440dfb9245fa06d12ae5f93044eedb45d87177e3e351dd6d189075ff1c0130a  ./frontend/e2e/public-pages.spec.ts
+343bbb0776aac3dcd60d01cd881620ed6ee032077e40807697e0c874b1e49fc8  ./frontend/package-lock.json
+11c416df1cb94415536c6edc8b4731553f0e1de8855b6fe106774924c5bad687  ./frontend/package.json
+7e9582349bf9e43779fd94e3e0ad2ae5d254cdd9460fb46eb1c8d326f139edba  ./frontend/tsconfig.e2e.json
+0db3c44e409823c2a949ac3cec4bc8bf6a66ce4591dda702a23e927cd51913aa  ./frontend/tsconfig.json
