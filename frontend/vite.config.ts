@@ -50,8 +50,8 @@ export default defineConfig({
         short_name: 'Alux Plaza',
         description:
           'Cybersecurity consulting: incident response planning, vulnerability assessments, and compliance readiness (PCI DSS, Kenya DPA 2019) for Nairobi and East Africa.',
-        theme_color: '#00d4ff',
-        background_color: '#050a12',
+        theme_color: '#060d17',
+        background_color: '#060d17',
         display: 'standalone',
         start_url: '.',
         scope: '.',
