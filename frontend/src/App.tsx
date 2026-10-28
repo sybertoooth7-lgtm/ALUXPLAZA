@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, useLocation } from 'react-router';
+import { Routes, Route, Navigate, useLocation } from 'react-router';
 import ErrorBoundary from './components/ErrorBoundary';
 import RouteFallback from './components/RouteFallback';
 
@@ -35,10 +35,7 @@ const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const SecurityPolicy = lazy(() => import('./pages/SecurityPolicy'));
 const CompliancePage = lazy(() => import('./pages/CompliancePage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
-const AILabPage = lazy(() => import('./pages/AILabPage'));
-const CareersPage = lazy(() => import('./pages/CareersPage'));
 const BlogPage = lazy(() => import('./pages/BlogPage'));
-const PressPage = lazy(() => import('./pages/PressPage'));
 const ServicesPage = lazy(() => import('./pages/ServicesPage'));
 const IncidentResponsePage = lazy(() => import('./pages/IncidentResponsePage'));
 const VulnerabilityAssessmentPage = lazy(() => import('./pages/VulnerabilityAssessmentPage'));
@@ -79,10 +76,10 @@ function App() {
           <Route path="/security" element={<SecurityPolicy />} />
           <Route path="/compliance" element={<CompliancePage />} />
           <Route path="/about" element={<AboutPage />} />
-          <Route path="/ai-lab" element={<AILabPage />} />
-          <Route path="/careers" element={<CareersPage />} />
+          <Route path="/ai-lab" element={<Navigate to="/" replace />} />
+          <Route path="/careers" element={<Navigate to="/" replace />} />
           <Route path="/blog" element={<BlogPage />} />
-          <Route path="/press" element={<PressPage />} />
+          <Route path="/press" element={<Navigate to="/" replace />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/services/incident-response" element={<IncidentResponsePage />} />
           <Route
