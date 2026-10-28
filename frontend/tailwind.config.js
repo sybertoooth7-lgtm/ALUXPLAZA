@@ -38,6 +38,16 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        site: {
+          base: '#060d17',
+          raised: '#0a1624',
+          rule: '#16283b',
+          text: '#e6eef5',
+          muted: '#8fa3b8',
+          accent: '#00d4ff',
+          'accent-hover': '#5ce1ff',
+          high: '#ff7a6b',
+        },
         navy: {
           base: '#050a12',
           surface: '#0a1628',
@@ -59,6 +69,8 @@ module.exports = {
         sans: ['Inter', 'sans-serif'],
         serif: ['Playfair Display', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        head: ['Schibsted Grotesk', 'Inter', 'sans-serif'],
+        text: ['Atkinson Hyperlegible', 'Inter', 'sans-serif'],
       },
       borderRadius: {
         xl: 'calc(var(--radius) + 4px)',
