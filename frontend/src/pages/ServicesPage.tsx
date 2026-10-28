@@ -48,9 +48,7 @@ export default function ServicesPage() {
       <main className="pt-24 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-6xl font-serif font-bold mb-6">
-              Neural <span className="gradient-text-cyan">Services</span>
-            </h1>
+            <h1 className="text-4xl md:text-6xl font-serif font-bold mb-6">Services</h1>
             <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
               Every engagement is scoped to your actual risk profile, priced for SME budgets, and
               mapped to standards you can audit.
