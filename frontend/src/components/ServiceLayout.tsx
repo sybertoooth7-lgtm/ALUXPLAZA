@@ -21,7 +21,7 @@ export default function ServiceLayout({ title, subtitle, children, icon }: Servi
             className="inline-flex items-center gap-2 text-alux-cyan hover:text-white transition-colors text-sm mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Neural Services
+            All services
           </Link>
 
           <div className="flex items-center gap-4 mb-6">
