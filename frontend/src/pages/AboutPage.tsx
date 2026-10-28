@@ -3,13 +3,6 @@ import { Link } from 'react-router';
 import Navigation from '../sections/Navigation';
 import Footer from '../sections/Footer';
 
-const stats = [
-  { label: 'SMEs Protected', value: '120+' },
-  { label: 'Incidents Responded', value: '340+' },
-  { label: 'Compliance Audits', value: '85+' },
-  { label: 'Team Members', value: '18' },
-];
-
 const values = [
   {
     icon: <Shield className="w-6 h-6" />,
@@ -53,19 +46,6 @@ export default function AboutPage() {
               <MapPin className="w-4 h-4" />
               <span>Nairobi, Kenya · Serving East Africa</span>
             </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-24">
-            {stats.map((s) => (
-              <div
-                key={s.label}
-                className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 text-center hover:border-alux-cyan/30 transition-colors"
-              >
-                <div className="text-3xl font-bold gradient-text-cyan mb-1">{s.value}</div>
-                <div className="text-[#94a3b8] text-sm">{s.label}</div>
-              </div>
-            ))}
           </div>
 
           {/* Values */}
