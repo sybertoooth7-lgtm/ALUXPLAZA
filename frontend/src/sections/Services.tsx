@@ -1,222 +1,153 @@
-import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Shield, BarChart3, Database, Zap, Fingerprint, FileCheck, Bug, Globe } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router';
+import {
+  Bot,
+  ChevronDown,
+  CreditCard,
+  DatabaseBackup,
+  Network,
+  Radar,
+  ScanSearch,
+  ShieldAlert,
+  Users,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-gsap.registerPlugin(ScrollTrigger);
+interface Service {
+  title: string;
+  line: string;
+  get: string;
+  icon: LucideIcon;
+  to?: string;
+}
 
-const services = [
+const services: Service[] = [
   {
-    title: 'Incident Response Planning',
-    description:
-      'A tailored IR plan aligned to NIST SP 800-61: roles, playbooks, and escalation paths your team can actually run during a breach — not a template that sits unread.',
-    icon: Zap,
-    accent: '#c9a84c',
-    tags: ['NIST SP 800-61', 'Deliverable: IR plan + playbook'],
-    wide: true,
+    title: 'If you get hacked',
+    line: 'A plan your team can follow, step by step.',
+    get: 'Response plan and playbook',
+    icon: ShieldAlert,
+    to: '/services/incident-response',
   },
   {
-    title: 'Vulnerability Assessment',
-    description:
-      'A scoped scan and manual review of your systems, with findings ranked by real-world exploitability, not just CVSS score alone.',
-    icon: Bug,
-    accent: '#a855f7',
-    tags: ['Prioritized findings', 'Deliverable: report'],
-    wide: false,
+    title: 'Find weak spots',
+    line: 'We test your systems and rank what to fix first.',
+    get: 'Findings report',
+    icon: ScanSearch,
+    to: '/services/vulnerability-assessment',
   },
   {
-    title: 'PCI DSS Compliance Readiness',
-    description:
-      'Gap assessment against PCI DSS SAQ A v4.0.1 for merchants handling card data, with a remediation checklist mapped to each requirement.',
-    icon: FileCheck,
-    accent: '#00d4ff',
-    tags: ['PCI DSS SAQ A v4.0.1', 'Deliverable: checklist'],
-    wide: false,
+    title: 'Card payments (PCI DSS)',
+    line: 'Check you meet the rules for taking card payments.',
+    get: 'Fix checklist',
+    icon: CreditCard,
+    to: '/services/compliance-readiness',
   },
   {
-    title: 'Data Protection & Access Audit',
-    description:
-      "Review of access controls and data handling against Kenya's Data Protection Act 2019, so client and employee data is handled lawfully.",
-    icon: Fingerprint,
-    accent: '#ff3366',
-    tags: ['Kenya DPA 2019', 'Deliverable: audit report'],
-    wide: false,
+    title: 'Customer data (Kenya DPA)',
+    line: 'Check you handle personal data the way the law asks.',
+    get: 'Audit report',
+    icon: Users,
+    to: '/services/data-protection-audit',
   },
   {
-    title: 'Network Hardening Review',
-    description:
-      'Configuration review of firewalls, network segmentation, and exposed services, with a prioritized hardening checklist your team can execute.',
-    icon: Shield,
-    accent: '#00d4ff',
-    tags: ['Config review', 'Deliverable: hardening checklist'],
-    wide: true,
+    title: 'Network check',
+    line: 'Review your firewall and what is open to the internet.',
+    get: 'Hardening checklist',
+    icon: Network,
+    to: '/services/network-hardening',
   },
   {
-    title: 'LLM & AI Security Review',
-    description:
-      'Assessment of AI/LLM-integrated products against the OWASP LLM Top 10 (2025) — prompt injection, data leakage, and insecure output handling.',
-    icon: Globe,
-    accent: '#a855f7',
-    tags: ['OWASP LLM Top 10 2025', 'Deliverable: findings report'],
-    wide: false,
+    title: 'AI product check',
+    line: 'Test AI features for data leaks and tricks.',
+    get: 'Findings report',
+    icon: Bot,
   },
   {
-    title: 'Threat Intelligence Briefing',
-    description:
-      'A curated, sourced briefing on threats relevant to your sector — written for decision-makers, not just security teams.',
-    icon: BarChart3,
-    accent: '#00ff88',
-    tags: ['Sourced & cited', 'Deliverable: briefing doc'],
-    wide: false,
+    title: 'Threat briefing',
+    line: 'The threats that matter in your sector, in plain language.',
+    get: 'Short briefing',
+    icon: Radar,
   },
   {
-    title: 'Backup & Encryption Audit',
-    description:
-      "Review of backup recoverability and encryption-at-rest practices, so a ransomware event or hardware failure doesn't become a data-loss event too.",
-    icon: Database,
-    accent: '#00ff88',
-    tags: ['Recoverability tested', 'Deliverable: audit report'],
-    wide: false,
+    title: 'Backups and encryption',
+    line: 'Prove you can get your data back after an attack.',
+    get: 'Audit report',
+    icon: DatabaseBackup,
   },
 ];
 
 export default function Services() {
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!gridRef.current) return;
-    const tiles = gridRef.current.querySelectorAll('.bento-tile');
-
-    gsap.fromTo(
-      tiles,
-      { opacity: 0, y: 60, rotateX: 15 },
-      {
-        opacity: 1,
-        y: 0,
-        rotateX: 0,
-        duration: 0.8,
-        ease: 'power3.out',
-        stagger: 0.08,
-        scrollTrigger: {
-          trigger: gridRef.current,
-          start: 'top 75%',
-          once: true,
-        },
-      }
-    );
-
-    // Parallax depth on scroll
-    const rows = Array.from(tiles);
-    rows.forEach((tile, i) => {
-      gsap.to(tile, {
-        z: 30 + (i % 3) * 15,
-        scrollTrigger: {
-          trigger: gridRef.current,
-          start: 'top bottom',
-          end: 'bottom top',
-          scrub: 1,
-        },
-      });
-    });
-  }, []);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const grid = gridRef.current;
-    if (!grid) return;
-    const rect = grid.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    grid.style.transform = `rotateY(${x * 3}deg) rotateX(${-y * 3}deg)`;
-  };
-
-  const handleMouseLeave = () => {
-    const grid = gridRef.current;
-    if (!grid) return;
-    grid.style.transform = 'rotateY(0deg) rotateX(0deg)';
-  };
+  const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <section id="services" className="py-24 md:py-32 bg-navy-base relative overflow-hidden">
-      {/* Subtle radial glow */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse at 50% 0%, rgba(0,212,255,0.04) 0%, transparent 60%)',
-        }}
-      />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Header */}
-        <div className="text-center mb-16 reveal">
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-alux-cyan/10 border border-alux-cyan/20 text-alux-cyan text-sm font-medium mb-4">
-            Standards-Based Security Services
-          </div>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-white mb-6">
-            <span className="gradient-text-cyan">Security Services</span>{' '}
-            <span className="gradient-text-purple">Grounded in Real Standards</span>
+    <section
+      id="services"
+      className="scroll-mt-16 bg-site-base py-20 md:py-28 border-t border-site-rule"
+    >
+      <div className="max-w-6xl mx-auto px-5 sm:px-8 grid lg:grid-cols-12 gap-10">
+        <div className="lg:col-span-4">
+          <h2 className="font-head font-semibold text-3xl sm:text-4xl tracking-tight text-site-text">
+            What we do
           </h2>
-          <p className="text-[#94a3b8] text-lg max-w-2xl mx-auto">
-            Every engagement is mapped to a named standard — NIST, PCI DSS, Kenya DPA 2019, OWASP —
-            with a concrete deliverable, not a vague promise.
-          </p>
+          <p className="font-text text-lg text-site-muted mt-4">Tap one to see what you get.</p>
         </div>
 
-        {/* Bento Grid */}
-        <div
-          ref={gridRef}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          style={{
-            perspective: '1000px',
-            transformStyle: 'preserve-3d',
-            transition: 'transform 0.3s ease-out',
-          }}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-        >
-          {services.map((service, i) => (
-            <div
-              key={i}
-              className={`bento-tile bg-navy-surface border border-white/[0.06] rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] ${
-                service.wide ? 'md:col-span-2' : ''
-              }`}
-              style={{ transformStyle: 'preserve-3d' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = `${service.accent}4D`;
-                (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 32px ${service.accent}26`;
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)';
-                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-              }}
-            >
-              <div
-                className="w-10 h-10 rounded-[10px] flex items-center justify-center mb-4"
-                style={{
-                  background: `linear-gradient(135deg, ${service.accent}, ${service.accent}99)`,
-                }}
-              >
-                <service.icon className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="text-lg font-serif font-semibold text-white mb-2">{service.title}</h3>
-              <p className="text-[#94a3b8] text-sm leading-relaxed mb-4">{service.description}</p>
-              <div className="flex flex-wrap gap-2">
-                {service.tags.map((tag, ti) => (
+        <ul className="lg:col-span-8 border-t border-site-rule">
+          {services.map((s, i) => {
+            const isOpen = open === i;
+            const Icon = s.icon;
+            return (
+              <li key={s.title} className="border-b border-site-rule">
+                <button
+                  type="button"
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                  aria-controls={`service-${i}`}
+                  className="w-full flex items-center gap-4 py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-site-accent"
+                >
                   <span
-                    key={ti}
-                    className="px-2 py-0.5 rounded-full text-[11px] font-mono"
-                    style={{
-                      backgroundColor: `${service.accent}26`,
-                      color: service.accent,
-                    }}
+                    className={`shrink-0 w-11 h-11 rounded border flex items-center justify-center transition-colors ${
+                      isOpen
+                        ? 'border-site-accent text-site-accent'
+                        : 'border-site-rule text-site-muted'
+                    }`}
                   >
-                    {tag}
+                    <Icon className="w-5 h-5" aria-hidden="true" />
                   </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+                  <span className="flex-1 font-head font-semibold text-xl text-site-text">
+                    {s.title}
+                  </span>
+                  <ChevronDown
+                    className={`w-5 h-5 text-site-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                    aria-hidden="true"
+                  />
+                </button>
+                <div
+                  id={`service-${i}`}
+                  aria-hidden={!isOpen}
+                  className={`grid transition-[grid-template-rows] duration-200 ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="pb-5 pl-[3.75rem]">
+                      <p className="font-text text-lg text-site-text">{s.line}</p>
+                      <p className="font-mono text-sm text-site-muted mt-2">You get: {s.get}</p>
+                      {s.to && (
+                        <Link
+                          to={s.to}
+                          tabIndex={isOpen ? 0 : -1}
+                          className="inline-block mt-3 font-text text-base text-site-accent underline underline-offset-4 hover:text-site-accent-hover"
+                        >
+                          More detail
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );
