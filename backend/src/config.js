@@ -46,6 +46,13 @@ if (!mfaEncryptionKey) {
   );
 }
 
+// Mandatory admin MFA is on unless ADMIN_MFA_REQUIRED is exactly "false".
+if (isProduction && String(process.env.ADMIN_MFA_REQUIRED ?? '').trim().toLowerCase() === 'false') {
+  warnings.push(
+    'ADMIN_MFA_REQUIRED=false: admin accounts can sign in without two-factor authentication. Remove this variable to enforce it.'
+  );
+}
+
 // CORS validation
 // CORS_ORIGIN is required in production — without it, the browser silently
 // blocks every request from the real frontend, which is a confusing,
