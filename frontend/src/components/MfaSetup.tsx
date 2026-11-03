@@ -6,7 +6,7 @@ import { secureFetch } from '@/lib/security';
 
 export default function MfaSetup({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState<'start' | 'qr' | 'backup'>('start');
-  const [otpauthUrl, setOtpauthUrl] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
   const [manualKey, setManualKey] = useState('');
   const [code, setCode] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
@@ -20,7 +20,7 @@ export default function MfaSetup({ onComplete }: { onComplete: () => void }) {
       const res = await secureFetch('/api/admin/mfa/enroll', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Enrollment failed');
-      setOtpauthUrl(data.otpauthUrl);
+      setQrDataUrl(data.qrDataUrl || '');
       setManualKey(data.manualEntryKey);
       setStep('qr');
     } catch (err) {
@@ -78,16 +78,12 @@ export default function MfaSetup({ onComplete }: { onComplete: () => void }) {
           Open your authenticator app and scan this QR code, or enter the key manually.
         </p>
 
-        {/* QR Code — use a simple data URI or an img tag if you have a QR library */}
-        <div className="bg-white p-4 rounded-lg mb-4 flex justify-center">
-          {/* If you have qrcode library installed: */}
-          {/* <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`} alt="MFA QR Code" /> */}
-          <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`}
-            alt="MFA QR Code"
-            className="w-48 h-48"
-          />
-        </div>
+        {/* The QR code is drawn by our own server. The secret in it is never sent to a third-party service. */}
+        {qrDataUrl && (
+          <div className="bg-white p-4 rounded-lg mb-4 flex justify-center">
+            <img src={qrDataUrl} alt="MFA QR Code" className="w-48 h-48" />
+          </div>
+        )}
 
         <div className="bg-navy-base border border-white/10 rounded-lg p-3 mb-4">
           <p className="text-xs text-white/40 mb-1">Manual entry key</p>
