@@ -38,6 +38,12 @@ export default function AdminLogin() {
         return;
       }
 
+      // MFA is required and this admin has not set it up yet
+      if (data.mfaEnrollmentRequired) {
+        navigate('/admin/mfa-setup');
+        return;
+      }
+
       // No MFA — login complete
       navigate('/admin/dashboard');
     } catch (err) {
