@@ -10,6 +10,7 @@ import { requireAdmin } from '../middleware/rbac.js';
 import { recordFailedLogin } from '../shield/bruteForceGuard.js';
 import { recordAuditLog } from '../middleware/auditLog.js';
 import { parseExpiryToMs } from '../lib/parseExpiry.js';
+import { adminMfaRequired } from '../lib/mfa.js';
 import { authCookieOptions, authCookieClearOptions } from '../lib/auth-cookie.js';
 import { computeComplianceOverview } from '../shield/riskScore.js';
 import { getQueueStats, isEmailQueueDisabled } from '../lib/email-queue.js';
@@ -135,7 +136,14 @@ router.post(
 
       res.cookie('adminToken', token, authCookieOptions(COOKIE_MAX_AGE_MS));
 
-      res.json({ success: true, email: user.email });
+      // MFA is mandatory and this admin has not enrolled: the session above can
+      // only reach the enrolment endpoints (see middleware/auth.js). Tell the
+      // front end to send them to the setup screen.
+      res.json({
+        success: true,
+        email: user.email,
+        ...(adminMfaRequired() ? { mfaEnrollmentRequired: true } : {}),
+      });
     } catch (err) {
       console.error('[admin] Login error:', err);
       res.status(500).json({ error: 'Internal server error' });
@@ -275,7 +283,7 @@ router.get('/me', requireAuth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ user });
+    res.json({ user, mfaEnrollmentRequired: Boolean(req.user.mfaEnrollmentRequired) });
   } catch (err) {
     console.error('[admin] /me error:', err);
     res.status(500).json({ error: 'Internal server error' });
