@@ -25,6 +25,9 @@ process.env.DATABASE_URL = `${baseUrl}/${testDbName}`;
 process.env.DB_SSL = 'false';
 process.env.CORS_ORIGIN = 'http://localhost:3000';
 process.env.CONTACT_RATE_LIMIT_MAX = '1000'; // avoid rate-limit interference between tests
+// Mandatory admin MFA is ON by default in the app. The existing suites sign admins in
+// without MFA, so it is switched off here; test/adminMfaRequired.test.js turns it on.
+process.env.ADMIN_MFA_REQUIRED = 'false';
 
 // Run migrations against the fresh test database using the exact same code
 // path production uses on boot — testing the real thing, not a
