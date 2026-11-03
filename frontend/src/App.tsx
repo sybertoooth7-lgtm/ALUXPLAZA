@@ -22,6 +22,7 @@ const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
 const ClientCompliance = lazy(() => import('./pages/ClientCompliance'));
 const ClientSecurity = lazy(() => import('./pages/ClientSecurity'));
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const AdminMfaSetup = lazy(() => import('./pages/AdminMfaSetup'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 const AdminSubmissions = lazy(() => import('./pages/AdminSubmissions'));
@@ -66,6 +67,7 @@ function App() {
           <Route path="/client/security" element={<ClientSecurity />} />
           <Route path="/client/verify-email/:token" element={<VerifyEmail />} />
           <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/mfa-setup" element={<AdminMfaSetup />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/submissions" element={<AdminSubmissions />} />
