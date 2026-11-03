@@ -13,21 +13,35 @@ import {
   verifyTOTP,
   generateBackupCodes,
   verifyBackupCode,
+  adminMfaRequired,
+  generateQrDataUrl,
 } from '../lib/mfa.js';
 
 const router = Router();
 
 router.post('/enroll', requireAuth, async (req, res) => {
   try {
+    // Starting a new enrolment replaces the stored secret. For an account that
+    // already has MFA that would let anyone holding the session (but not the
+    // authenticator) swap in their own device, so it is refused.
+    const current = await db.query('SELECT mfa_enabled FROM admin_users WHERE id = $1', [
+      req.user.sub,
+    ]);
+    if (current.rows[0]?.mfa_enabled) {
+      return res.status(409).json({ error: 'Two-factor authentication is already set up.' });
+    }
+
     const secret = generateSecret();
     const encrypted = encryptSecret(secret);
     await db.query(
       `UPDATE admin_users SET mfa_secret = $1, mfa_enabled = FALSE, mfa_backup_codes = NULL, mfa_enrolled_at = NULL WHERE id = $2`,
       [encrypted, req.user.sub]
     );
+    const otpauthUrl = getOtpauthUrl(req.user.email, secret);
     res.json({
       success: true,
-      otpauthUrl: getOtpauthUrl(req.user.email, secret),
+      otpauthUrl,
+      qrDataUrl: await generateQrDataUrl(otpauthUrl),
       manualEntryKey: secret,
     });
   } catch (err) {
@@ -92,6 +106,12 @@ router.post(
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    if (adminMfaRequired()) {
+      return res.status(403).json({
+        error: 'Two-factor authentication is required for admin accounts and cannot be turned off.',
+      });
+    }
 
     try {
       const { rows } = await db.query(
