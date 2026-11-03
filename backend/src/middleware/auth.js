@@ -4,6 +4,25 @@ import jwt from 'jsonwebtoken';
 import db from '../db.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
+import { adminMfaRequired } from '../lib/mfa.js';
+
+// While MFA is required and an admin has not enrolled yet, the session may only
+// reach the endpoints needed to enrol (or to see its own state and sign out).
+// Everything else answers 403. The decision uses the database, not the token,
+// so it also covers sessions issued before enforcement was switched on and
+// accounts whose MFA was reset.
+const ENROLLMENT_ONLY_PATHS = new Set([
+  '/api/admin/me',
+  '/api/admin/logout',
+  '/api/admin/mfa/status',
+  '/api/admin/mfa/enroll',
+  '/api/admin/mfa/verify-enrollment',
+]);
+
+function isEnrollmentPath(req) {
+  const path = (req.originalUrl || req.url || '').split('?')[0].replace(/\/+$/, '');
+  return ENROLLMENT_ONLY_PATHS.has(path);
+}
 
 // Maximum token age (in seconds) — additional to JWT exp claim
 // This catches tokens that were issued legitimately but are considered
@@ -91,9 +110,10 @@ export async function requireAuth(req, res, next) {
 
   // Verify the user still exists and fetch current role from DB
   try {
-    const { rows } = await db.query('SELECT role, disabled_at FROM admin_users WHERE id = $1', [
-      decoded.sub,
-    ]);
+    const { rows } = await db.query(
+      'SELECT role, disabled_at, mfa_enabled FROM admin_users WHERE id = $1',
+      [decoded.sub]
+    );
     if (rows.length === 0) {
       logger.warn({ ip: req.ip, sub: decoded.sub }, '[auth] User account no longer exists');
       return res.status(401).json({ error: 'Unauthorized: Account no longer exists' });
@@ -112,6 +132,21 @@ export async function requireAuth(req, res, next) {
     }
     // Use DB role, not token role (in case permissions were revoked)
     decoded.role = user.role;
+
+    // Mandatory MFA: an admin who has not enrolled can only enrol.
+    if (adminMfaRequired() && !user.mfa_enabled) {
+      decoded.mfaEnrollmentRequired = true;
+      if (!isEnrollmentPath(req)) {
+        logger.warn(
+          { ip: req.ip, sub: decoded.sub, path: req.path },
+          '[auth] MFA enrolment required before using this endpoint'
+        );
+        return res.status(403).json({
+          error: 'Two-factor authentication must be set up before you can continue.',
+          mfaEnrollmentRequired: true,
+        });
+      }
+    }
   } catch (err) {
     logger.error({ error: err.message, sub: decoded.sub }, '[auth] Failed to fetch user role');
     return res.status(500).json({ error: 'Internal server error' });
