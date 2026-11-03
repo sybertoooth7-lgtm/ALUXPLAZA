@@ -3,6 +3,7 @@
 
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken'; // FIX C5: ESM import, not require()
+import QRCode from 'qrcode';
 import { config } from '../config.js';
 
 const SECRET_LENGTH = 20;
@@ -55,12 +56,29 @@ export function decryptSecret(stored) {
   return decrypted;
 }
 
+// RFC 4648 base32 (no padding). This is the alphabet authenticator apps expect.
+function base32Encode(buf) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let value = 0;
+  let out = '';
+  for (const byte of buf) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      out += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) out += alphabet[(value << (5 - bits)) & 31];
+  return out;
+}
+
+// 20 random bytes (160 bits, the size RFC 4226 recommends) -> 32 base32 characters.
+// This used to take base64 text and strip the characters outside A-Za-z2-7, which
+// gave mixed-case secrets of varying length, typically about 120 bits.
 export function generateSecret() {
-  const bytes = crypto.randomBytes(SECRET_LENGTH);
-  return bytes
-    .toString('base64')
-    .replace(/[^A-Za-z2-7]/g, '')
-    .slice(0, 32);
+  return base32Encode(crypto.randomBytes(SECRET_LENGTH));
 }
 
 export function getOtpauthUrl(email, secret, issuer = 'Alux Plaza') {
@@ -94,7 +112,26 @@ function base32Decode(str) {
   return Buffer.from(bytes);
 }
 
-function computeTOTP(secret, timeOffsetSteps = 0) {
+/**
+ * Whether every admin account must have MFA enrolled. ON by default.
+ *
+ * Only the exact value "false" turns it off, so a typo ("flase", "0", "no")
+ * leaves enforcement on rather than silently disabling a security control.
+ * It is read on every call, not once at start-up, so tests can switch it.
+ */
+export function adminMfaRequired() {
+  return String(process.env.ADMIN_MFA_REQUIRED ?? 'true').trim().toLowerCase() !== 'false';
+}
+
+/**
+ * Draws the otpauth URL as a PNG data URL on the server. The URL contains the
+ * TOTP secret, so it must never be sent to a third-party QR service.
+ */
+export async function generateQrDataUrl(otpauthUrl) {
+  return QRCode.toDataURL(otpauthUrl, { errorCorrectionLevel: 'M', margin: 1, width: 220 });
+}
+
+export function computeTOTP(secret, timeOffsetSteps = 0) {
   const decoded = base32Decode(secret);
   const counter = Math.floor(Date.now() / 1000 / TIME_STEP) + timeOffsetSteps;
   const buf = Buffer.alloc(8);
