@@ -40,6 +40,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         if (!res.ok) throw new Error('Failed to load admin account.');
         const data = await res.json();
         if (!mounted) return;
+        if (data.mfaEnrollmentRequired) {
+          navigate('/admin/mfa-setup');
+          return;
+        }
         setAdmin(data.user);
         setSentryUser(data.user.id, data.user.email, 'admin');
       } catch (err) {
