@@ -108,7 +108,7 @@ describe('boot-time admin-user handling', () => {
       5013,
       'admin bootstrap skipped'
     );
-    expect(output).toMatch(/ADMIN_BOOTSTRAP_PASSWORD is shorter than 8 characters/);
+    expect(output).toMatch(/ADMIN_BOOTSTRAP_PASSWORD is shorter than 12 characters/);
     expect(output).not.toMatch(/Bootstrapped initial admin account/);
   }, 15_000);
 });

@@ -275,9 +275,9 @@ async function main() {
           logger.error(
             'ADMIN_BOOTSTRAP_EMAIL is not a valid email address — admin bootstrap skipped.'
           );
-        } else if (bootstrapPassword.length < 8) {
+        } else if (bootstrapPassword.length < 12) {
           logger.error(
-            'ADMIN_BOOTSTRAP_PASSWORD is shorter than 8 characters — admin bootstrap skipped.'
+            'ADMIN_BOOTSTRAP_PASSWORD is shorter than 12 characters — admin bootstrap skipped.'
           );
         } else {
           const hash = await bcrypt.hash(bootstrapPassword, 12);

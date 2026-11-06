@@ -43,8 +43,9 @@ is what you want for this app.
    - **FRONTEND_URL** — the same origin; used for verification and
      password-reset links in emails.
    - **ADMIN_BOOTSTRAP_EMAIL** — your real email.
-   - **ADMIN_BOOTSTRAP_PASSWORD** — a strong password (min 8 chars;
-     use 12+). You'll log into the admin dashboard with these once.
+   - **ADMIN_BOOTSTRAP_PASSWORD** — a strong password (min 12 chars).
+     You'll log into the admin dashboard with these once, then change it
+     from Security → Account.
    - `JWT_SECRET` is generated automatically by Render.
 4. Click **Apply**. First deploy takes a few minutes. Migrations run
    automatically on boot (`src/db.js` applies `backend/migrations/*.sql`

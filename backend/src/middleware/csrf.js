@@ -14,14 +14,6 @@ function generateToken() {
   return randomBytes(32).toString('base64url');
 }
 
-// Extract origin from request, handling proxies and subdomains
-function getOrigin(req) {
-  // X-Forwarded-Proto and X-Forwarded-Host are set by reverse proxies
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-  const host = req.headers['x-forwarded-host'] || req.hostname || req.get('host');
-  return `${protocol}://${host}`;
-}
-
 // Validate origin header against whitelist to prevent CSRF at the transport layer
 function validateOrigin(req) {
   const origin = req.headers.origin || req.headers.referer;

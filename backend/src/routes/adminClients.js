@@ -152,12 +152,14 @@ router.post(
 
       await db.query('DELETE FROM client_sessions WHERE client_id = $1', [clientId]);
 
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
       for (const row of rows) {
+        // Block until the token could actually expire, not a fixed 24 hours:
+        // JWT_EXPIRES_IN can be set higher than that, and a shorter block
+        // would let a "revoked" session come back to life.
         await db.query(
           `INSERT INTO token_blocklist (jti, expires_at) VALUES ($1, $2)
          ON CONFLICT (jti) DO NOTHING`,
-          [row.jti, expiresAt]
+          [row.jti, row.expires_at || new Date(Date.now() + 24 * 60 * 60 * 1000)]
         );
       }
 

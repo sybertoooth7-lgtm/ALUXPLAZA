@@ -30,8 +30,8 @@ async function main() {
   }
 
   const password = await ask('Admin password: ');
-  if (!password || password.length < 8) {
-    console.error('Password must be at least 8 characters.');
+  if (!password || password.length < 12) {
+    console.error('Password must be at least 12 characters.');
     rl.close();
     process.exit(1);
   }
@@ -50,7 +50,13 @@ async function main() {
     // see the comment above the readline interface for why.
     await initDb();
     await db.query(
-      'INSERT INTO admin_users (email, password_hash) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash',
+      `INSERT INTO admin_users (email, password_hash, password_changed_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (email) DO UPDATE
+         SET password_hash = EXCLUDED.password_hash,
+             password_changed_at = NOW(),
+             failed_login_count = 0,
+             locked_until = NULL`,
       [email, hash]
     );
     console.log(`Admin user created/updated: ${email}`);
