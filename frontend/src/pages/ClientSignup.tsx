@@ -151,14 +151,14 @@ export default function ClientSignup() {
                 id="password"
                 name="password"
                 autoComplete="new-password"
-                minLength={8}
+                minLength={12}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-600 dark:focus:border-alux-gold"
                 placeholder="••••••••"
                 required
               />
-              <p className="text-xs text-muted-foreground mt-1">Minimum 8 characters</p>
+              <p className="text-xs text-muted-foreground mt-1">Minimum 12 characters</p>
             </div>
 
             <div>

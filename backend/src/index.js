@@ -150,6 +150,13 @@ async function startServer() {
   app.use('/api/status', statusLimiter);
   app.use('/api/admin/login', authLimiter);
   app.use('/api/admin/mfa/verify', mfaLimiter);
+  // The other half of enrolment: /enroll returns a secret and a QR code, and
+  // /verify-enrollment accepts a six-digit code. Neither was on the MFA
+  // budget, so a session holder could generate secrets or guess codes at the
+  // general 100-requests/15-minutes rate while every other code check was
+  // capped at 10.
+  app.use('/api/admin/mfa/enroll', mfaLimiter);
+  app.use('/api/admin/mfa/verify-enrollment', mfaLimiter);
   app.use('/api/admin/mfa/disable', mfaLimiter);
   app.use('/api/admin/mfa/regenerate-backup-codes', mfaLimiter);
   app.use('/api/client/login', authLimiter);

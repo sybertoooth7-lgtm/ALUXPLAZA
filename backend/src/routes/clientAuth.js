@@ -46,8 +46,10 @@ const V = {
   password: body('password')
     .isString()
     .trim()
-    .isLength({ min: 8, max: 128 })
-    .withMessage('Password must be 8–128 characters.'),
+    // 12 to match the admin policy: a client account holds the same kind of
+    // data and the same session, and the two signup paths should not disagree.
+    .isLength({ min: 12, max: 128 })
+    .withMessage('Password must be 12–128 characters.'),
   token: body('token').isString().trim().notEmpty().isLength({ max: 64 }),
   companyName: body('companyName')
     .isString()

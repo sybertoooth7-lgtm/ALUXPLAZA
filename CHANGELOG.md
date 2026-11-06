@@ -12,6 +12,17 @@ version number.
 
 ### Security
 
+- MFA enrolment now shares the MFA rate limit. `/api/admin/mfa/enroll` and
+  `/api/admin/mfa/verify-enrollment` were outside it, so a session holder
+  could generate secrets and submit six-digit codes at the general
+  100-requests/15-minutes rate while login, disable and backup-code
+  regeneration were capped at 10.
+- Client passwords now require 12 characters, matching the admin policy.
+  Signup and password reset accepted 8, so the weaker of the two account
+  types set the floor for every client account, including ones holding
+  compliance assessments and login history. Existing passwords are not
+  affected; the rule applies when a password is set or reset.
+
 - Paginated endpoints clamp `page` before it reaches SQL. A 40-digit page
   number became a JavaScript float larger than Postgres's bigint `OFFSET`
   and failed the request with a 500, so anyone who could call a listing route

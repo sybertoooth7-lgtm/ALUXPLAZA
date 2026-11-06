@@ -140,6 +140,20 @@ describe('POST /api/client/signup', () => {
       .send({ companyName: '', email: 'not-an-email', password: 'short' });
     expect(res.status).toBe(400);
   });
+
+  it('rejects an 11-character password even when everything else is valid', async () => {
+    const app = buildTestApp();
+    const email = uniqueEmail();
+    const res = await request(app).post('/api/client/signup').send({
+      companyName: 'Acme Ltd',
+      email,
+      password: 'ElevenChars', // 11: the old minimum
+      consent: true,
+    });
+    expect(res.status).toBe(400);
+    const { rows } = await db.query('SELECT id FROM clients WHERE email = $1', [email]);
+    expect(rows).toHaveLength(0);
+  });
 });
 
 describe('POST /api/client/verify-email', () => {

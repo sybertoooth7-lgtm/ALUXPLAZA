@@ -21,7 +21,7 @@ export default function ResetPassword() {
   }, [token]);
 
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
-  const minLengthMet = password.length >= 8;
+  const minLengthMet = password.length >= 12;
   const canSubmit = !!token && !loading && !success && minLengthMet && passwordsMatch;
 
   const handleSubmit = useCallback(
@@ -136,7 +136,7 @@ export default function ResetPassword() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-amber-600 dark:focus:border-alux-gold transition-colors"
                   placeholder="••••••••"
-                  minLength={8}
+                  minLength={12}
                   required
                   autoComplete="new-password"
                   aria-describedby="password-hint"
@@ -149,7 +149,7 @@ export default function ResetPassword() {
                       : 'text-muted-foreground'
                   }`}
                 >
-                  Must be at least 8 characters
+                  Must be at least 12 characters
                 </p>
               </div>
 
@@ -172,7 +172,7 @@ export default function ResetPassword() {
                       : 'border-border focus:border-amber-600 dark:focus:border-alux-gold'
                   }`}
                   placeholder="••••••••"
-                  minLength={8}
+                  minLength={12}
                   required
                   autoComplete="new-password"
                   disabled={!token}
