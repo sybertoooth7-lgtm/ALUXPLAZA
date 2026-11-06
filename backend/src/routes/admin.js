@@ -8,6 +8,7 @@ import { config } from '../config.js';
 import { requireAuth, blocklistToken, isBlocklisted } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/rbac.js';
 import { recordFailedLogin } from '../shield/bruteForceGuard.js';
+import { getClientIp } from '../lib/ip.js';
 import { recordAuditLog } from '../middleware/auditLog.js';
 import { parseExpiryToMs } from '../lib/parseExpiry.js';
 import { adminMfaRequired } from '../lib/mfa.js';
@@ -103,7 +104,7 @@ router.post(
             [newCount, lockedUntil, user.id]
           );
         }
-        const nowBlocked = await recordFailedLogin(req.ip);
+        const nowBlocked = await recordFailedLogin(getClientIp(req));
         if (nowBlocked) {
           return res.status(403).json({ error: 'Too many failed attempts. Access denied.' });
         }
@@ -260,7 +261,7 @@ router.post(
         );
 
         // Log failed MFA attempt
-        await recordFailedLogin(req.ip);
+        await recordFailedLogin(getClientIp(req));
 
         if (lockedUntil) {
           return res.status(423).json({
@@ -397,7 +398,7 @@ router.post(
       if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
       if (!(await bcrypt.compare(currentPassword, user.password_hash))) {
-        await recordFailedLogin(req.ip);
+        await recordFailedLogin(getClientIp(req));
         return res.status(401).json({ error: 'Current password is incorrect.' });
       }
 

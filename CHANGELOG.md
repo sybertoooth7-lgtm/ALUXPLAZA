@@ -12,6 +12,24 @@ version number.
 
 ### Security
 
+- `VERCEL_PREVIEW_ORIGIN_REGEX` must now be anchored (`^…$`). The allowlist
+  decides which origins may send the session cookie, and an unanchored
+  pattern such as `https://.*\.vercel\.app` also matches
+  `https://x.vercel.app.evil.tld`. A pattern without both anchors is rejected
+  with a warning instead of being used with a wider meaning than intended.
+- The admin and client login paths, and the per-IP failed-login counter they
+  call, now use the same validated address as Shield and the rate limiters.
+  These paths fed `req.ip` straight into `client_login_attempts` (VARCHAR(45)),
+  `client_sessions.ip_address` (INET) and the brute-force counter. A
+  client-influenced header value either broke those inserts — a legitimate
+  client login returning 500, and the failed attempt going unrecorded — or
+  created a counter bucket per garbage string so the lockout never tripped.
+  `recordFailedLogin` now refuses a value that does not parse as an address,
+  and the login route stores NULL in the INET column when no source is
+  attributable; the per-account lockout still guards that case.
+- The `/api/verify` limiter was the one limiter still keyed on raw `req.ip`.
+  It now uses the shared `rateLimitKey` helper, completing the same fix for
+  every limiter.
 - Every rate limiter now buckets by the same validated client address as
   Shield. All limiters used `req.ip` directly (the general API limiter had no
   key generator at all, so it used Express's default), which means a client

@@ -90,11 +90,24 @@ const corsOrigins = rawCorsOrigins;
 // previous hardcoded value named a team slug the project owner does not
 // control, and any unclaimed Vercel team slug can be registered by someone
 // else. Whatever pattern is set here is also trusted with cookies (CORS
-// credentials), so it must end in '$' and describe only hosts you control.
+// credentials), so it must be anchored (^...$) and describe only hosts you
+// control; an unanchored pattern is rejected below.
 function parsePreviewOriginRegex(raw) {
   if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+  const pattern = String(raw).trim();
+  // The whole origin must match, not a substring. An unanchored pattern such
+  // as `https://.*\.vercel\.app` also matches `https://x.vercel.app.evil.tld`,
+  // and this allowlist decides which origins may send session cookies. Config
+  // cannot tell whether the missing anchors were intentional, so it refuses
+  // rather than silently trusting more hosts than the pattern appears to name.
+  if (!pattern.startsWith('^') || !pattern.endsWith('$')) {
+    warnings.push(
+      'VERCEL_PREVIEW_ORIGIN_REGEX must start with "^" and end with "$" so it matches a whole origin; preview origins will be rejected.'
+    );
+    return null;
+  }
   try {
-    return new RegExp(String(raw).trim());
+    return new RegExp(pattern);
   } catch (err) {
     warnings.push(
       `VERCEL_PREVIEW_ORIGIN_REGEX is not a valid regular expression (${err.message}); preview origins will be rejected.`

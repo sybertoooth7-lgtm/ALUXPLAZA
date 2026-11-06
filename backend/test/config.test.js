@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -99,5 +99,55 @@ describe('config.js fail-fast validation', () => {
       }
     );
     expect(JSON.parse(output.trim())).toEqual(['https://aluxplaza.com']);
+  });
+
+  // The preview allowlist is trusted with session cookies. An unanchored
+  // pattern matches a suffix-confusion host (…vercel.app.evil.tld), so it is
+  // rejected outright rather than used with a wider meaning than intended.
+  it('rejects an unanchored VERCEL_PREVIEW_ORIGIN_REGEX', () => {
+    const { stdout, stderr } = spawnSync(
+      'node',
+      [
+        '-e',
+        "import('./src/config.js').then(m => console.log(JSON.stringify({ re: m.config.vercelPreviewOriginRegex })))",
+      ],
+      {
+        cwd: backendRoot,
+        env: {
+          ...process.env,
+          NODE_ENV: 'production',
+          JWT_SECRET: 'kQ7mZx2Rp9LtVb4WnJf8CyU3HdEa6Ns1Mg5X',
+          CORS_ORIGIN: 'https://aluxplaza.com',
+          VERCEL_PREVIEW_ORIGIN_REGEX: 'https://[a-z0-9-]+-team\\.vercel\\.app',
+        },
+        encoding: 'utf8',
+      }
+    );
+    expect(stderr).toMatch(/must start with "\^" and end with "\$"/);
+    expect(JSON.parse(stdout.trim()).re).toBeNull();
+  });
+
+  it('keeps an anchored VERCEL_PREVIEW_ORIGIN_REGEX', () => {
+    const { stdout } = spawnSync(
+      'node',
+      [
+        '-e',
+        "import('./src/config.js').then(m => console.log(JSON.stringify({ re: m.config.vercelPreviewOriginRegex && m.config.vercelPreviewOriginRegex.source })))",
+      ],
+      {
+        cwd: backendRoot,
+        env: {
+          ...process.env,
+          NODE_ENV: 'production',
+          JWT_SECRET: 'kQ7mZx2Rp9LtVb4WnJf8CyU3HdEa6Ns1Mg5X',
+          CORS_ORIGIN: 'https://aluxplaza.com',
+          VERCEL_PREVIEW_ORIGIN_REGEX: '^https://[a-z0-9-]+-team\\.vercel\\.app$',
+        },
+        encoding: 'utf8',
+      }
+    );
+    const re = new RegExp(JSON.parse(stdout.trim()).re);
+    expect(re.test('https://abc-123-team.vercel.app')).toBe(true);
+    expect(re.test('https://abc-123-team.vercel.app.evil.tld')).toBe(false);
   });
 });

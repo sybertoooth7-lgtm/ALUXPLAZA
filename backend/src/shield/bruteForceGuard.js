@@ -25,6 +25,7 @@
 // always a real IP, and isBlocked() always checks the request's real IP.
 
 import db from '../db.js';
+import { normalizeIp } from '../lib/ip.js';
 import { blockIp } from './blocklist.js';
 import { logSecurityEvent } from './eventLogger.js';
 
@@ -156,13 +157,24 @@ export async function trackedKeyCounts() {
  * and this returns false rather than adding a second failure mode.
  */
 export async function recordFailedLogin(ip) {
+  // The caller's address arrives through req.ip, which a misplaced
+  // TRUST_PROXY_HOPS lets the client fill with its own X-Forwarded-For value.
+  // An unparseable value is not counted and never reaches blockIp(): it would
+  // otherwise create a counter bucket per garbage string (no threshold ever
+  // trips) and an insert that fails on the VARCHAR(45) columns. 'unknown' and
+  // malformed values are equally uncountable — one shared bucket for all of
+  // them would block every unattributed login at once. The per-account
+  // lockout in the login routes still applies in both cases.
+  const address = normalizeIp(ip);
+  if (!address) return false;
+
   try {
-    const total = await incrementAndCount(METRIC_FAILED_LOGIN, ip, FAILED_LOGIN_WINDOW_MS);
+    const total = await incrementAndCount(METRIC_FAILED_LOGIN, address, FAILED_LOGIN_WINDOW_MS);
 
     if (total >= FAILED_LOGIN_THRESHOLD) {
-      await logSecurityEvent({ ip, eventType: 'brute_force', severity: 'high', blocked: true });
+      await logSecurityEvent({ ip: address, eventType: 'brute_force', severity: 'high', blocked: true });
       await blockIp(
-        ip,
+        address,
         `${total} failed login attempts in ${FAILED_LOGIN_WINDOW_MS / 60000}min`,
         'high',
         // Explicit key: `total` is interpolated into the human-readable reason
@@ -171,7 +183,7 @@ export async function recordFailedLogin(ip) {
         // could never accumulate.
         'brute_force'
       );
-      await clearCounters(METRIC_FAILED_LOGIN, ip);
+      await clearCounters(METRIC_FAILED_LOGIN, address);
       return true; // signal caller that this IP is now blocked
     }
     return false;

@@ -13,6 +13,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: [
+      // Config validation runs in child processes and never touches a database.
+      'test/config.test.js',
       'test/email-queue.test.js',
       'test/email-queue-import.test.js',
       'test/body-limit.test.js',
@@ -36,6 +38,9 @@ export default defineConfig({
       'test/rate-limit-path.test.js',
       // Rate-limit bucket keys. Pure: no request is sent and no store is hit.
       'test/rate-limit-key.test.js',
+      // Failed-login counting refuses a value that is not an address. DB,
+      // blocklist and event logger are mocked, so no database.
+      'test/bruteForceIp.test.js',
       // Pure query-string parsers used before pagination reaches SQL.
       'test/pagination.test.js',
       // Client-address normalisation for Shield: pure, and the whole point is

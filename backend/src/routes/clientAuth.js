@@ -8,6 +8,7 @@ import db from '../db.js';
 import { config } from '../config.js';
 import { authCookieOptions, authCookieClearOptions } from '../lib/auth-cookie.js';
 import { recordFailedLogin } from '../shield/bruteForceGuard.js';
+import { getClientIp } from '../lib/ip.js';
 import {
   logLoginAttempt,
   isNewIp,
@@ -458,6 +459,14 @@ router.post(
   validate,
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
+    // One validated address for every column this request writes to.
+    // client_login_attempts is VARCHAR(45) and client_sessions is INET: a
+    // client-influenced req.ip either breaks those inserts or records a value
+    // that is not an address at all, and the per-IP failed-login counter would
+    // bucket by the garbage instead of the client. 'unknown' is only used in
+    // the audit columns; the INET column gets NULL.
+    const clientIp = getClientIp(req);
+    const sessionIp = clientIp === 'unknown' ? null : clientIp;
     const client = await findClientByEmail(db, email);
 
     // 1. Lockout check first (saves bcrypt work + timing leak)
@@ -509,16 +518,16 @@ router.post(
       await logLoginAttempt({
         clientId: client?.id ?? null,
         email,
-        ip: req.ip,
+        ip: clientIp,
         success: false,
         userAgent: req.headers['user-agent'],
       });
-      await recordFailedLogin(req.ip);
+      await recordFailedLogin(clientIp);
 
       // Distributed-attack detection. Runs after the attempt is logged so it
       // can see the attempt, and is observe-only — it must not itself cause a
       // block, because on a heuristic that means locking out real customers.
-      await detectDistributedFailure(client?.id ?? null, email, req.ip);
+      await detectDistributedFailure(client?.id ?? null, email, clientIp);
 
       if (client) {
         const newCount = (client.failed_login_count || 0) + 1;
@@ -548,11 +557,11 @@ router.post(
       client.id,
     ]);
 
-    const newDevice = await isNewIp(client.id, req.ip);
+    const newDevice = await isNewIp(client.id, clientIp);
     await logLoginAttempt({
       clientId: client.id,
       email,
-      ip: req.ip,
+      ip: clientIp,
       success: true,
       userAgent: req.headers['user-agent'],
     });
@@ -561,7 +570,7 @@ router.post(
       await alertNewDevice({
         clientId: client.id,
         email: client.email,
-        ip: req.ip,
+        ip: clientIp,
         userAgent: req.headers['user-agent'],
       });
     }
@@ -576,7 +585,7 @@ router.post(
     await createSession(db, {
       clientId: client.id,
       jti,
-      ip: req.ip,
+      ip: sessionIp,
       userAgent: req.headers['user-agent'],
       expiresAt: new Date(Date.now() + COOKIE_MAX_AGE_MS),
     });
