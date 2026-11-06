@@ -34,6 +34,18 @@ describe('Sentry event scrubbing', () => {
     expect(out.header).not.toContain('abc.def.ghi');
   });
 
+  it('redacts tokens carried in URL paths', () => {
+    const out = scrubValue({
+      verifyUrl: 'https://api.example.com/api/verify/abc123def456',
+      sessionUrl: 'https://api.example.com/api/client/sessions/9f8e7d6c',
+      page: 'https://app.example.com/client/reset-password/abc123def456',
+    });
+
+    expect(out.verifyUrl).toBe('https://api.example.com/api/verify/[redacted]');
+    expect(out.sessionUrl).toBe('https://api.example.com/api/client/sessions/[redacted]');
+    expect(out.page).toBe('https://app.example.com/client/reset-password/[redacted]');
+  });
+
   it('does not recurse without bound', () => {
     const deep = { a: { b: { c: { d: { e: { f: { g: { h: { i: 'x' } } } } } } } } };
     const out = scrubValue(deep);

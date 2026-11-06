@@ -12,6 +12,15 @@ const REDACT_KEY_RE =
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const SECRET_QUERY_RE =
   /([?&](?:token|mfaToken|resetToken|verificationToken|backupCode|code|password|secret|key|signature)=)[^&#\s"']+/gi;
+// Tokens also travel in the path, not only the query string: the public
+// risk-score link is /api/verify/<share token>, a revoked client session is
+// DELETE /api/client/sessions/<jti>, and the frontend's email links are
+// /client/verify-email/<token> and /client/reset-password/<token> (which can
+// appear in backend error text about those emails). sendDefaultPii:false does
+// not remove request URLs, so these would otherwise reach Sentry as working
+// credentials.
+const SECRET_PATH_RE =
+  /\/(api\/verify|api\/client\/sessions|client\/verify-email|client\/reset-password|verify)\/[^/?#\s"']+/gi;
 const AUTH_HEADER_RE = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi;
 const JWT_RE = /\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\b/g;
 const MAX_SCRUB_DEPTH = 8;
@@ -21,6 +30,7 @@ function scrubString(value) {
   return value
     .replace(EMAIL_RE, '[email]')
     .replace(SECRET_QUERY_RE, '$1[redacted]')
+    .replace(SECRET_PATH_RE, '/$1/[redacted]')
     .replace(AUTH_HEADER_RE, '$1 [redacted]')
     .replace(JWT_RE, '[token]');
 }

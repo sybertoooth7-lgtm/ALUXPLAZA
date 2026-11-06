@@ -8,6 +8,14 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      # This file publishes port 3001 directly, with no reverse proxy in front
+      # of the app, so no forwarded hop may be trusted. The config default is 1
+      # (correct for Render/Vercel); leaving it at 1 here would let a visitor
+      # send their own X-Forwarded-For and forge the IP that rate limits, IP
+      # blocks, login alerts and the Shield all key on. If you put a load
+      # balancer or nginx in front, raise this to the real hop count and verify
+      # it with GET /api/admin/diagnostics/client-ip.
+      - TRUST_PROXY_HOPS=0
       - DATABASE_URL=postgresql://alux:${DB_PASSWORD}@postgres:5432/alux_plaza
       - DB_SSL=false
       - CORS_ORIGIN=${CORS_ORIGIN}

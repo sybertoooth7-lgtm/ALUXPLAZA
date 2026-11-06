@@ -66,6 +66,17 @@ async function startServer() {
   app.use(attachCspNonce);
   app.use(helmetMiddleware);
 
+  // Every /api response is either personal data or a credential-bearing
+  // answer (sessions, MFA state, compliance records), and none of it should
+  // be left in a browser's disk cache or a shared proxy cache. A few routes
+  // set this individually; the default was no Cache-Control at all, so an
+  // authenticated GET could be cached heuristically by the browser and shown
+  // to the next person on a shared device after the session ended.
+  app.use('/api', (_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+
   // Reject a disallowed browser origin before the rate limiter and the global
   // error handler. Passing an Error from the cors callback below would make
   // every unauthenticated request that names a foreign Origin produce a 500,

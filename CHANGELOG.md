@@ -21,6 +21,14 @@ version number.
   (`/api/verify/<token>`), client session ids
   (`/api/client/sessions/<jti>`) and token-like query parameters — instead of
   writing them verbatim to stdout.
+- Sentry events (backend and frontend) now redact the same tokens when they
+  appear in a URL path, not only in a query string.
+- `/api` responses are sent with `Cache-Control: no-store`, so authenticated
+  JSON (client records, sessions, MFA state) is not retained in a browser or
+  shared cache after sign-out.
+- `docker-compose.prod.yml` sets `TRUST_PROXY_HOPS=0`: it publishes the app
+  port directly, so trusting a forwarded hop let visitors forge the IP used by
+  rate limits and IP blocks.
 
 ### Changed
 

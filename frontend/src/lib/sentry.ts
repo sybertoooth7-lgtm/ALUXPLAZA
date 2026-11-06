@@ -16,6 +16,11 @@ const REDACT_KEY_RE =
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const SECRET_QUERY_RE =
   /([?&](?:token|mfaToken|resetToken|verificationToken|backupCode|code|password|secret|key|signature)=)[^&#\s"']+/gi;
+// Verification, reset and public score links carry the token in the path, and
+// Sentry reports (and breadcrumbs) include the full URL. Keep the route, drop
+// the credential: /client/reset-password/<token> would otherwise be a working
+// reset link sitting in a third-party dashboard.
+const SECRET_PATH_RE = /\/(client\/verify-email|client\/reset-password|verify)\/[^/?#\s"']+/gi;
 const AUTH_HEADER_RE = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi;
 const JWT_RE = /\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\b/g;
 const MAX_SCRUB_DEPTH = 8;
@@ -24,6 +29,7 @@ function scrubString(value: string): string {
   return value
     .replace(EMAIL_RE, '[email]')
     .replace(SECRET_QUERY_RE, '$1[redacted]')
+    .replace(SECRET_PATH_RE, '/$1/[redacted]')
     .replace(AUTH_HEADER_RE, '$1 [redacted]')
     .replace(JWT_RE, '[token]');
 }
