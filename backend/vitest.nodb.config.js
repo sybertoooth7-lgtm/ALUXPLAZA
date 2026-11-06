@@ -30,6 +30,8 @@ export default defineConfig({
       // Pure scrubbing and crypto helpers; no database or network.
       'test/monitoring-scrub.test.js',
       'test/mfa-backup.test.js',
+      // Access-log URL scrubbing — pure functions over strings.
+      'test/log-redaction.test.js',
     ],
     fileParallelism: false,
   },

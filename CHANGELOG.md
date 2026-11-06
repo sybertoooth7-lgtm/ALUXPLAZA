@@ -10,6 +10,18 @@ version number.
 
 ## [Unreleased]
 
+### Security
+
+- Trusted browser origins no longer include a hardcoded Vercel preview
+  wildcard: it named a team slug the project does not control, and any origin
+  matching it was allowed to read the CSRF token and send the session cookie
+  (CORS credentials). Preview deployments must now opt in with an explicit
+  `VERCEL_PREVIEW_ORIGIN_REGEX`; unset rejects them.
+- Access logs redact credentials carried in URLs — risk-score share tokens
+  (`/api/verify/<token>`), client session ids
+  (`/api/client/sessions/<jti>`) and token-like query parameters — instead of
+  writing them verbatim to stdout.
+
 ### Changed
 
 - Runtime moved to Node.js 24.x (Vercel discontinued 20.x): `engines` in root,

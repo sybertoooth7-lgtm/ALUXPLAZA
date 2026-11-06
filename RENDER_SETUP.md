@@ -40,6 +40,13 @@ is what you want for this app.
    - **CORS_ORIGIN** — your live frontend origin, e.g.
      `https://your-project.vercel.app` (comma-separated if there are
      several). The app refuses to boot in production without it.
+   - **VERCEL_PREVIEW_ORIGIN_REGEX** — optional. Only needed if you want
+     Vercel *preview* deployments to call the API. Preview hostnames look
+     like `<project>-<hash>-<team>.vercel.app`, so they can't be listed in
+     `CORS_ORIGIN`; set a regex for your own project/team, anchored with
+     `^` and `$` (e.g. `^https://your-project-[a-z0-9]+-your-team\.vercel\.app$`).
+     Leave it unset to reject previews — that is the safe default, because
+     any matching origin is allowed to send the session cookie.
    - **FRONTEND_URL** — the same origin; used for verification and
      password-reset links in emails.
    - **ADMIN_BOOTSTRAP_EMAIL** — your real email.
@@ -53,7 +60,7 @@ is what you want for this app.
    users table is still empty.
 5. Verify: open `https://alux-plaza-backend.onrender.com/api/health`
    (your exact URL is shown on the service page) → should return
-   `{"status":"ok"}`.
+   `{"status":"healthy","db":"up","timestamp":"..."}`.
 
 ## 3. Remove the bootstrap variables
 
@@ -111,7 +118,8 @@ asking for help.
   unacceptable, Render paid plans keep the service warm.
 - Neon free tier autosuspends the database compute after inactivity;
   it wakes automatically on the next connection (adds a few seconds).
-- The admin dashboard lives at `<backend-url>/admin`.
+- The admin dashboard is part of the frontend at `<frontend-url>/admin`
+  (sign-in at `/admin/login`). The backend serves no admin UI of its own.
 - `tools/` Python audit tools need python3 + `requests` on the host;
   Render's native Node runtime doesn't include them, so those admin
   endpoints will report tool-unavailable errors. Everything else works.

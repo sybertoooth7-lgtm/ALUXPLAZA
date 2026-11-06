@@ -85,6 +85,25 @@ if (isProduction) {
 
 const corsOrigins = rawCorsOrigins;
 
+// Optional wildcard for Vercel preview deployments, whose hostnames cannot be
+// enumerated in advance. Deliberately opt-in and environment-supplied: the
+// previous hardcoded value named a team slug the project owner does not
+// control, and any unclaimed Vercel team slug can be registered by someone
+// else. Whatever pattern is set here is also trusted with cookies (CORS
+// credentials), so it must end in '$' and describe only hosts you control.
+function parsePreviewOriginRegex(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+  try {
+    return new RegExp(String(raw).trim());
+  } catch (err) {
+    warnings.push(
+      `VERCEL_PREVIEW_ORIGIN_REGEX is not a valid regular expression (${err.message}); preview origins will be rejected.`
+    );
+    return null;
+  }
+}
+const vercelPreviewOriginRegex = parsePreviewOriginRegex(process.env.VERCEL_PREVIEW_ORIGIN_REGEX);
+
 if (isProduction && process.env.DB_SSL === 'false') {
   warnings.push('DB_SSL is set to false in production. Database traffic will be unencrypted.');
 }
@@ -141,6 +160,7 @@ export const config = {
   cookieSecret,
   mfaEncryptionKey,
   corsOrigins,
+  vercelPreviewOriginRegex,
   frontendUrl,
   trustProxyHops: parseTrustProxyHops(process.env.TRUST_PROXY_HOPS),
   adminBootstrapEmail: process.env.ADMIN_BOOTSTRAP_EMAIL,

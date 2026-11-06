@@ -9,7 +9,7 @@ import pinoHttp from 'pino-http';
 
 import { config } from './config.js';
 import db, { initDb } from './db.js';
-import { logger } from './logger.js';
+import { logger, logSerializers } from './logger.js';
 import { initErrorTracking, captureError, sendAlert } from './monitoring.js';
 import { recordRequest, loadPersistedValues, persistStats } from './stats.js';
 import { startCleanupScheduler } from './jobs/cleanup.js';
@@ -107,6 +107,10 @@ async function startServer() {
   app.use(
     pinoHttp({
       logger,
+      // Redacts bearer tokens carried in the URL path or query string (e.g.
+      // /api/verify/<share token>) before they reach the access log. Header
+      // redaction lives in logger.js's pino config.
+      serializers: logSerializers,
       autoLogging: {
         ignore: (req) => req.url === '/api/health',
       },

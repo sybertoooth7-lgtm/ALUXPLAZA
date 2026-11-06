@@ -41,7 +41,8 @@ function probe(env, origins) {
 }
 
 const PROD = 'https://jinarous.vercel.app';
-const PREVIEW = 'https://jinarous-abc123-sybertoooth7-lgtms-projects.vercel.app';
+const PREVIEW = 'https://jinarous-abc123-example-team.vercel.app';
+const PREVIEW_REGEX = '^https://jinarous-[a-z0-9]+-example-team\\.vercel\\.app$';
 
 describe('CSRF origin check uses the same allowlist as CORS', () => {
   it('accepts the CORS_ORIGIN origin even when FRONTEND_URL is unset (the production bug)', () => {
@@ -49,9 +50,28 @@ describe('CSRF origin check uses the same allowlist as CORS', () => {
     expect(r[PROD]).toBe('pass');
   });
 
-  it('accepts Vercel preview origins that CORS already accepts', () => {
+  it('rejects preview origins unless a pattern is configured', () => {
     const r = probe({ CORS_ORIGIN: PROD }, [PREVIEW]);
+    expect(r[PREVIEW]).toBe(403);
+  });
+
+  it('accepts Vercel preview origins when VERCEL_PREVIEW_ORIGIN_REGEX is configured', () => {
+    const r = probe({ CORS_ORIGIN: PROD, VERCEL_PREVIEW_ORIGIN_REGEX: PREVIEW_REGEX }, [PREVIEW]);
     expect(r[PREVIEW]).toBe('pass');
+  });
+
+  it('does not let the preview pattern widen the allowlist beyond its own hosts', () => {
+    const lookalike = 'https://jinarous-abc123-example-team.vercel.app.evil.com';
+    const r = probe(
+      { CORS_ORIGIN: PROD, VERCEL_PREVIEW_ORIGIN_REGEX: PREVIEW_REGEX },
+      [lookalike]
+    );
+    expect(r[lookalike]).toBe(403);
+  });
+
+  it('ignores an invalid preview regex instead of throwing', () => {
+    const r = probe({ CORS_ORIGIN: PROD, VERCEL_PREVIEW_ORIGIN_REGEX: '([' }, [PREVIEW]);
+    expect(r[PREVIEW]).toBe(403);
   });
 
   it('also accepts FRONTEND_URL when it differs from CORS_ORIGIN', () => {

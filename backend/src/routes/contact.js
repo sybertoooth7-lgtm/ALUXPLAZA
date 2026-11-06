@@ -12,11 +12,11 @@ router.post(
   '/',
   contactLimiter,
   [
-    // No .escape() here on purpose: dashboard.js already HTML-escapes every
-    // field at render time via its own escapeHtml()/textContent. Escaping
-    // again here would double-encode stored data (e.g. "AT&T" becoming
-    // "AT&amp;amp;T" permanently in the database) without adding any real
-    // protection beyond what render-time escaping already provides.
+    // No .escape() here on purpose: the admin UI renders these fields as
+    // text (React escapes output by default), so escaping them again here
+    // would double-encode stored data (e.g. "AT&T" becoming "AT&amp;amp;T"
+    // permanently in the database) without adding any real protection beyond
+    // what render-time escaping already provides.
     body('name').trim().notEmpty().isLength({ max: 100 }),
     body('email').trim().isEmail().normalizeEmail().isLength({ max: 255 }),
     body('company').optional({ checkFalsy: true }).trim().isLength({ max: 150 }),
@@ -58,10 +58,10 @@ router.post(
     const { name, email, company, message } = req.body;
 
     // No sanitization step here on purpose: express-validator already
-    // trims these fields above, and dashboard.js HTML-escapes every field
-    // at render time (see the .escape() comment above). Server-side
-    // DOMPurify (via JSDOM) added no real protection on top of that and
-    // is unreliable outside a real browser DOM — removed.
+    // trims these fields above, and the admin UI renders them as text
+    // (see the escaping comment above). Server-side DOMPurify (via JSDOM)
+    // added no real protection on top of that and is unreliable outside a
+    // real browser DOM — removed.
     try {
       const result = await db.query(
         `INSERT INTO contacts (name, email, company, message, status, consented_at, created_at, updated_at)

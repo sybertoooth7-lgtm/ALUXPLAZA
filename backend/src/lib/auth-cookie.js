@@ -37,12 +37,12 @@ function baseCookieFlags() {
  * call site whose derived path happened to be correct.
  *
  * `sameSite` MUST be 'none' in production. The frontend (Vercel) and the API
- * (Render) are genuinely cross-site - see render.yaml's CORS_ORIGIN of
- * https://jinarous.vercel.app and the same reasoning already documented on
- * the csrfToken cookie in middleware/csrf.js. A Strict cookie is not sent on
- * cross-site requests, so 'strict' meant the browser silently withheld the
- * session cookie on every authenticated call and the API answered 401
- * forever. This is the identical bug that was already found and fixed for
+ * (Render) are genuinely cross-site — see CORS_ORIGIN in render.yaml, which
+ * is required there with no default — and the same reasoning is already
+ * documented on the csrfToken cookie in middleware/csrf.js. A Strict cookie
+ * is not sent on cross-site requests, so 'strict' meant the browser silently
+ * withheld the session cookie on every authenticated call and the API
+ * answered 401 forever. This is the identical bug that was already found and fixed for
  * csrfToken; it was never carried across to the session cookies.
  *
  * In development the two run on localhost, which is the same *site* even
