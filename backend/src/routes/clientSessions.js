@@ -41,13 +41,16 @@ router.post('/:jti/revoke', requireClientAuth, async (req, res) => {
 
   try {
     const result = await db.query(
-      `DELETE FROM client_sessions WHERE jti = $1 AND client_id = $2 RETURNING jti`,
+      `DELETE FROM client_sessions WHERE jti = $1 AND client_id = $2 RETURNING jti, expires_at`,
       [jti, req.client.sub]
     );
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Session not found or already expired.' });
     }
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // Block for as long as the token could still be valid. A fixed 24h was
+    // only safe while JWT_EXPIRES_IN stayed below it; using the session's own
+    // expiry keeps the two in step whatever that setting is.
+    const expiresAt = result.rows[0].expires_at || new Date(Date.now() + 24 * 60 * 60 * 1000);
     await db.query(
       `INSERT INTO token_blocklist (jti, expires_at) VALUES ($1, $2)
        ON CONFLICT (jti) DO NOTHING`,

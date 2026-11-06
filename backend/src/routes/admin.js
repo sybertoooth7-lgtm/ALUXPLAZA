@@ -302,6 +302,81 @@ router.get('/me', requireAuth, async (req, res) => {
 });
 
 /**
+ * POST /api/admin/me/change-password
+ *
+ * Admin accounts start with a temporary password chosen by whoever created
+ * them, which that person therefore knows. This is the way to replace it.
+ * Requires the current password, so a stolen session cookie alone is not
+ * enough, and ends every existing session (middleware/auth.js compares the
+ * JWT's iat with password_changed_at) before clearing this one's cookie.
+ */
+router.post(
+  '/me/change-password',
+  requireAuth,
+  [
+    body('currentPassword').isString().notEmpty().isLength({ max: 128 }),
+    body('newPassword').isString().trim().isLength({ min: 12, max: 128 }),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: 'New password must be 12–128 characters.' });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+    if (currentPassword === newPassword) {
+      return res
+        .status(400)
+        .json({ error: 'New password must be different from the current one.' });
+    }
+
+    try {
+      const { rows } = await db.query('SELECT password_hash FROM admin_users WHERE id = $1', [
+        req.user.sub,
+      ]);
+      const user = rows[0];
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+      if (!(await bcrypt.compare(currentPassword, user.password_hash))) {
+        await recordFailedLogin(req.ip);
+        return res.status(401).json({ error: 'Current password is incorrect.' });
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      await db.query(
+        `UPDATE admin_users
+            SET password_hash = $1, password_changed_at = NOW(),
+                failed_login_count = 0, locked_until = NULL
+          WHERE id = $2`,
+        [passwordHash, req.user.sub]
+      );
+
+      if (req.user.jti) {
+        const expiresAt = req.user.exp
+          ? new Date(req.user.exp * 1000)
+          : new Date(Date.now() + COOKIE_MAX_AGE_MS);
+        await blocklistToken(req.user.jti, expiresAt);
+      }
+
+      await recordAuditLog({
+        adminEmail: req.user.email,
+        action: 'admin.password_change',
+        targetTable: 'admin_users',
+        targetId: req.user.sub,
+        oldValue: null,
+        newValue: { password_changed: true },
+      });
+
+      res.clearCookie('adminToken', authCookieClearOptions());
+      res.json({ success: true, message: 'Password changed. Please sign in again.' });
+    } catch (err) {
+      console.error('[admin] Change password error:', err.message);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+/**
  * GET /api/admin/compliance-overview
  * Platform-wide summary for the admin dashboard: total clients, average
  * score, and a count of clients per score band. Aggregate-only — never

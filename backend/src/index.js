@@ -25,7 +25,7 @@ import { attachCspNonce, helmetMiddleware } from './middleware/helmetConfig.js';
 import { setCsrfCookie, verifyCsrfToken } from './middleware/csrf.js';
 import { isAllowedOrigin } from './lib/origins.js';
 import { shield } from './middleware/shieldMiddleware.js';
-import { limiter, statusLimiter, authLimiter, signupLimiter } from './middleware/rate-limit.js';
+import { limiter, statusLimiter, authLimiter, signupLimiter, mfaLimiter } from './middleware/rate-limit.js';
 import { verifyLimiter } from './middleware/verify-rate-limit.js';
 import { requireAuth } from './middleware/auth.js';
 import { requireClientAuth } from './middleware/clientAuth.js';
@@ -134,6 +134,9 @@ async function startServer() {
   // being skipped by the general one. See middleware/rate-limit.js.
   app.use('/api/status', statusLimiter);
   app.use('/api/admin/login', authLimiter);
+  app.use('/api/admin/mfa/verify', mfaLimiter);
+  app.use('/api/admin/mfa/disable', mfaLimiter);
+  app.use('/api/admin/mfa/regenerate-backup-codes', mfaLimiter);
   app.use('/api/client/login', authLimiter);
   app.use('/api/verify', verifyLimiter);
 

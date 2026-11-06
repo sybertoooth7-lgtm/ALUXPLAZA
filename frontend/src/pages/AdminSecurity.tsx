@@ -4,7 +4,8 @@
 // from the static admin panel's Security tab to bring feature parity to
 // the React admin surface.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router';
 import { API_BASE } from '@/lib/api';
 import { secureFetch } from '@/lib/security';
 import AdminLayout from '@/components/AdminLayout';
@@ -36,7 +37,8 @@ const SEVERITY_STYLES: Record<string, string> = {
 };
 
 export default function AdminSecurity() {
-  const [tab, setTab] = useState<'blocks' | 'events'>('blocks');
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<'blocks' | 'events' | 'account'>('blocks');
 
   const [blocks, setBlocks] = useState<BlockRow[]>([]);
   const [blocksPage, setBlocksPage] = useState(1);
@@ -50,6 +52,51 @@ export default function AdminSecurity() {
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState('');
   const [eventTypeFilter, setEventTypeFilter] = useState('');
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwMessage, setPwMessage] = useState('');
+  const [pwSubmitting, setPwSubmitting] = useState(false);
+
+  async function handleChangePassword(e: FormEvent) {
+    e.preventDefault();
+    setPwError('');
+    setPwMessage('');
+
+    if (newPassword.length < 12) {
+      setPwError('New password must be at least 12 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwError('The new passwords do not match.');
+      return;
+    }
+
+    setPwSubmitting(true);
+    try {
+      const res = await secureFetch('/api/admin/me/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to change password.');
+      }
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPwMessage(data.message || 'Password changed. Please sign in again.');
+      // Every session, including this one, is invalidated by the change.
+      setTimeout(() => navigate('/admin/login'), 2000);
+    } catch (err) {
+      setPwError(err instanceof Error ? err.message : 'Failed to change password.');
+    } finally {
+      setPwSubmitting(false);
+    }
+  }
 
   useEffect(() => {
     if (tab !== 'blocks') return;
@@ -132,7 +179,7 @@ export default function AdminSecurity() {
           <h2 className="font-serif text-lg text-alux-gold mb-6">Security</h2>
 
           <div className="flex gap-1 mb-6 border-b border-white/10">
-            {(['blocks', 'events'] as const).map((t) => (
+            {(['blocks', 'events', 'account'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -142,7 +189,7 @@ export default function AdminSecurity() {
                     : 'border-transparent text-white/50 hover:text-white'
                 }`}
               >
-                {t === 'blocks' ? 'Active Blocks' : 'Recent Events'}
+                {t === 'blocks' ? 'Active Blocks' : t === 'events' ? 'Recent Events' : 'Account'}
               </button>
             ))}
           </div>
@@ -278,6 +325,73 @@ export default function AdminSecurity() {
                 onChange={setEventsPage}
               />
             </div>
+          )}
+
+          {tab === 'account' && (
+            <form onSubmit={handleChangePassword} className="max-w-md space-y-4">
+              <p className="text-white/50 text-sm">
+                Accounts are created with a temporary password chosen by the person who created
+                them. Set your own here. Changing it signs you out of every session.
+              </p>
+              <div>
+                <label
+                  htmlFor="current-password"
+                  className="block text-sm text-white/60 mb-1"
+                >
+                  Current password
+                </label>
+                <input
+                  id="current-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full bg-navy-surface border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="new-password" className="block text-sm text-white/60 mb-1">
+                  New password (at least 12 characters)
+                </label>
+                <input
+                  id="new-password"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={12}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-navy-surface border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="confirm-password" className="block text-sm text-white/60 mb-1">
+                  Confirm new password
+                </label>
+                <input
+                  id="confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={12}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-navy-surface border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
+                  required
+                />
+              </div>
+
+              {pwError && <p className="text-alux-red text-sm">{pwError}</p>}
+              {pwMessage && <p className="text-alux-cyan text-sm">{pwMessage}</p>}
+
+              <button
+                type="submit"
+                disabled={pwSubmitting}
+                className="bg-alux-cyan/10 border border-alux-cyan/30 text-alux-cyan rounded-lg px-4 py-2 text-sm hover:bg-alux-cyan/20 disabled:opacity-50"
+              >
+                {pwSubmitting ? 'Changing…' : 'Change password'}
+              </button>
+            </form>
           )}
         </div>
       )}

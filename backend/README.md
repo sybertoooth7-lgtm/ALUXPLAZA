@@ -5,7 +5,9 @@ Node.js/Express (ESM) + PostgreSQL API for Alux Plaza. It handles:
 - **Contact form submissions** (`POST /api/contact`) — validated,
   honeypot-guarded, rate-limited per IP, stored in PostgreSQL
 - **Admin auth & dashboard data** (`/api/admin/*`) — JWT in an
-  httpOnly cookie, per-account lockout after repeated failed logins
+  httpOnly cookie, per-account lockout after repeated failed logins,
+  mandatory TOTP two-factor with single-use codes, and a self-service
+  password change that ends the account's other sessions
 - **Client portal** (`/api/client/*`, `/api/verify`) — client login,
   compliance tracker, risk-score sharing with verification codes
 - **Shield middleware** — request scanning for attack signatures, IP

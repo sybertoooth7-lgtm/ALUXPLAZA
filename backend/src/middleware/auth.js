@@ -111,7 +111,7 @@ export async function requireAuth(req, res, next) {
   // Verify the user still exists and fetch current role from DB
   try {
     const { rows } = await db.query(
-      'SELECT role, disabled_at, mfa_enabled FROM admin_users WHERE id = $1',
+      'SELECT role, disabled_at, mfa_enabled, password_changed_at FROM admin_users WHERE id = $1',
       [decoded.sub]
     );
     if (rows.length === 0) {
@@ -129,6 +129,22 @@ export async function requireAuth(req, res, next) {
         '[auth] Disabled account used'
       );
       return res.status(401).json({ error: 'Unauthorized: Account has been disabled' });
+    }
+    // Changing the password ends every session minted before the change —
+    // including one an attacker may hold. JWT iat is per-second, so a token
+    // issued in the same second as the change is allowed through; waiting a
+    // second costs a legitimate user nothing and avoids clock-rounding pain.
+    if (user.password_changed_at) {
+      const changedAt = Math.floor(new Date(user.password_changed_at).getTime() / 1000);
+      if (issuedAt < changedAt) {
+        logger.warn(
+          { ip: req.ip, sub: decoded.sub, changedAt },
+          '[auth] Token issued before password change'
+        );
+        return res
+          .status(401)
+          .json({ error: 'Unauthorized: Password changed, please sign in again' });
+      }
     }
     // Use DB role, not token role (in case permissions were revoked)
     decoded.role = user.role;

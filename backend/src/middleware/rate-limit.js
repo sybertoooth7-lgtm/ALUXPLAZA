@@ -62,6 +62,26 @@ export const authLimiter = rateLimit({
   },
 });
 
+// TOTP verification is a 6-digit brute-force target. The step-replay marker
+// stops a captured code being reused, but does nothing about guessing, and
+// the general limiter's 100/15min still allows thousands of guesses a day.
+// Both the login challenge and the authenticated endpoints that consume a
+// code share this tighter per-IP budget.
+export const mfaLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: new PostgresRateLimitStore(),
+  keyGenerator: (req) => `mfa:${ipKeyGenerator(req.ip)}`,
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many verification attempts, please try again later.',
+      retryAfter: 15 * 60,
+    });
+  },
+});
+
 // Contact form gets its own budget, matching CONTACT_RATE_LIMIT_* env vars
 // documented in the README.
 export const contactLimiter = rateLimit({
