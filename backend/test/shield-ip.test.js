@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getClientIp } from '../src/middleware/shieldMiddleware.js';
+import { getClientIp } from '../src/lib/ip.js';
 
 // Shape of the parts of an Express request getClientIp reads.
 const request = (ip, remoteAddress = '203.0.113.9') => ({

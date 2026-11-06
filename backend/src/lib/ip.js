@@ -60,3 +60,27 @@ export function normalizeIp(value) {
 
   return net.isIP(candidate) ? candidate : null;
 }
+
+/**
+ * The address a request should be attributed to, or 'unknown'.
+ *
+ * `req.ip` is the right answer only when the proxy chain is configured
+ * correctly. One hop too many in TRUST_PROXY_HOPS and an entry the client
+ * wrote into X-Forwarded-For becomes `req.ip`. That value then reaches
+ * VARCHAR(45) columns (blocked_ips, security_events) and rate-limit keys,
+ * where an over-length or non-address string either breaks the write or mints
+ * a fresh bucket for every request.
+ *
+ * The socket address is only a fallback when it names a real visitor. If it
+ * is private it belongs to the host's own proxy: treating it as the client
+ * would put every visitor behind that proxy into one bucket (a one-request
+ * denial of service). 'unknown' means "no attributable source".
+ */
+export function getClientIp(req) {
+  const claimed = normalizeIp(req.ip);
+  if (claimed) return claimed;
+
+  const socket =
+    normalizeIp(req.socket?.remoteAddress) || normalizeIp(req.connection?.remoteAddress);
+  return socket && !isInternalAddress(socket) ? socket : 'unknown';
+}

@@ -34,6 +34,8 @@ export default defineConfig({
       'test/log-redaction.test.js',
       // Pure request-path predicate used by the general API limiter.
       'test/rate-limit-path.test.js',
+      // Rate-limit bucket keys. Pure: no request is sent and no store is hit.
+      'test/rate-limit-key.test.js',
       // Pure query-string parsers used before pagination reaches SQL.
       'test/pagination.test.js',
       // Client-address normalisation for Shield: pure, and the whole point is

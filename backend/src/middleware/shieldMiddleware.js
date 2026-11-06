@@ -5,7 +5,7 @@
 
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
-import { normalizeIp, isInternalAddress } from '../lib/ip.js';
+import { getClientIp } from '../lib/ip.js';
 import { isBlocked, blockIp } from '../shield/blocklist.js';
 import { scanRequest } from '../shield/detector.js';
 import { recordRequest } from '../shield/bruteForceGuard.js';
@@ -41,26 +41,6 @@ const SIGNATURE_SCAN_EXEMPT_PATHS = [
   '/api/client/signup', // free-text company name plus a password on an unauthenticated path
   '/api/client/password-reset/confirm', // reset token plus new password
 ];
-
-// `req.ip` is the right answer only when the proxy chain is configured
-// correctly. One hop too many in TRUST_PROXY_HOPS and an entry the client
-// wrote into X-Forwarded-For becomes `req.ip`. That value then reaches
-// VARCHAR(45) columns (blocked_ips, security_events), where an over-length or
-// non-address string makes the INSERT throw — so a request that Shield has
-// already identified as an attack can end up neither blocked nor recorded.
-//
-// The socket address is only a fallback when it names a real visitor. If it
-// is private, it belongs to the host's own proxy: blocking it would take the
-// whole site down for everyone behind that proxy because one client sent a
-// malformed forwarding header. 'unknown' means "no attributable source" —
-// Shield still refuses detected attacks, it just has nothing to block.
-export function getClientIp(req) {
-  const claimed = normalizeIp(req.ip);
-  if (claimed) return claimed;
-
-  const socket = normalizeIp(req.socket?.remoteAddress) || normalizeIp(req.connection?.remoteAddress);
-  return socket && !isInternalAddress(socket) ? socket : 'unknown';
-}
 
 // Lightweight check only — verifies the JWT signature and expiry, nothing
 // more. It deliberately does NOT check the token blocklist or re-fetch the

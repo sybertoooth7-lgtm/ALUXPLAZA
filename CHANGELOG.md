@@ -12,6 +12,15 @@ version number.
 
 ### Security
 
+- Every rate limiter now buckets by the same validated client address as
+  Shield. All limiters used `req.ip` directly (the general API limiter had no
+  key generator at all, so it used Express's default), which means a client
+  that can influence `req.ip` through a misplaced `TRUST_PROXY_HOPS` could
+  vary a malformed `X-Forwarded-For` value and get a fresh budget on every
+  request — no limiter would ever fill. Keys now come from the shared
+  `getClientIp`, so garbage headers fall back to the socket address and an
+  unattributable request shares one bucket (`unknown`) instead of minting
+  unlimited ones.
 - A Shield detection now denies the request even when recording the block
   fails. The 403 was emitted *after* `blockIp()`, and its failure fell into
   the middleware's top-level catch, which calls `next()` — so a database

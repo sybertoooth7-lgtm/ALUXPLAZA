@@ -1,5 +1,18 @@
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { PostgresRateLimitStore } from '../lib/rate-limit-store.js';
+import { getClientIp } from '../lib/ip.js';
+
+// Every limiter buckets by the same validated client address. `req.ip` alone
+// is not safe here for the same reason it is not safe in Shield: with one hop
+// too many in TRUST_PROXY_HOPS it is whatever the client put in
+// X-Forwarded-For, so a request can mint a brand-new bucket just by varying a
+// garbage header — the limit stops applying entirely. `getClientIp` returns a
+// real address or 'unknown', which every unattributable request shares.
+//
+// ipKeyGenerator still does the IPv6 /56 grouping; it passes non-addresses
+// (including 'unknown') through unchanged.
+export const rateLimitKey = (prefix, req) => `${prefix}:${ipKeyGenerator(getClientIp(req))}`;
+const clientKey = (prefix) => (req) => rateLimitKey(prefix, req);
 
 // General API rate limiter — generous, just a backstop against abuse.
 //
@@ -26,6 +39,7 @@ export const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new PostgresRateLimitStore(),
+  keyGenerator: clientKey('api'),
   skip: isStatusPath,
   handler: (req, res) => {
     res.status(429).json({
@@ -45,7 +59,7 @@ export const statusLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new PostgresRateLimitStore(),
-  keyGenerator: (req) => `status:${ipKeyGenerator(req.ip)}`,
+  keyGenerator: clientKey('status'),
   handler: (req, res) => {
     res.status(429).json({ error: 'Too many status requests, please try again later.' });
   },
@@ -60,7 +74,7 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new PostgresRateLimitStore(),
-  keyGenerator: (req) => `auth:${ipKeyGenerator(req.ip)}`,
+  keyGenerator: clientKey('auth'),
   handler: (req, res) => {
     res.status(429).json({
       error: 'Too many login attempts, please try again later.',
@@ -80,7 +94,7 @@ export const mfaLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new PostgresRateLimitStore(),
-  keyGenerator: (req) => `mfa:${ipKeyGenerator(req.ip)}`,
+  keyGenerator: clientKey('mfa'),
   handler: (req, res) => {
     res.status(429).json({
       error: 'Too many verification attempts, please try again later.',
@@ -97,7 +111,7 @@ export const contactLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new PostgresRateLimitStore(),
-  keyGenerator: (req) => `contact:${ipKeyGenerator(req.ip)}`,
+  keyGenerator: clientKey('contact'),
   handler: (req, res) => {
     res.status(429).json({ error: 'Too many submissions, please try again later.' });
   },
@@ -110,7 +124,7 @@ export const signupLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new PostgresRateLimitStore(),
-  keyGenerator: (req) => `signup:${ipKeyGenerator(req.ip)}`,
+  keyGenerator: clientKey('signup'),
   handler: (req, res) => {
     res.status(429).json({
       error: 'Too many signup attempts, please try again later.',
