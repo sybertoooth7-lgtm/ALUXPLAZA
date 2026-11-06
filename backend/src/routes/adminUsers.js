@@ -11,6 +11,13 @@ import { recordAuditLog } from '../middleware/auditLog.js';
 
 const router = Router();
 
+// Cluster-wide advisory lock serialising the mutations that must not race on
+// the "last usable superadmin" invariant (demote, delete, disable). Those
+// checks count rows and then change one; without a lock two requests can each
+// observe two active superadmins and between them remove both, leaving an
+// account nobody can administer. The value is arbitrary but must be shared.
+const ADMIN_ROLE_LOCK = 0x414c5558; // 'ALUX'
+
 router.get(
   '/',
   requireAuth,
@@ -101,33 +108,49 @@ router.patch(
       return res.status(403).json({ error: 'You cannot change your own role.' });
 
     try {
-      const before = await db.query('SELECT role FROM admin_users WHERE id = $1', [targetId]);
-      if (before.rows.length === 0) return res.status(404).json({ error: 'Admin not found.' });
+      const outcome = await db.transaction(async (tx) => {
+        await tx.query('SELECT pg_advisory_xact_lock($1::bigint)', [ADMIN_ROLE_LOCK]);
 
-      if (before.rows[0].role === 'superadmin' && req.body.role !== 'superadmin') {
-        const { rows: superadmins } = await db.query(
-          "SELECT COUNT(*) FROM admin_users WHERE role = 'superadmin'"
-        );
-        if (parseInt(superadmins[0].count, 10) <= 1) {
-          return res.status(409).json({ error: 'Cannot demote the last remaining superadmin.' });
+        const before = await tx.query('SELECT role FROM admin_users WHERE id = $1', [targetId]);
+        if (before.rows.length === 0) return { notFound: true };
+
+        const previousRole = before.rows[0].role;
+        // Only *active* superadmins count: a disabled one cannot sign in, and
+        // re-enabling requires an active superadmin, so demoting the last
+        // active one while a disabled one exists would leave nobody able to
+        // administer the instance. Matches the invariant in /disable below.
+        if (previousRole === 'superadmin' && req.body.role !== 'superadmin') {
+          const { rows: superadmins } = await tx.query(
+            "SELECT COUNT(*) FROM admin_users WHERE role = 'superadmin' AND disabled_at IS NULL AND id <> $1",
+            [targetId]
+          );
+          if (parseInt(superadmins[0].count, 10) === 0) {
+            return { lastSuperadmin: true };
+          }
         }
-      }
 
-      const result = await db.query(
-        'UPDATE admin_users SET role = $1 WHERE id = $2 RETURNING id, email, role',
-        [req.body.role, targetId]
-      );
+        const result = await tx.query(
+          'UPDATE admin_users SET role = $1 WHERE id = $2 RETURNING id, email, role',
+          [req.body.role, targetId]
+        );
+        return { previousRole, user: result.rows[0] };
+      });
+
+      if (outcome.notFound) return res.status(404).json({ error: 'Admin not found.' });
+      if (outcome.lastSuperadmin) {
+        return res.status(409).json({ error: 'Cannot demote the last remaining superadmin.' });
+      }
 
       await recordAuditLog({
         adminEmail: req.user.email,
         action: 'admin_user.role_change',
         targetTable: 'admin_users',
         targetId,
-        oldValue: { role: before.rows[0].role },
-        newValue: { role: result.rows[0].role },
+        oldValue: { role: outcome.previousRole },
+        newValue: { role: outcome.user.role },
       });
 
-      res.json({ success: true, user: result.rows[0] });
+      res.json({ success: true, user: outcome.user });
     } catch (err) {
       console.error('[adminUsers] Role change error:', err.message);
       res.status(500).json({ error: 'Internal server error' });
@@ -144,30 +167,43 @@ router.delete('/:id', requireAuth, requireSuperAdmin, [param('id').isInt()], asy
     return res.status(403).json({ error: 'You cannot delete your own account.' });
 
   try {
-    const target = await db.query('SELECT role FROM admin_users WHERE id = $1', [targetId]);
-    if (target.rows.length === 0) return res.status(404).json({ error: 'Admin not found.' });
+    const outcome = await db.transaction(async (tx) => {
+      await tx.query('SELECT pg_advisory_xact_lock($1::bigint)', [ADMIN_ROLE_LOCK]);
 
-    if (target.rows[0].role === 'superadmin') {
-      const { rows: superadmins } = await db.query(
-        "SELECT COUNT(*) FROM admin_users WHERE role = 'superadmin'"
-      );
-      if (parseInt(superadmins[0].count, 10) <= 1) {
-        return res.status(409).json({ error: 'Cannot delete the last remaining superadmin.' });
+      const target = await tx.query('SELECT role, disabled_at FROM admin_users WHERE id = $1', [
+        targetId,
+      ]);
+      if (target.rows.length === 0) return { notFound: true };
+
+      // Active only, and excluding the row about to be deleted. Deleting the
+      // last *active* superadmin leaves the instance unadministerable even if
+      // a disabled one still exists, because only a superadmin can re-enable.
+      if (target.rows[0].role === 'superadmin') {
+        const { rows: superadmins } = await tx.query(
+          "SELECT COUNT(*) FROM admin_users WHERE role = 'superadmin' AND disabled_at IS NULL AND id <> $1",
+          [targetId]
+        );
+        if (parseInt(superadmins[0].count, 10) === 0) return { lastSuperadmin: true };
       }
-    }
 
-    const result = await db.query(
-      'DELETE FROM admin_users WHERE id = $1 RETURNING id, email, role',
-      [targetId]
-    );
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Admin not found.' });
+      const result = await tx.query(
+        'DELETE FROM admin_users WHERE id = $1 RETURNING id, email, role',
+        [targetId]
+      );
+      return { deleted: result.rows[0] };
+    });
+
+    if (outcome.notFound) return res.status(404).json({ error: 'Admin not found.' });
+    if (outcome.lastSuperadmin) {
+      return res.status(409).json({ error: 'Cannot delete the last remaining superadmin.' });
+    }
 
     await recordAuditLog({
       adminEmail: req.user.email,
       action: 'admin_user.delete',
       targetTable: 'admin_users',
       targetId,
-      oldValue: result.rows[0],
+      oldValue: outcome.deleted,
       newValue: null,
     });
 
@@ -203,6 +239,8 @@ router.post(
 
     try {
       const outcome = await db.transaction(async (tx) => {
+        await tx.query('SELECT pg_advisory_xact_lock($1::bigint)', [ADMIN_ROLE_LOCK]);
+
         const found = await tx.query(
           'SELECT id, email, role, disabled_at FROM admin_users WHERE id = $1 FOR UPDATE',
           [targetId]

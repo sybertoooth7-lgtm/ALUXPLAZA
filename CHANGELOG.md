@@ -12,6 +12,12 @@ version number.
 
 ### Security
 
+- The "last remaining superadmin" guard now counts only *active* superadmins
+  and serialises demote, delete and disable behind a Postgres advisory lock.
+  Previously disabled accounts were counted as if usable, and two concurrent
+  requests could each see two superadmins and between them remove both.
+- `npm run create-admin` no longer echoes the password while it is typed, so it
+  is not left in terminal scrollback or a screen recording.
 - A backup code is now removed with a compare-and-swap on the stored hash list,
   so two concurrent verifications can no longer both redeem the same code.
 - Failed TOTP guesses now count toward the account's lockout: five wrong codes

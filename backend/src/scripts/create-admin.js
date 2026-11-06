@@ -21,6 +21,26 @@ function ask(question) {
   return new Promise((resolve) => rl.question(question, resolve));
 }
 
+// Suppresses echo while the admin types a password, so it is not left in the
+// terminal scrollback, a screen recording or a shared session. Readline echoes
+// every keystroke through this hook; hiding the prompt too and printing it
+// ourselves keeps the question visible. Piped stdin is not echoed anyway and
+// raw key handling would break scripts that feed the password in, so that path
+// uses the ordinary prompt.
+async function askHidden(question) {
+  if (!process.stdin.isTTY) return ask(question);
+
+  rl.output.write(question);
+  const original = rl._writeToOutput;
+  rl._writeToOutput = () => {};
+  try {
+    return await new Promise((resolve) => rl.question('', resolve));
+  } finally {
+    rl._writeToOutput = original;
+    rl.output.write('\n');
+  }
+}
+
 async function main() {
   const email = (await ask('Admin email: ')).trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -29,14 +49,14 @@ async function main() {
     process.exit(1);
   }
 
-  const password = await ask('Admin password: ');
+  const password = await askHidden('Admin password: ');
   if (!password || password.length < 12) {
     console.error('Password must be at least 12 characters.');
     rl.close();
     process.exit(1);
   }
 
-  const confirm = await ask('Confirm password: ');
+  const confirm = await askHidden('Confirm password: ');
   if (password !== confirm) {
     console.error('Passwords do not match.');
     rl.close();
