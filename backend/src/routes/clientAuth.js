@@ -597,7 +597,7 @@ router.post(
     if (!token) return res.json({ success: true });
 
     try {
-      const decoded = jwt.verify(token, config.jwtSecret);
+      const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
       if (decoded.jti) {
         const expiresAt = decoded.exp
           ? new Date(decoded.exp * 1000)

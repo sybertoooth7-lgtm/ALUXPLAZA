@@ -64,7 +64,7 @@ function getSessionIdentity(req) {
   const token = req.cookies?.adminToken || req.cookies?.clientToken;
   if (!token) return null;
   try {
-    const decoded = jwt.verify(token, config.jwtSecret);
+    const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
     const kind = decoded.role === 'client' ? 'client' : 'admin';
     return `${kind}:${decoded.sub}`;
   } catch {

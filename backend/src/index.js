@@ -172,7 +172,6 @@ async function startServer() {
   app.use('/api/contact', contactRoutes);
   app.use('/api/status', statusRoutes);
   app.use('/api/verify', verifyScoreRoutes);
-  app.use('/admin', express.static('public/admin'));
 
   // _next must stay in the signature: Express identifies error-handling
   // middleware by arity (fn.length === 4), so removing the parameter would

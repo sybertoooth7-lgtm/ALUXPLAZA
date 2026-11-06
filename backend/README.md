@@ -10,8 +10,6 @@ Node.js/Express (ESM) + PostgreSQL API for Alux Plaza. It handles:
   compliance tracker, risk-score sharing with verification codes
 - **Shield middleware** — request scanning for attack signatures, IP
   blocklisting, and volume abuse detection (see `src/shield/`)
-- **Admin dashboard UI** at `/admin` — plain HTML/JS (no build step).
-  Legacy panel; the maintained admin UI lives in the React frontend
 - **Durable email queue** (`src/lib/email-queue.js`) — pg-boss backed;
   retries with backoff, deletes finished jobs after 24 hours
 
@@ -57,12 +55,9 @@ React app in `frontend/` (routes under `/admin/*` — login, dashboard,
 submissions, security, users), served separately in dev via
 `cd frontend && npm run dev`.
 
-A legacy static admin panel also still exists at
-`http://localhost:3001/admin` (`backend/public/admin/`). It's being
-phased out in favor of the React dashboard above, which now covers
-everything it did (submissions, IP blocks, security events) plus client
-management and compliance reporting that the static panel never had.
-Don't build new admin features there — add them to the React app instead.
+The old static panel under `backend/public/admin/` has been removed; it
+served an unauthenticated login page from the API origin and duplicated
+functionality the React dashboard already covers.
 
 ## Tests
 

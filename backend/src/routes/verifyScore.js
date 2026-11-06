@@ -37,7 +37,10 @@ router.get(
       if (share.revoked_at) {
         return res.status(410).json({ error: 'This verification link has been revoked.' });
       }
-      if (share.expires_at && new Date(share.expires_at) < new Date()) {
+      // Null expiry rows predate the default-expiry policy. Treat them as
+      // expired rather than honouring a permanent bearer credential; the
+      // migration also backfills them so this is only a defensive fallback.
+      if (!share.expires_at || new Date(share.expires_at) < new Date()) {
         return res.status(410).json({ error: 'This verification link has expired.' });
       }
 

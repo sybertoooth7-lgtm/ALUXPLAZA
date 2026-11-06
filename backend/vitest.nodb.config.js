@@ -27,6 +27,9 @@ export default defineConfig({
       'test/auth-cookie.test.js',
       // CSRF origin allowlist. Child-process probes, no database.
       'test/csrf-origin.test.js',
+      // Pure scrubbing and crypto helpers; no database or network.
+      'test/monitoring-scrub.test.js',
+      'test/mfa-backup.test.js',
     ],
     fileParallelism: false,
   },

@@ -54,7 +54,11 @@ export function setCsrfCookie(req, res, next) {
   if (!token || token.length < 32) {
     token = generateToken();
     res.cookie(CSRF_COOKIE, token, {
-      httpOnly: false, // must be readable by frontend JS
+      // The frontend never reads this cookie: it fetches the token from
+      // GET /api/csrf-token, which works across origins because the response
+      // body is readable while the httpOnly cookie is not. Keeping the cookie
+      // httpOnly means XSS cannot exfiltrate the CSRF token directly.
+      httpOnly: true,
       // SameSite=None is required when frontend and backend are deployed on different
       // domains (Vercel + Render) — this is a genuinely cross-site relationship.
       // SameSite=Strict silently stops the browser from sending this cookie back,
@@ -116,7 +120,7 @@ export function verifyCsrfToken(req, res, next) {
 export function refreshCsrfToken(req, res, next) {
   const token = generateToken();
   res.cookie(CSRF_COOKIE, token, {
-    httpOnly: false,
+    httpOnly: true,
     secure: true,
     sameSite: 'none',
     maxAge: 24 * 60 * 60 * 1000,

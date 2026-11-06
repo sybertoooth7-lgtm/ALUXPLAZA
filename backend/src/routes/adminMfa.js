@@ -10,12 +10,13 @@ import {
   encryptSecret,
   decryptSecret,
   getOtpauthUrl,
-  verifyTOTP,
+  matchTOTPStep,
   generateBackupCodes,
   verifyBackupCode,
   adminMfaRequired,
   generateQrDataUrl,
 } from '../lib/mfa.js';
+import { consumeTOTPStep } from '../lib/totpReplay.js';
 
 const router = Router();
 
@@ -34,7 +35,7 @@ router.post('/enroll', requireAuth, async (req, res) => {
     const secret = generateSecret();
     const encrypted = encryptSecret(secret);
     await db.query(
-      `UPDATE admin_users SET mfa_secret = $1, mfa_enabled = FALSE, mfa_backup_codes = NULL, mfa_enrolled_at = NULL WHERE id = $2`,
+      `UPDATE admin_users SET mfa_secret = $1, mfa_enabled = FALSE, mfa_backup_codes = NULL, mfa_enrolled_at = NULL, mfa_last_used_step = NULL WHERE id = $2`,
       [encrypted, req.user.sub]
     );
     const otpauthUrl = getOtpauthUrl(req.user.email, secret);
@@ -72,7 +73,7 @@ router.post(
         return res.status(400).json({ error: 'No enrollment in progress.' });
 
       const secret = decryptSecret(rows[0].mfa_secret);
-      if (!verifyTOTP(secret, req.body.code)) {
+      if (matchTOTPStep(secret, req.body.code) === null) {
         return res.status(400).json({ error: 'Invalid code.' });
       }
 
@@ -127,7 +128,8 @@ router.post(
       }
 
       const secret = decryptSecret(user.mfa_secret);
-      let codeValid = verifyTOTP(secret, req.body.code);
+      const totpStep = matchTOTPStep(secret, req.body.code);
+      let codeValid = totpStep !== null;
       let usedBackup = false;
 
       if (!codeValid && user.mfa_backup_codes) {
@@ -145,9 +147,14 @@ router.post(
       }
 
       if (!codeValid) return res.status(401).json({ error: 'Invalid MFA code.' });
+      if (totpStep !== null && !(await consumeTOTPStep(req.user.sub, totpStep))) {
+        return res
+          .status(401)
+          .json({ error: 'This code has already been used. Wait for the next code.' });
+      }
 
       await db.query(
-        `UPDATE admin_users SET mfa_enabled = FALSE, mfa_secret = NULL, mfa_backup_codes = NULL, mfa_enrolled_at = NULL WHERE id = $1`,
+        `UPDATE admin_users SET mfa_enabled = FALSE, mfa_secret = NULL, mfa_backup_codes = NULL, mfa_enrolled_at = NULL, mfa_last_used_step = NULL WHERE id = $1`,
         [req.user.sub]
       );
 
@@ -193,8 +200,9 @@ router.post(
       if (!rows[0]?.mfa_enabled) return res.status(400).json({ error: 'MFA is not enabled.' });
 
       const secret = decryptSecret(rows[0].mfa_secret);
-      if (!verifyTOTP(secret, req.body.code))
+      if (matchTOTPStep(secret, req.body.code) === null) {
         return res.status(401).json({ error: 'Invalid MFA code.' });
+      }
 
       const { plaintextCodes, hashedCodes } = await generateBackupCodes();
       await db.query('UPDATE admin_users SET mfa_backup_codes = $1 WHERE id = $2', [

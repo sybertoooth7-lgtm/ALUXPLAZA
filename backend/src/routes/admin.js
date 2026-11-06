@@ -11,6 +11,7 @@ import { recordFailedLogin } from '../shield/bruteForceGuard.js';
 import { recordAuditLog } from '../middleware/auditLog.js';
 import { parseExpiryToMs } from '../lib/parseExpiry.js';
 import { adminMfaRequired } from '../lib/mfa.js';
+import { consumeTOTPStep } from '../lib/totpReplay.js';
 import { authCookieOptions, authCookieClearOptions } from '../lib/auth-cookie.js';
 import { computeComplianceOverview } from '../shield/riskScore.js';
 import { getQueueStats, isEmailQueueDisabled } from '../lib/email-queue.js';
@@ -165,7 +166,7 @@ router.post(
     }
 
     try {
-      const { verifyMfaToken, decryptSecret, verifyTOTP, verifyBackupCode } =
+      const { verifyMfaToken, decryptSecret, matchTOTPStep, verifyBackupCode } =
         await import('../lib/mfa.js');
       const mfaPayload = verifyMfaToken(req.body.mfaToken);
       if (!mfaPayload) {
@@ -195,7 +196,8 @@ router.post(
       }
 
       const secret = decryptSecret(user.mfa_secret);
-      let codeValid = verifyTOTP(secret, req.body.code);
+      const totpStep = matchTOTPStep(secret, req.body.code);
+      let codeValid = totpStep !== null;
       let usedBackup = false;
 
       // Try backup code if TOTP didn't match
@@ -218,6 +220,15 @@ router.post(
         // Log failed MFA attempt
         await recordFailedLogin(req.ip);
         return res.status(401).json({ error: 'Invalid MFA code.' });
+      }
+
+      // A TOTP code stays valid for the +/-1-step window. Burn the matched
+      // step atomically so the same code cannot open a second session, even
+      // if two verify requests race each other.
+      if (totpStep !== null && !(await consumeTOTPStep(user.id, totpStep))) {
+        return res
+          .status(401)
+          .json({ error: 'This code has already been used. Wait for the next code.' });
       }
 
       // Mark this MFA challenge as consumed so it can never be used again —
@@ -308,10 +319,15 @@ router.get('/compliance-overview', requireAuth, async (_req, res) => {
 
 /**
  * GET /api/admin/submissions
+ * Contact submissions contain names, emails, companies and free-text
+ * messages, so this is PII and requires the admin role. The readonly role
+ * still gets the aggregate dashboard, but must not be able to read (or use
+ * the search filter as an oracle over) contact records.
  */
 router.get(
   '/submissions',
   requireAuth,
+  requireAdmin,
   [
     query('page').optional().isInt({ min: 1 }).toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),

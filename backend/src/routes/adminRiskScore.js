@@ -10,15 +10,22 @@ import { recordAuditLog } from '../middleware/auditLog.js';
 
 const router = Router({ mergeParams: true }); // mergeParams to access :id from the parent mount
 
+// A share link is bearer-equivalent: anyone who has it can read the score.
+// "No expiry" turned every link into a permanent credential that outlives
+// the engagement and survives a leaked inbox or screenshot, so links now
+// default to 30 days and can never be minted for longer than two years.
+const DEFAULT_SHARE_EXPIRY_DAYS = 30;
+const MAX_SHARE_EXPIRY_DAYS = 730;
+
 /**
  * POST /api/admin/clients/:id/risk-score-shares
- * Generates a new shareable link. Optional expiresInDays (default: no expiry).
+ * Generates a new shareable link. expiresInDays defaults to 30.
  */
 router.post(
   '/',
   [
     param('id').isInt().withMessage('Invalid client id.'),
-    body('expiresInDays').optional().isInt({ min: 1, max: 730 }),
+    body('expiresInDays').optional().isInt({ min: 1, max: MAX_SHARE_EXPIRY_DAYS }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -27,9 +34,8 @@ router.post(
     }
 
     const token = crypto.randomBytes(24).toString('base64url'); // 32 chars, URL-safe
-    const expiresAt = req.body.expiresInDays
-      ? new Date(Date.now() + req.body.expiresInDays * 24 * 60 * 60 * 1000)
-      : null;
+    const expiresInDays = req.body.expiresInDays ?? DEFAULT_SHARE_EXPIRY_DAYS;
+    const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
     const adminEmail = req.user?.email || 'unknown';
 
     try {

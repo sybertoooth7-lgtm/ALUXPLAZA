@@ -102,8 +102,6 @@ images run.
 │   │   └── lib/          Email, expiry parsing, rate-limit store
 │   ├── migrations/       Sequential, idempotent SQL migrations
 │   ├── test/             Vitest + supertest, against a real Postgres instance
-│   ├── public/admin/     Legacy static admin panel — being phased out,
-│   │                     see backend/README.md
 │   └── openapi.yaml      API reference for public/client-facing endpoints
 ├── frontend/          React 19 + Vite + TypeScript + Tailwind
 │   ├── src/pages/        One file per route

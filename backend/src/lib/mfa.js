@@ -11,6 +11,10 @@ const CODE_DIGITS = 6;
 const TIME_STEP = 30;
 const VALID_WINDOW = 1;
 const BACKUP_CODE_COUNT = 10;
+// 10 bytes = 80 bits. The previous 6-byte codes were 48 bits, and the
+// formatting sliced 12 characters from an 8-character base64url string,
+// producing "ABCD-EFGH-" with a trailing dash.
+const BACKUP_CODE_BYTES = 10;
 
 // BREAKING CHANGE (intentional): this used to be
 // sha256(config.jwtSecret) — the same signing secret, reused directly as
@@ -147,19 +151,34 @@ export function computeTOTP(secret, timeOffsetSteps = 0) {
   return String(code).padStart(CODE_DIGITS, '0');
 }
 
-export function verifyTOTP(secret, code) {
+/**
+ * Returns the absolute TOTP time-step that matched, or null. Callers use the
+ * step with consumeTOTPStep() so a code cannot be replayed inside the
+ * +/-1-step acceptance window.
+ */
+export function matchTOTPStep(secret, code) {
   for (let offset = -VALID_WINDOW; offset <= VALID_WINDOW; offset++) {
-    if (computeTOTP(secret, offset) === code) return true;
+    if (computeTOTP(secret, offset) === code) {
+      return Math.floor(Date.now() / 1000 / TIME_STEP) + offset;
+    }
   }
-  return false;
+  return null;
+}
+
+export function verifyTOTP(secret, code) {
+  return matchTOTPStep(secret, code) !== null;
 }
 
 export async function generateBackupCodes() {
   const bcrypt = await import('./bcrypt-pool.js');
   const plaintextCodes = [];
   for (let i = 0; i < BACKUP_CODE_COUNT; i++) {
-    const code = crypto.randomBytes(6).toString('base64url').slice(0, 12).toUpperCase();
-    plaintextCodes.push(`${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8, 12)}`);
+    // Base32 avoids the case/character ambiguity of base64url; 10 random
+    // bytes encode to 16 characters, formatted as four groups of four.
+    const code = base32Encode(crypto.randomBytes(BACKUP_CODE_BYTES));
+    plaintextCodes.push(
+      `${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8, 12)}-${code.slice(12, 16)}`
+    );
   }
   // Hash in parallel: a serial loop makes enabling MFA cost BACKUP_CODE_COUNT
   // x the CPU time of a single hash.
@@ -169,12 +188,13 @@ export async function generateBackupCodes() {
 
 export async function verifyBackupCode(code, hashedCodes) {
   const bcrypt = await import('./bcrypt-pool.js');
+  const candidate = String(code).trim();
   // Compare against all codes concurrently rather than serially. Sequentially
   // this is up to BACKUP_CODE_COUNT (10) cost-12 hashes back to back, which is
   // multiple seconds of pure CPU. The pool keeps that off the event loop, and
   // running them together also avoids leaking which position matched via
   // timing.
-  const matches = await Promise.all(hashedCodes.map((h) => bcrypt.compare(code, h)));
+  const matches = await Promise.all(hashedCodes.map((h) => bcrypt.compare(candidate, h)));
   return matches.indexOf(true);
 }
 
@@ -187,7 +207,7 @@ export function generateMfaToken(userId, email) {
 
 export function verifyMfaToken(token) {
   try {
-    const decoded = jwt.verify(token, config.jwtSecret);
+    const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
     if (decoded.type !== 'mfa_challenge') return null;
     return decoded;
   } catch {

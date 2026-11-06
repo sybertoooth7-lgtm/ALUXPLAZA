@@ -3,6 +3,73 @@ import { logger } from './logger.js';
 
 const sentryEnabled = Boolean(process.env.SENTRY_DSN);
 
+// Request URLs routinely carry verification/reset tokens, and error contexts
+// can carry customer emails. Sentry is a third-party service, so scrub those
+// before the event leaves the process. Queries, request bodies and breadcrumb
+// URLs are all covered; credential-bearing headers are dropped outright.
+const REDACT_KEY_RE =
+  /^(password|passwd|token|mfaToken|resetToken|verificationToken|secret|authorization|cookie|set-cookie|email|apiKey|api_key)$/i;
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const SECRET_QUERY_RE =
+  /([?&](?:token|mfaToken|resetToken|verificationToken|backupCode|code|password|secret|key|signature)=)[^&#\s"']+/gi;
+const AUTH_HEADER_RE = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi;
+const JWT_RE = /\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\b/g;
+const MAX_SCRUB_DEPTH = 8;
+
+function scrubString(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(EMAIL_RE, '[email]')
+    .replace(SECRET_QUERY_RE, '$1[redacted]')
+    .replace(AUTH_HEADER_RE, '$1 [redacted]')
+    .replace(JWT_RE, '[token]');
+}
+
+export function scrubValue(value, depth = 0) {
+  if (depth > MAX_SCRUB_DEPTH) return '[truncated]';
+  if (typeof value === 'string') return scrubString(value);
+  if (Array.isArray(value)) return value.map((item) => scrubValue(item, depth + 1));
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [key, item] of Object.entries(value)) {
+      out[key] = REDACT_KEY_RE.test(key) ? '[redacted]' : scrubValue(item, depth + 1);
+    }
+    return out;
+  }
+  return value;
+}
+
+function scrubEvent(event) {
+  if (!event) return event;
+  event.message = scrubString(event.message);
+  event.transaction = scrubString(event.transaction);
+  if (event.request) {
+    event.request.url = scrubString(event.request.url);
+    event.request.query_string = scrubValue(event.request.query_string);
+    event.request.data = scrubValue(event.request.data);
+    if (event.request.headers) {
+      delete event.request.headers.cookie;
+      delete event.request.headers.authorization;
+      delete event.request.headers['set-cookie'];
+    }
+  }
+  if (event.user) {
+    delete event.user.email;
+    delete event.user.ip_address;
+  }
+  event.extra = scrubValue(event.extra);
+  event.contexts = scrubValue(event.contexts);
+  event.tags = scrubValue(event.tags);
+  event.fingerprint = scrubValue(event.fingerprint);
+  if (Array.isArray(event.breadcrumbs)) {
+    event.breadcrumbs = event.breadcrumbs.map((b) => scrubValue(b));
+  }
+  if (event.exception?.values) {
+    event.exception.values = scrubValue(event.exception.values);
+  }
+  return event;
+}
+
 export function initErrorTracking() {
   if (!sentryEnabled) {
     logger.info(
@@ -15,6 +82,10 @@ export function initErrorTracking() {
     dsn: process.env.SENTRY_DSN,
     environment: process.env.NODE_ENV || 'development',
     tracesSampleRate: 0.1,
+    // Never attach cookies, request bodies or user identifiers automatically.
+    sendDefaultPii: false,
+    beforeSend: scrubEvent,
+    beforeBreadcrumb: (breadcrumb) => scrubValue(breadcrumb),
   });
   logger.info('Sentry error tracking initialized.');
 }
@@ -22,7 +93,7 @@ export function initErrorTracking() {
 export function captureError(err, context = {}) {
   logger.error({ err, ...context }, err.message);
   if (sentryEnabled) {
-    Sentry.captureException(err, { extra: context });
+    Sentry.captureException(err, { extra: scrubValue(context) });
   }
 }
 

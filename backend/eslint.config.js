@@ -16,11 +16,8 @@ export default [
     },
   },
   {
-    // public/ is served as static assets, not run by Node: the legacy admin
-    // panel in public/admin/ is plain browser JS and legitimately uses
-    // document/alert/confirm. Linting it under Node globals reported every
-    // one of those as no-undef. The rest of the config still applies, so
-    // real mistakes in that file are still caught.
+    // public/ is served as static assets, not run by Node. Keep browser
+    // globals available if static assets are added back later.
     files: ['public/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
