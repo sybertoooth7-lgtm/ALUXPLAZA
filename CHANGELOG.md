@@ -12,6 +12,11 @@ version number.
 
 ### Security
 
+- Admin passwords are trimmed consistently. Login trims the submitted
+  password, but `create-admin`, the `ADMIN_BOOTSTRAP_PASSWORD` path and the
+  current-password check in change-password did not, so a password typed with
+  a leading or trailing space produced an account that could never sign in
+  (and a secret manager that appends a newline silently did the same).
 - The "last remaining superadmin" guard now counts only *active* superadmins
   and serialises demote, delete and disable behind a Postgres advisory lock.
   Previously disabled accounts were counted as if usable, and two concurrent

@@ -49,14 +49,17 @@ async function main() {
     process.exit(1);
   }
 
-  const password = await askHidden('Admin password: ');
+  // Trimmed to match /api/admin/login, which trims before comparing. Hashing
+  // the untrimmed value here would create an account whose password can never
+  // match at login whenever the typed password begins or ends with a space.
+  const password = (await askHidden('Admin password: ')).trim();
   if (!password || password.length < 12) {
-    console.error('Password must be at least 12 characters.');
+    console.error('Password must be at least 12 characters (spaces at either end are ignored).');
     rl.close();
     process.exit(1);
   }
 
-  const confirm = await askHidden('Confirm password: ');
+  const confirm = (await askHidden('Confirm password: ')).trim();
   if (password !== confirm) {
     console.error('Passwords do not match.');
     rl.close();

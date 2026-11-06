@@ -377,7 +377,11 @@ router.post(
       return res.status(400).json({ error: 'New password must be 12–128 characters.' });
     }
 
-    const { currentPassword, newPassword } = req.body;
+    // Trimmed the same way /login trims: the password the user signs in with
+    // is what they type here, and a padded copy would fail bcrypt.compare
+    // against a hash that login's trimmed input matches.
+    const currentPassword = req.body.currentPassword.trim();
+    const { newPassword } = req.body;
     if (currentPassword === newPassword) {
       return res
         .status(400)

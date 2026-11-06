@@ -283,7 +283,10 @@ async function main() {
       // The branch only ever fires while the table is empty, so the
       // vars become inert after the first login — remove them anyway.
       const bootstrapEmail = process.env.ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase();
-      const bootstrapPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD;
+      // Trimmed because /api/admin/login trims: secret managers and .env files
+      // frequently append a newline, and hashing it here would produce an
+      // account that no typed password can ever match.
+      const bootstrapPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD?.trim();
 
       if (bootstrapEmail && bootstrapPassword) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bootstrapEmail)) {
