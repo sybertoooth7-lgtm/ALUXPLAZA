@@ -43,14 +43,21 @@ const ADMIN_ACCOUNT_MESSAGE =
 const RETAINED_AFTER_ERASURE = [
   'Compliance assessment records tied to the client account are kept, now unlinked from any person: the account email and company name are replaced.',
   'Audit log entries are kept as a record of what admins did; any occurrence of the email inside them is replaced with [erased].',
+  'Security-event log entries are kept as a security record; any occurrence of the email inside them is replaced with [erased].',
   'Not covered by this tool: database backups, Resend delivery logs, Sentry events, alert-channel messages, and any mailbox that received a notification email. See docs/DATA_SUBJECT_REQUESTS.md.',
 ];
 
 const NOT_INCLUDED_IN_EXPORT = [
   'Secrets are never exported: password hash, login-session identifiers, verification and password-reset tokens, risk-score share tokens.',
   'Admin staff identities that appear in audit or compliance records are not exported.',
+  'Security-event log entries that mention the address are counted but not reproduced: they describe attack traffic, not the person\'s account.',
   'Copies held by third-party services and in backups are not included.',
 ];
+
+// Every stored place an address can appear as free text. Kept in one place so
+// the export count, dry-run count and erase redaction cannot drift apart.
+const SECURITY_EVENT_TEXT_FILTER =
+  'payload_snippet ~* $1 OR matched_pattern ~* $1 OR request_path ~* $1';
 
 function escapeRegex(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -167,6 +174,12 @@ router.post('/export', validateSubject, async (req, res) => {
       [emailPattern]
     );
 
+    const securityEventsMentioningEmail = await count(
+      db,
+      `SELECT COUNT(*) AS n FROM security_events WHERE ${SECURITY_EVENT_TEXT_FILTER}`,
+      [emailPattern]
+    );
+
     const queuedEmailJobs = (await queueTableExists(db))
       ? await count(
           db,
@@ -181,7 +194,8 @@ router.post('/export', validateSubject, async (req, res) => {
       client !== null ||
       loginAttempts.length > 0 ||
       queuedEmailJobs > 0 ||
-      auditEntriesMentioningEmail > 0;
+      auditEntriesMentioningEmail > 0 ||
+      securityEventsMentioningEmail > 0;
 
     await recordAuditLog({
       adminEmail: req.user.email,
@@ -197,6 +211,7 @@ router.post('/export', validateSubject, async (req, res) => {
         compliance_records: complianceRecords.length,
         queued_email_jobs: queuedEmailJobs,
         audit_entries_mentioning_email: auditEntriesMentioningEmail,
+        security_events_mentioning_email: securityEventsMentioningEmail,
       },
     });
 
@@ -212,6 +227,7 @@ router.post('/export', validateSubject, async (req, res) => {
       riskScoreShares,
       complianceRecords,
       queuedEmailJobs,
+      securityEventsMentioningEmail,
       auditLog: { actionsOnAccount, entriesMentioningEmail: auditEntriesMentioningEmail },
       notIncluded: NOT_INCLUDED_IN_EXPORT,
     });
@@ -276,6 +292,11 @@ router.post('/erase', validateSubject, async (req, res) => {
         audit_entries_to_redact: await count(
           db,
           `SELECT COUNT(*) AS n FROM audit_logs WHERE old_value::text ~* $1 OR new_value::text ~* $1`,
+          [emailPattern]
+        ),
+        security_events_to_redact: await count(
+          db,
+          `SELECT COUNT(*) AS n FROM security_events WHERE ${SECURITY_EVENT_TEXT_FILTER}`,
           [emailPattern]
         ),
         queued_email_jobs: (await queueTableExists(db))
@@ -354,6 +375,26 @@ router.post('/erase', validateSubject, async (req, res) => {
         [emailPattern, REDACTION]
       );
 
+      // Shield writes the attempted address into security_events (for example
+      // when it reports credential stuffing), so erasure has to reach there
+      // too. The rows themselves stay: they are the record of the attack.
+      // The two VARCHAR columns are re-capped because "[erased]" is longer
+      // than some addresses, and an over-length value would fail the erasure.
+      const securityEventsRedacted = await tx.query(
+        `UPDATE security_events
+         SET payload_snippet = CASE WHEN payload_snippet ~* $1
+                                    THEN regexp_replace(payload_snippet, $1, $2, 'gi')
+                                    ELSE payload_snippet END,
+             matched_pattern = CASE WHEN matched_pattern ~* $1
+                                    THEN left(regexp_replace(matched_pattern, $1, $2, 'gi'), 255)
+                                    ELSE matched_pattern END,
+             request_path = CASE WHEN request_path ~* $1
+                                 THEN left(regexp_replace(request_path, $1, $2, 'gi'), 500)
+                                 ELSE request_path END
+         WHERE ${SECURITY_EVENT_TEXT_FILTER}`,
+        [emailPattern, REDACTION]
+      );
+
       return {
         contacts: contacts.rowCount,
         client_account_anonymised: clientId !== null,
@@ -362,6 +403,7 @@ router.post('/erase', validateSubject, async (req, res) => {
         verification_and_reset_tokens: tokens,
         risk_score_shares: shares,
         audit_entries_redacted: auditRedacted.rowCount,
+        security_events_redacted: securityEventsRedacted.rowCount,
       };
     });
 

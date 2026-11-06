@@ -67,6 +67,7 @@ What the tool does when confirmed:
 - Deletes their client login history (matched by account and by email address), sessions, verification and password-reset links, and risk-score share links. The share links are deleted rather than revoked because they publicly show the company name.
 - **Anonymises** the client account instead of deleting it: the email becomes `erased-<id>@erased.invalid`, the company name becomes `[erased]`, the password is made unusable, and the account is disabled. Compliance assessment records are kept, now tied to an anonymous account.
 - Replaces the email with `[erased]` wherever it appears in audit-log entries (whole addresses only, so other people's addresses are untouched). The entries themselves are kept.
+- Does the same inside attack and abuse records (`security_events`): the address is replaced with `[erased]`, and the event itself is kept as the record of the attack.
 - Deletes queued email jobs for that address.
 - Writes one audit entry recording who ran it, when, and how many records were affected. The email address is never written to the audit log.
 
@@ -108,7 +109,7 @@ Email matching is case-insensitive and uses the same normalisation as the forms 
 - Free-text fields can contain personal data the tool cannot find by email: compliance `notes`, and the body of a contact message about someone else. Read the export before sending it.
 - Automatic retention (`backend/src/jobs/retention.js`) runs daily but only **reports** what it would delete until `RETENTION_MODE=enforce` is set on the server. Until then, contact messages, closed client accounts and audit entries are not deleted automatically, and the periods you state in a reply are not yet being enforced. Client accounts are only deleted once they are marked closed. Close one with `POST /api/admin/clients/:id/close` (section 8).
 - Rectification (correcting data) and portability are done by hand.
-- Attack and abuse records (IP address, page requested, a short sample of what triggered a firewall rule) are not searched by email address, so they are not in an export and the erase tool does not remove them. They are deleted automatically after 90 days once `RETENTION_MODE=enforce` is on.
+- Attack and abuse records (IP address, page requested, a short sample of what triggered a firewall rule) are kept as a security record. The export counts entries that mention the address (`securityEventsMentioningEmail`) but does not reproduce them; the erase tool replaces the address inside them with `[erased]`. They are deleted automatically after 90 days once `RETENTION_MODE=enforce` is on.
 
 ## 8. Closing a client account
 

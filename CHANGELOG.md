@@ -12,6 +12,13 @@ version number.
 
 ### Security
 
+- Data-subject erasure now also redacts the address from `security_events`.
+  The shield event log stores the attempted email inside its snippet when it
+  reports a credential-stuffing attack, so an erased person's address survived
+  in a table the erase tool never touched (and the export never counted).
+  Erasure keeps the event itself as the record of the attack, replaces the
+  address with `[erased]`, and the export/dry-run report the affected count.
+  The credential-stuffing event no longer writes the address at all.
 - The `/api/status` exemption in the general API rate limiter now matches a
   path segment instead of a string prefix. `startsWith('/api/status')` also
   exempted `/api/statusanything`, so any unauthenticated route whose first

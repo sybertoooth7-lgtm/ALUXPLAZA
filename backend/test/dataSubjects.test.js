@@ -114,6 +114,14 @@ async function seedSubject(emailLocal) {
     [m.staffEmail, clientId, JSON.stringify({ company_name: 'Subject Co Ltd', email })]
   );
 
+  // Shield stores the attempted address in its event log when it detects
+  // abuse, so erasure has to reach this table as well.
+  await db.query(
+    `INSERT INTO security_events (ip_address, event_type, severity, request_path, payload_snippet)
+     VALUES ('198.51.100.9', 'credential_stuffing', 'high', '/api/client/login', $1)`,
+    [`5 distinct IPs failed against client account #${clientId} for ${email} in 30min`]
+  );
+
   await db.query(
     `INSERT INTO pgboss.job (name, data) VALUES
        ('email', $1), ('email', $2)`,
@@ -248,6 +256,7 @@ describe('POST /export', () => {
     expect(res.body.complianceRecords[0].status).toBe('passing');
     expect(res.body.complianceRecords[0].framework).toBeTruthy();
     expect(res.body.queuedEmailJobs).toBe(2);
+    expect(res.body.securityEventsMentioningEmail).toBe(1);
     expect(res.body.auditLog.actionsOnAccount.map((a) => a.action)).toContain('client.create');
     expect(res.body.auditLog.entriesMentioningEmail).toBe(1);
 
@@ -288,6 +297,7 @@ describe('POST /export', () => {
     expect(res.body.contacts).toEqual([]);
     expect(res.body.client).toBeNull();
     expect(res.body.loginAttempts).toEqual([]);
+    expect(res.body.securityEventsMentioningEmail).toBe(0);
   });
 
   it('is audit-logged with counts only, never the subject email', async () => {
@@ -332,6 +342,7 @@ describe('POST /erase', () => {
       verification_and_reset_tokens: 2,
       risk_score_shares: 1,
       audit_entries_to_redact: 1,
+      security_events_to_redact: 1,
       queued_email_jobs: 2,
     });
 
@@ -369,6 +380,7 @@ describe('POST /erase', () => {
       verification_and_reset_tokens: 2,
       risk_score_shares: 1,
       audit_entries_redacted: 1,
+      security_events_redacted: 1,
       queued_email_jobs: 2,
     });
 
@@ -421,6 +433,15 @@ describe('POST /erase', () => {
     expect(old.rows[0].new_value.email).toBe('[erased]');
     expect(old.rows[0].new_value.company_name).toBe('Subject Co Ltd');
 
+    // The security event stays as a record of the attack, with the address
+    // replaced rather than left behind.
+    const events = await db.query(
+      `SELECT payload_snippet FROM security_events WHERE event_type = 'credential_stuffing'`
+    );
+    expect(events.rows.map((r) => r.payload_snippet)).toContain(
+      `5 distinct IPs failed against client account #${subject.clientId} for [erased] in 30min`
+    );
+
     // Queued jobs for the address are gone.
     const jobs = await db.query(
       `SELECT 1 FROM pgboss.job WHERE lower(data->'payload'->>'email') = lower($1)`,
@@ -457,6 +478,15 @@ describe('POST /erase', () => {
       [other.clientId]
     );
     expect(otherAudit.rows[0].new_value.email).toBe(other.email);
+    expect(
+      (
+        await db.query(
+          `SELECT 1 FROM security_events
+           WHERE payload_snippet LIKE $1 AND payload_snippet NOT LIKE '%[erased]%'`,
+          [`%${other.email}%`]
+        )
+      ).rowCount
+    ).toBe(1);
   });
 
   it('writes an audit entry with counts only, never the subject email', async () => {
@@ -500,6 +530,7 @@ describe('POST /erase', () => {
       login_attempts: 0,
       sessions: 0,
       audit_entries_redacted: 0,
+      security_events_redacted: 0,
       queued_email_jobs: 0,
     });
 
@@ -522,6 +553,11 @@ describe('POST /erase', () => {
        VALUES ('staff@staff.example.com', 'note.add', 'x', $1)`,
       [JSON.stringify({ note: `spoke to ${lookalike} yesterday` })]
     );
+    await db.query(
+      `INSERT INTO security_events (ip_address, event_type, payload_snippet)
+       VALUES ('198.51.100.9', 'probe', $1)`,
+      [`probing with ${lookalike}`]
+    );
     const { token } = await makeAdmin('superadmin');
 
     await request(buildTestApp())
@@ -542,6 +578,12 @@ describe('POST /erase', () => {
     );
     expect(note.rowCount).toBe(1);
     expect(note.rows[0].new_value.note).toBe(`spoke to ${lookalike} yesterday`);
+
+    // The same care applies to security-event snippets.
+    const event = await db.query(
+      `SELECT payload_snippet FROM security_events WHERE event_type = 'probe'`
+    );
+    expect(event.rows[0].payload_snippet).toBe(`probing with ${lookalike}`);
   });
 });
 

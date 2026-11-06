@@ -107,7 +107,10 @@ export async function detectDistributedFailure(clientId, email, ip) {
         await reportDistributedAttack({
           eventType: 'credential_stuffing',
           severity: 'high',
-          detail: `${ips} distinct IPs failed against client account #${clientId} (${email}) in ${DISTINCT_IP_WINDOW_MIN}min`,
+          // The account number identifies the target; the address does not
+          // belong here. This snippet is stored in security_events and sent to
+          // alert channels, both of which outlive an erasure request.
+          detail: `${ips} distinct IPs failed against client account #${clientId} in ${DISTINCT_IP_WINDOW_MIN}min`,
           ip,
           identity: `client:${clientId}`,
         });
