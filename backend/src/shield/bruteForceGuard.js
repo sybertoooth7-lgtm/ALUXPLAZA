@@ -201,7 +201,10 @@ export async function recordRequest(countKey, blockTargetIp) {
   try {
     const total = await incrementAndCount(METRIC_REQUEST, countKey, REQUEST_RATE_WINDOW_MS);
 
-    if (total >= REQUEST_RATE_THRESHOLD) {
+    // No attributable address means there is nothing to block. Writing a
+    // placeholder into blocked_ips would make every unattributed request match
+    // that one row, turning an unidentified flood into a site-wide denial.
+    if (total >= REQUEST_RATE_THRESHOLD && blockTargetIp) {
       await logSecurityEvent({
         ip: blockTargetIp,
         eventType: 'rate_abuse',

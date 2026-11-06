@@ -7,6 +7,7 @@
 //   app.use('/admin/security', requireAdminAuth, adminSecurityRoutes);
 
 import { Router } from 'express';
+import { param, validationResult } from 'express-validator';
 import {
   listActiveBlocks,
   countActiveBlocks,
@@ -49,33 +50,46 @@ router.get('/blocks', async (req, res) => {
  * POST /admin/security/blocks/:ip/unblock
  * Manually unblocks an IP — use this to clear a false positive.
  */
-router.post('/blocks/:ip/unblock', async (req, res) => {
-  try {
-    // An unblock is the only ground truth this system gets about whether a
-    // detection was wrong, so who did it and why is captured here rather than
-    // left in the discarded block row. The note is what makes the feedback
-    // actionable later: "shared office NAT" and "attacker, re-blocked" point
-    // at opposite responses, and a bare "false positive" does not.
-    const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 1000) : null;
+router.post(
+  '/blocks/:ip/unblock',
+  // The value is written to blocked_ips, shield_unblock_feedback and the audit
+  // log, all VARCHAR(45). Anything that is not an address used to reach them
+  // and fail the request with a 500 part-way through; reject it at the door.
+  [param('ip').isIP().withMessage('Invalid IP address.')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-    await unblockIp(req.params.ip, {
-      adminEmail: req.user?.email || 'unknown',
-      note: note || null,
-    });
-    await recordAuditLog({
-      adminEmail: req.user?.email || 'unknown',
-      action: 'ip.unblock',
-      targetTable: 'blocked_ips',
-      targetId: req.params.ip,
-      oldValue: { blocked: true },
-      newValue: { blocked: false, note: note || null },
-    });
-    res.json({ success: true, message: `${req.params.ip} unblocked.` });
-  } catch (err) {
-    console.error('[admin/security] failed to unblock:', err.message);
-    res.status(500).json({ error: 'Failed to unblock IP.' });
+    try {
+      // An unblock is the only ground truth this system gets about whether a
+      // detection was wrong, so who did it and why is captured here rather
+      // than left in the discarded block row. The note is what makes the
+      // feedback actionable later: "shared office NAT" and "attacker,
+      // re-blocked" point at opposite responses, and a bare "false positive"
+      // does not.
+      const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 1000) : null;
+
+      await unblockIp(req.params.ip, {
+        adminEmail: req.user?.email || 'unknown',
+        note: note || null,
+      });
+      await recordAuditLog({
+        adminEmail: req.user?.email || 'unknown',
+        action: 'ip.unblock',
+        targetTable: 'blocked_ips',
+        targetId: req.params.ip,
+        oldValue: { blocked: true },
+        newValue: { blocked: false, note: note || null },
+      });
+      res.json({ success: true, message: `${req.params.ip} unblocked.` });
+    } catch (err) {
+      console.error('[admin/security] failed to unblock:', err.message);
+      res.status(500).json({ error: 'Failed to unblock IP.' });
+    }
   }
-});
+);
 
 /**
  * GET /admin/security/feedback?minBlocks=5&minUnblocks=2

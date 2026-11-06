@@ -12,6 +12,34 @@ version number.
 
 ### Security
 
+- A Shield detection now denies the request even when recording the block
+  fails. The 403 was emitted *after* `blockIp()`, and its failure fell into
+  the middleware's top-level catch, which calls `next()` — so a database
+  hiccup (or an address the column rejects) turned an identified attack into
+  an allowed request. Persisting the block is still best-effort; refusing the
+  request is not.
+- Shield now uses an address only if it actually parses as one, and never
+  falls back to a private socket address. One hop too many in
+  `TRUST_PROXY_HOPS` lets a client's own `X-Forwarded-For` value become
+  `req.ip`, and that value was written straight into `VARCHAR(45)` columns;
+  an over-long or non-address string made the write fail. Falling back to the
+  socket would be worse: it is the host's proxy, so blocking it would deny
+  every visitor. An unattributable request is still refused when it matches a
+  signature, and the per-IP rate limiter no longer writes a shared
+  placeholder row that every unattributed request would match.
+- Security-event inserts clip `request_path`, `request_method` and
+  `matched_pattern` to their column widths. The path is the client-controlled
+  full URL, so a URL longer than 500 characters made the insert throw and the
+  record of the blocked request disappeared exactly when it mattered most.
+- `POST /api/admin/security/blocks/:ip/unblock` rejects a value that is not an
+  IP address with 400. It used to reach `blocked_ips`,
+  `shield_unblock_feedback` and the audit log (all `VARCHAR(45)`) and fail
+  part-way through a 500.
+- Data-subject erasure now has test coverage for every free-text column of
+  `security_events`: the address is seeded into `request_path` and
+  `matched_pattern` as well as `payload_snippet`, and the erase assertions
+  require all three to be redacted while the row itself survives.
+
 - MFA enrolment now shares the MFA rate limit. `/api/admin/mfa/enroll` and
   `/api/admin/mfa/verify-enrollment` were outside it, so a session holder
   could generate secrets and submit six-digit codes at the general

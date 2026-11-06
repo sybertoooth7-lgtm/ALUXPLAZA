@@ -36,6 +36,13 @@ export default defineConfig({
       'test/rate-limit-path.test.js',
       // Pure query-string parsers used before pagination reaches SQL.
       'test/pagination.test.js',
+      // Client-address normalisation for Shield: pure, and the whole point is
+      // rejecting values that never reach a database column.
+      'test/shield-ip.test.js',
+      // Event-log column clipping. The insert is mocked, so no database.
+      'test/eventLogger.test.js',
+      // Shield's deny-vs-persist decision, with the guard modules mocked.
+      'test/shield-failopen.test.js',
     ],
     fileParallelism: false,
   },

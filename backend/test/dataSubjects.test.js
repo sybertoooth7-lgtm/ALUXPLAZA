@@ -115,11 +115,19 @@ async function seedSubject(emailLocal) {
   );
 
   // Shield stores the attempted address in its event log when it detects
-  // abuse, so erasure has to reach this table as well.
+  // abuse, so erasure has to reach this table as well. All three free-text
+  // columns are seeded: the route redacts each of them independently, and a
+  // fix that only handled the snippet would leave the address in the path an
+  // attacker (or a log export) can read.
   await db.query(
-    `INSERT INTO security_events (ip_address, event_type, severity, request_path, payload_snippet)
-     VALUES ('198.51.100.9', 'credential_stuffing', 'high', '/api/client/login', $1)`,
-    [`5 distinct IPs failed against client account #${clientId} for ${email} in 30min`]
+    `INSERT INTO security_events
+       (ip_address, event_type, severity, request_path, matched_pattern, payload_snippet)
+     VALUES ('198.51.100.9', 'credential_stuffing', 'high', $1, $2, $3)`,
+    [
+      `/api/client/login?email=${email}`,
+      `${email}:credential_stuffing`,
+      `5 distinct IPs failed against client account #${clientId} for ${email} in 30min`,
+    ]
   );
 
   await db.query(
@@ -434,13 +442,20 @@ describe('POST /erase', () => {
     expect(old.rows[0].new_value.company_name).toBe('Subject Co Ltd');
 
     // The security event stays as a record of the attack, with the address
-    // replaced rather than left behind.
+    // replaced in every text column it was stored in — not just the snippet.
     const events = await db.query(
-      `SELECT payload_snippet FROM security_events WHERE event_type = 'credential_stuffing'`
+      `SELECT payload_snippet, request_path, matched_pattern
+       FROM security_events WHERE event_type = 'credential_stuffing'`
     );
     expect(events.rows.map((r) => r.payload_snippet)).toContain(
       `5 distinct IPs failed against client account #${subject.clientId} for [erased] in 30min`
     );
+    expect(events.rows.map((r) => r.request_path)).toContain('/api/client/login?email=[erased]');
+    expect(events.rows.map((r) => r.matched_pattern)).toContain(
+      '[erased]:credential_stuffing'
+    );
+    const serialised = JSON.stringify(events.rows).toLowerCase();
+    expect(serialised).not.toContain(subject.email.toLowerCase());
 
     // Queued jobs for the address are gone.
     const jobs = await db.query(
@@ -487,6 +502,12 @@ describe('POST /erase', () => {
         )
       ).rowCount
     ).toBe(1);
+    const otherEvent = await db.query(
+      `SELECT request_path, matched_pattern FROM security_events WHERE payload_snippet LIKE $1`,
+      [`%${other.email}%`]
+    );
+    expect(otherEvent.rows[0].request_path).toBe(`/api/client/login?email=${other.email}`);
+    expect(otherEvent.rows[0].matched_pattern).toBe(`${other.email}:credential_stuffing`);
   });
 
   it('writes an audit entry with counts only, never the subject email', async () => {
@@ -554,9 +575,9 @@ describe('POST /erase', () => {
       [JSON.stringify({ note: `spoke to ${lookalike} yesterday` })]
     );
     await db.query(
-      `INSERT INTO security_events (ip_address, event_type, payload_snippet)
-       VALUES ('198.51.100.9', 'probe', $1)`,
-      [`probing with ${lookalike}`]
+      `INSERT INTO security_events (ip_address, event_type, request_path, payload_snippet)
+       VALUES ('198.51.100.9', 'probe', $1, $2)`,
+      [`/probe?email=${lookalike}`, `probing with ${lookalike}`]
     );
     const { token } = await makeAdmin('superadmin');
 
@@ -579,11 +600,12 @@ describe('POST /erase', () => {
     expect(note.rowCount).toBe(1);
     expect(note.rows[0].new_value.note).toBe(`spoke to ${lookalike} yesterday`);
 
-    // The same care applies to security-event snippets.
+    // The same care applies to every security-event text column.
     const event = await db.query(
-      `SELECT payload_snippet FROM security_events WHERE event_type = 'probe'`
+      `SELECT payload_snippet, request_path FROM security_events WHERE event_type = 'probe'`
     );
     expect(event.rows[0].payload_snippet).toBe(`probing with ${lookalike}`);
+    expect(event.rows[0].request_path).toBe(`/probe?email=${lookalike}`);
   });
 });
 

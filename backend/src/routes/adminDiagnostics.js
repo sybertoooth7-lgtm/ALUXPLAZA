@@ -9,34 +9,9 @@
 // match. It only describes the caller's own request.
 
 import { Router } from 'express';
-import net from 'node:net';
+import { isInternalAddress } from '../lib/ip.js';
 
 const router = Router();
-
-// Addresses that can never be a visitor's public address: private, loopback,
-// link-local and carrier-grade NAT (which hosts use between their own proxies).
-const INTERNAL = new net.BlockList();
-[
-  ['10.0.0.0', 8],
-  ['172.16.0.0', 12],
-  ['192.168.0.0', 16],
-  ['100.64.0.0', 10],
-  ['127.0.0.0', 8],
-  ['169.254.0.0', 16],
-].forEach(([network, prefix]) => INTERNAL.addSubnet(network, prefix, 'ipv4'));
-[
-  ['::1', 128],
-  ['fc00::', 7],
-  ['fe80::', 10],
-].forEach(([network, prefix]) => INTERNAL.addSubnet(network, prefix, 'ipv6'));
-
-/** True for a private/internal address. Accepts IPv4-mapped IPv6 (::ffff:10.0.0.1). */
-export function isInternalAddress(ip) {
-  if (!ip) return false;
-  const address = String(ip).replace(/^::ffff:/i, '');
-  const family = net.isIPv4(address) ? 'ipv4' : net.isIPv6(address) ? 'ipv6' : null;
-  return family ? INTERNAL.check(address, family) : false;
-}
 
 function guidanceFor(detectedIp, looksInternal, hops) {
   if (looksInternal) {

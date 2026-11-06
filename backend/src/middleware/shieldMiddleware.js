@@ -5,6 +5,7 @@
 
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
+import { normalizeIp, isInternalAddress } from '../lib/ip.js';
 import { isBlocked, blockIp } from '../shield/blocklist.js';
 import { scanRequest } from '../shield/detector.js';
 import { recordRequest } from '../shield/bruteForceGuard.js';
@@ -41,8 +42,24 @@ const SIGNATURE_SCAN_EXEMPT_PATHS = [
   '/api/client/password-reset/confirm', // reset token plus new password
 ];
 
-function getClientIp(req) {
-  return req.ip || req.connection?.remoteAddress || 'unknown';
+// `req.ip` is the right answer only when the proxy chain is configured
+// correctly. One hop too many in TRUST_PROXY_HOPS and an entry the client
+// wrote into X-Forwarded-For becomes `req.ip`. That value then reaches
+// VARCHAR(45) columns (blocked_ips, security_events), where an over-length or
+// non-address string makes the INSERT throw — so a request that Shield has
+// already identified as an attack can end up neither blocked nor recorded.
+//
+// The socket address is only a fallback when it names a real visitor. If it
+// is private, it belongs to the host's own proxy: blocking it would take the
+// whole site down for everyone behind that proxy because one client sent a
+// malformed forwarding header. 'unknown' means "no attributable source" —
+// Shield still refuses detected attacks, it just has nothing to block.
+export function getClientIp(req) {
+  const claimed = normalizeIp(req.ip);
+  if (claimed) return claimed;
+
+  const socket = normalizeIp(req.socket?.remoteAddress) || normalizeIp(req.connection?.remoteAddress);
+  return socket && !isInternalAddress(socket) ? socket : 'unknown';
 }
 
 // Lightweight check only — verifies the JWT signature and expiry, nothing
@@ -74,10 +91,13 @@ function getSessionIdentity(req) {
 
 export async function shield(req, res, next) {
   const ip = getClientIp(req);
+  // 'unknown' is a marker, not an address: there is nothing to look up and a
+  // block on it would apply to every unattributed request at once.
+  const attributable = ip !== 'unknown';
 
   try {
     // 1. Already blocked? Reject immediately.
-    if (await isBlocked(ip)) {
+    if (attributable && (await isBlocked(ip))) {
       return res.status(403).json({ error: 'Access denied.' });
     }
 
@@ -91,7 +111,7 @@ export async function shield(req, res, next) {
     // IP still gets blocked — only the *counting* changed, not the
     // consequence.
     const identity = getSessionIdentity(req);
-    const gotBlockedForRate = await recordRequest(identity || ip, ip);
+    const gotBlockedForRate = await recordRequest(identity || ip, attributable ? ip : null);
     if (gotBlockedForRate) {
       return res.status(403).json({ error: 'Access denied.' });
     }
@@ -112,18 +132,29 @@ export async function shield(req, res, next) {
         snippet: detection.snippet,
         blocked: true,
       });
-      await blockIp(
-        ip,
-        `${detection.eventType}: ${detection.matchedPattern}`,
-        detection.severity,
-        // Explicit key: the reason carries the matched pattern verbatim, which
-        // includes the attacker's own input. Without this, every variation of
-        // the same SQLi probe would register as a different signature and its
-        // false-positive history would never accumulate. eventType alone is
-        // the detection identity, which is also the granularity an admin
-        // reviewing a report can actually act on.
-        detection.eventType
-      );
+      // Persisting the block is best-effort; denying the request is not. If
+      // blockIp throws (a database hiccup, or an address the column rejects),
+      // this used to fall into the catch below, which calls next() — letting
+      // through the very request that was just identified as an attack. A
+      // detection that cannot be recorded must still be refused.
+      if (attributable) {
+        try {
+          await blockIp(
+            ip,
+            `${detection.eventType}: ${detection.matchedPattern}`,
+            detection.severity,
+            // Explicit key: the reason carries the matched pattern verbatim,
+            // which includes the attacker's own input. Without this, every
+            // variation of the same SQLi probe would register as a different
+            // signature and its false-positive history would never accumulate.
+            // eventType alone is the detection identity, which is also the
+            // granularity an admin reviewing a report can actually act on.
+            detection.eventType
+          );
+        } catch (err) {
+          console.error('[shield] failed to persist block, denying request anyway:', err.message);
+        }
+      }
       return res.status(403).json({ error: 'Request blocked.' });
     }
 
