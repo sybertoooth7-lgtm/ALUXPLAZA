@@ -142,16 +142,20 @@ router.post(
       let usedBackup = false;
 
       if (!codeValid && user.mfa_backup_codes) {
-        const hashedCodes = JSON.parse(user.mfa_backup_codes);
+        const stored = user.mfa_backup_codes;
+        const hashedCodes = JSON.parse(stored);
         const idx = await verifyBackupCode(req.body.code, hashedCodes);
         if (idx >= 0) {
-          codeValid = true;
-          usedBackup = true;
-          hashedCodes.splice(idx, 1);
-          await db.query('UPDATE admin_users SET mfa_backup_codes = $1 WHERE id = $2', [
-            JSON.stringify(hashedCodes),
-            req.user.sub,
-          ]);
+          // Compare-and-swap so the same backup code cannot be redeemed by
+          // two concurrent requests (see the same pattern in routes/admin.js).
+          const remaining = hashedCodes.slice(0, idx).concat(hashedCodes.slice(idx + 1));
+          const removal = await db.query(
+            `UPDATE admin_users SET mfa_backup_codes = $1
+              WHERE id = $2 AND mfa_backup_codes = $3`,
+            [JSON.stringify(remaining), req.user.sub, stored]
+          );
+          codeValid = removal.rowCount > 0;
+          usedBackup = codeValid;
         }
       }
 

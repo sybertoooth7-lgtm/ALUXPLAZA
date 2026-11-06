@@ -12,6 +12,8 @@ version number.
 
 ### Security
 
+- A backup code is now removed with a compare-and-swap on the stored hash list,
+  so two concurrent verifications can no longer both redeem the same code.
 - Failed TOTP guesses now count toward the account's lockout: five wrong codes
   lock the account with the same escalating delay as five wrong passwords,
   instead of leaving the 6-digit space protected only by a per-IP limiter.

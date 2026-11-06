@@ -225,17 +225,24 @@ router.post(
 
       // Try backup code if TOTP didn't match
       if (!codeValid && user.mfa_backup_codes) {
-        const hashedCodes = JSON.parse(user.mfa_backup_codes);
+        const stored = user.mfa_backup_codes;
+        const hashedCodes = JSON.parse(stored);
         const matchedIndex = await verifyBackupCode(req.body.code, hashedCodes);
         if (matchedIndex >= 0) {
-          codeValid = true;
-          usedBackup = true;
-          // Remove used backup code
-          hashedCodes.splice(matchedIndex, 1);
-          await db.query('UPDATE admin_users SET mfa_backup_codes = $1 WHERE id = $2', [
-            JSON.stringify(hashedCodes),
-            user.id,
-          ]);
+          // Remove the used code with a compare-and-swap on the stored value.
+          // A read-then-write let two concurrent requests redeem the same
+          // backup code, each writing back its own reduced list. If another
+          // request already changed the list, this one fails closed.
+          const remaining = hashedCodes
+            .slice(0, matchedIndex)
+            .concat(hashedCodes.slice(matchedIndex + 1));
+          const removal = await db.query(
+            `UPDATE admin_users SET mfa_backup_codes = $1
+              WHERE id = $2 AND mfa_backup_codes = $3`,
+            [JSON.stringify(remaining), user.id, stored]
+          );
+          codeValid = removal.rowCount > 0;
+          usedBackup = codeValid;
         }
       }
 
