@@ -66,15 +66,24 @@ async function startServer() {
   app.use(attachCspNonce);
   app.use(helmetMiddleware);
 
+  // Reject a disallowed browser origin before the rate limiter and the global
+  // error handler. Passing an Error from the cors callback below would make
+  // every unauthenticated request that names a foreign Origin produce a 500,
+  // a Sentry event and an alert-webhook call.
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && !isAllowedOrigin(origin)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    next();
+  });
+
   app.use(
     cors({
       origin(origin, callback) {
         // No Origin header (curl, server-to-server, same-origin) — allow.
-        if (!origin) return callback(null, true);
-        if (isAllowedOrigin(origin)) {
-          return callback(null, true);
-        }
-        return callback(new Error(`Not allowed by CORS: ${origin}`));
+        // Disallowed origins were already answered with 403 above.
+        callback(null, !origin || isAllowedOrigin(origin));
       },
       credentials: true,
     })

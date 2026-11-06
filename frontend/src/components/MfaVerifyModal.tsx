@@ -2,7 +2,7 @@
 // Shown during admin login when MFA is required.
 
 import { useState } from 'react';
-import { API_BASE } from '@/lib/api';
+import { secureFetch } from '@/lib/security';
 
 interface Props {
   mfaToken: string;
@@ -21,10 +21,9 @@ export default function MfaVerifyModal({ mfaToken, onSuccess, onCancel }: Props)
     setError('');
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/mfa/verify`, {
+      const res = await secureFetch('/api/admin/mfa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ mfaToken, code }),
       });
       const data = await res.json();

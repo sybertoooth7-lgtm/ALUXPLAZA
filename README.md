@@ -19,7 +19,7 @@ _Admin dashboard — compliance overview, client list, and security events. (Ren
   Redis dependency).
 - **Frontend:** React 19 / Vite / TypeScript / Tailwind.
 - **Repo:** `github.com/sybertoooth7-lgtm/ALUXPLAZA`
-- **Deploy:** frontend on Vercel (`jinarous.vercel.app`), backend on
+- **Deploy:** frontend on Vercel (your current production URL), backend on
   Render (free) with a Neon Postgres — see [RENDER_SETUP.md](RENDER_SETUP.md).
 - **API reference:** [backend/openapi.yaml](backend/openapi.yaml) —
   every public and client-authenticated endpoint, with request/response

@@ -26,8 +26,16 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Enter the live frontend origin(s), comma-separated. This deliberately
+      # has no default: a trusted origin must be a host you control, and a
+      # stale hostname left in the blueprint is one that someone else may be
+      # able to register later.
       - key: CORS_ORIGIN
-        value: https://jinarous.vercel.app
+        sync: false
+      # Used to build verification and password-reset links. Usually the same
+      # origin as CORS_ORIGIN. Leave unset only if those emails are disabled.
+      - key: FRONTEND_URL
+        sync: false
       - key: DB_SSL
         value: 'true'
       # Cluster mode stays off: each worker would open its own Postgres

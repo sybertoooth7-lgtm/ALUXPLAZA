@@ -88,6 +88,53 @@ describe('shield/detector.js — scanRequest', () => {
     ).toBeNull();
   });
 
+  it('never scans password, token or one-time-code values', () => {
+    for (const body of [
+      { password: 'lion=2024' },
+      { newPassword: 'sunset=9' },
+      { passwordConfirm: '<script>alert(1)</script>' },
+      { mfaToken: `${'a'.repeat(40)} onerror=alert(1)` },
+      { token: 'union select password from users' },
+      { code: '<svg onload=alert(1)>' },
+      { backupCodes: ['version=1'] },
+    ]) {
+      expect(scanRequest(fakeReq({ body })), JSON.stringify(body)).toBeNull();
+    }
+
+    // A non-credential field in the same body is still inspected.
+    expect(
+      scanRequest(fakeReq({ body: { password: 'x', companyName: '<script>alert(1)</script>' } }))
+        .eventType
+    ).toBe('xss');
+  });
+
+  it('does not treat ordinary query parameters as inline event handlers', () => {
+    for (const originalUrl of [
+      '/api/status?version=2',
+      '/api/status?content=hello',
+      '/api/status?button=1',
+      '/api/status?only=1',
+      '/api/status?connection=keep-alive',
+      '/api/status?utm_content=email',
+    ]) {
+      const result = scanRequest(fakeReq({ originalUrl }));
+      expect(result, `${originalUrl} matched ${result?.matchedPattern}`).toBeNull();
+    }
+  });
+
+  it('still detects inline event handlers in their real forms', () => {
+    for (const payload of [
+      '<img src=x onerror=alert(1)>',
+      '<svg onload=alert(1)>',
+      '<body/onload=alert(1)>',
+      '"onmouseover="alert(1)',
+      '<animate onbegin=alert(1)>',
+    ]) {
+      const result = scanRequest(fakeReq({ body: { html: payload } }));
+      expect(result?.matchedPattern, payload).toBe('xss_event_handler');
+    }
+  });
+
   it('does not match a PHP-object signature inside an ordinary word', () => {
     expect(scanRequest(fakeReq({ body: { title: 'foo:3:"bar" is just a label' } }))).toBeNull();
   });

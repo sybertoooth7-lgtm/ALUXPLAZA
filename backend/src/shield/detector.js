@@ -26,8 +26,39 @@ const PAIR_MAX_CHARS = 64;
 const BENIGN_TEXT_FIELD_RE =
   /(?:^|[_-])(?:message|comment|notes?|description|summary|search|query|content|review|report|feedback|detail|details|bio|about|text)$/i;
 
+// Credential and one-time-token values are never pattern-matched. They are
+// opaque strings, never rendered as HTML or concatenated into SQL, and a
+// user's password must never be copied into the security_events audit trail
+// because it happened to contain a signature-like substring. Keys are still
+// emitted by collectScannableValues(), so key-shaped signatures still work.
+//
+// Matching on the normalized key (letters and digits only) covers the camelCase
+// spellings the API actually uses: newPassword, currentPassword, mfaToken,
+// resetToken, backupCodes.
+const CREDENTIAL_FIELD_NAMES = new Set(['pass', 'code', 'otp', 'token', 'secret']);
+const CREDENTIAL_FIELD_SUFFIXES = [
+  'password',
+  'passwd',
+  'passcode',
+  'passwordconfirm',
+  'token',
+  'secret',
+  'otp',
+  'backupcode',
+  'backupcodes',
+];
+
+function isCredentialField(key) {
+  const normalized = key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  return (
+    CREDENTIAL_FIELD_NAMES.has(normalized) ||
+    CREDENTIAL_FIELD_SUFFIXES.some((suffix) => normalized.endsWith(suffix))
+  );
+}
+
 function shouldSkipField(key) {
-  return typeof key === 'string' && BENIGN_TEXT_FIELD_RE.test(key);
+  if (typeof key !== 'string') return false;
+  return BENIGN_TEXT_FIELD_RE.test(key) || isCredentialField(key);
 }
 
 // Returns the pieces of a request part worth pattern-matching: every leaf value
@@ -51,6 +82,9 @@ function collectScannableValues(value) {
   if (typeof value === 'object') {
     return Object.entries(value).flatMap(([key, child]) => {
       const keyPart = `"${key}":`;
+      // A credential is opaque at every depth. Its value, array entries and
+      // nested keys are never scanned; callers validate these as strings.
+      if (isCredentialField(key)) return [keyPart];
       const isScalar = typeof child !== 'object' || child === null;
       if (!isScalar) return [keyPart, ...collectScannableValues(child)];
       if (child === null || shouldSkipField(key)) return [keyPart];
@@ -80,7 +114,15 @@ const SQLI_PATTERNS = [
 
 const XSS_PATTERNS = [
   { name: 'xss_script_tag', regex: /<script[\s\S]{0,500}?<\/script>/i },
-  { name: 'xss_event_handler', regex: /on\w{0,30}\s*=/i },
+  // The handler name must be a real DOM/SVG event and must start at a
+  // boundary. The old /on\w{0,30}\s*=/ matched inside ordinary words —
+  // "version=", "content=", "button=", "only=", "connection=" — and could
+  // block a legitimate visitor's IP for six hours.
+  {
+    name: 'xss_event_handler',
+    regex:
+      /(?:^|[\s"'>/;])on(?:abort|afterprint|animationend|animationiteration|animationstart|auxclick|beforeinput|beforeprint|beforeunload|begin|blur|cancel|canplay|canplaythrough|change|click|close|contextmenu|copy|cut|dblclick|drag|dragend|dragenter|dragleave|dragover|dragstart|drop|durationchange|end|ended|error|focus|focusin|focusout|formdata|fullscreenchange|fullscreenerror|gotpointercapture|input|invalid|keydown|keypress|keyup|load|loadeddata|loadedmetadata|loadstart|lostpointercapture|mousedown|mouseenter|mouseleave|mousemove|mouseout|mouseover|mouseup|mousewheel|offline|online|pagehide|pageshow|paste|pause|play|playing|pointercancel|pointerdown|pointerenter|pointerleave|pointermove|pointerout|pointerover|pointerrawupdate|pointerup|progress|ratechange|repeat|reset|resize|scroll|seeked|seeking|select|selectionchange|selectstart|stalled|storage|submit|suspend|timeupdate|toggle|touchcancel|touchend|touchmove|touchstart|transitionend|unload|volumechange|waiting|wheel)\s*=/i,
+  },
   { name: 'xss_javascript_uri', regex: /javascript\s*:/i },
   { name: 'xss_iframe', regex: /<iframe[\s\S]{0,500}?<\/iframe>/i },
   { name: 'xss_vbscript', regex: /vbscript\s*:/i },

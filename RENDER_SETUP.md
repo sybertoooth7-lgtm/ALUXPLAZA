@@ -8,7 +8,7 @@ API sleeps and the next request takes up to ~50s to wake it.
 
 | Piece       | Service                        | Plan             |
 | ----------- | ------------------------------ | ---------------- |
-| Frontend    | Vercel (`jinarous.vercel.app`) | Free (unchanged) |
+| Frontend    | Vercel (your current production URL) | Free (unchanged) |
 | Backend API | Render web service             | Free             |
 | PostgreSQL  | Neon                           | Free (0.5 GB)    |
 
@@ -37,6 +37,11 @@ is what you want for this app.
 
 3. When prompted for environment variables, fill in:
    - **DATABASE_URL** — paste the Neon connection string from step 1.
+   - **CORS_ORIGIN** — your live frontend origin, e.g.
+     `https://your-project.vercel.app` (comma-separated if there are
+     several). The app refuses to boot in production without it.
+   - **FRONTEND_URL** — the same origin; used for verification and
+     password-reset links in emails.
    - **ADMIN_BOOTSTRAP_EMAIL** — your real email.
    - **ADMIN_BOOTSTRAP_PASSWORD** — a strong password (min 8 chars;
      use 12+). You'll log into the admin dashboard with these once.
