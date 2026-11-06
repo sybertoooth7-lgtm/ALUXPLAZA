@@ -32,6 +32,8 @@ export default defineConfig({
       'test/mfa-backup.test.js',
       // Access-log URL scrubbing — pure functions over strings.
       'test/log-redaction.test.js',
+      // Pure request-path predicate used by the general API limiter.
+      'test/rate-limit-path.test.js',
     ],
     fileParallelism: false,
   },

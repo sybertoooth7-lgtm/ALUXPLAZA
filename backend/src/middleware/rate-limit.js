@@ -11,7 +11,14 @@ import { PostgresRateLimitStore } from '../lib/rate-limit-store.js';
 // locks that IP out of admin login, the contact form and the client portal
 // alike. Status gets its own generous budget instead.
 const STATUS_PATH = '/api/status';
-export const isStatusPath = (req) => req.originalUrl.startsWith(STATUS_PATH);
+// Matched as a path segment, not a string prefix: `startsWith('/api/status')`
+// also exempted `/api/statusanything`, so any unauthenticated path beginning
+// with those characters skipped the general API limiter entirely (falling back
+// only to the Shield volume counter).
+export const isStatusPath = (req) => {
+  const path = req.originalUrl.split('?')[0];
+  return path === STATUS_PATH || path.startsWith(`${STATUS_PATH}/`);
+};
 
 export const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,

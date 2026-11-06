@@ -37,7 +37,10 @@ jobs:
       - name: Type-check and build
         run: npm run build
         env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # Uploading source maps is a release step, not a pull-request step.
+          # Passing the token here meant any same-repository PR ran its own
+          # code with a live Sentry credential; only main pushes get it now.
+          SENTRY_AUTH_TOKEN: ${{ github.event_name == 'push' && secrets.SENTRY_AUTH_TOKEN || '' }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 

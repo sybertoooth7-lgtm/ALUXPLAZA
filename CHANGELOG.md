@@ -12,6 +12,13 @@ version number.
 
 ### Security
 
+- The `/api/status` exemption in the general API rate limiter now matches a
+  path segment instead of a string prefix. `startsWith('/api/status')` also
+  exempted `/api/statusanything`, so any unauthenticated route whose first
+  characters matched skipped the 100-requests/15-minutes limiter entirely.
+- The frontend CI job only receives `SENTRY_AUTH_TOKEN` on pushes to `main`.
+  It previously built with the token present on every same-repository pull
+  request, so a PR's own code could read a live release credential.
 - Admin passwords are trimmed consistently. Login trims the submitted
   password, but `create-admin`, the `ADMIN_BOOTSTRAP_PASSWORD` path and the
   current-password check in change-password did not, so a password typed with
