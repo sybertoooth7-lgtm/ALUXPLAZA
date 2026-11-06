@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { body, validationResult } from 'express-validator';
 import { requireAuth } from '../middleware/auth.js';
 import { runAuthAudit } from '../lib/authAudit.js';
+import { parsePage, parseLimit } from '../lib/pagination.js';
 import db from '../db.js';
 
 const router = Router();
@@ -56,8 +57,8 @@ router.post(
 );
 
 router.get('/runs', requireAuth, async (req, res) => {
-  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit, 25, 100);
   const offset = (page - 1) * limit;
 
   try {

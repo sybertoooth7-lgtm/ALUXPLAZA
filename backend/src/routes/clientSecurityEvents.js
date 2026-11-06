@@ -9,6 +9,7 @@
 // existing /api/admin/security/events endpoint).
 import { Router } from 'express';
 import db from '../db.js';
+import { parsePage, parseLimit } from '../lib/pagination.js';
 
 const router = Router();
 
@@ -27,8 +28,8 @@ function maskIp(ip) {
 }
 
 router.get('/', async (req, res) => {
-  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit, 20, 100);
   const offset = (page - 1) * limit;
 
   try {

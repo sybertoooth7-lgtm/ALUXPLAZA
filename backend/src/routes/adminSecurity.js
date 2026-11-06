@@ -16,6 +16,7 @@ import {
 } from '../shield/blocklist.js';
 import db from '../db.js';
 import { recordAuditLog } from '../middleware/auditLog.js';
+import { parsePage, parseLimit, MAX_PAGE } from '../lib/pagination.js';
 
 const router = Router();
 
@@ -24,8 +25,8 @@ const router = Router();
  * Lists all currently active (non-expired) IP blocks.
  */
 router.get('/blocks', async (req, res) => {
-  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit, 50, 200);
   const offset = (page - 1) * limit;
 
   try {
@@ -90,8 +91,8 @@ router.post('/blocks/:ip/unblock', async (req, res) => {
  * The aggregation is the input to a human decision.
  */
 router.get('/feedback', async (req, res) => {
-  const minBlocks = Math.max(parseInt(req.query.minBlocks, 10) || 5, 1);
-  const minUnblocks = Math.max(parseInt(req.query.minUnblocks, 10) || 2, 1);
+  const minBlocks = parseLimit(req.query.minBlocks, 5, MAX_PAGE);
+  const minUnblocks = parseLimit(req.query.minUnblocks, 2, MAX_PAGE);
 
   try {
     const [signatures, repeatOffenders] = await Promise.all([
@@ -115,10 +116,16 @@ router.get('/feedback', async (req, res) => {
  * Useful for reviewing what tripped a block before deciding to unblock.
  */
 router.get('/events', async (req, res) => {
-  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit, 50, 200);
   const offset = (page - 1) * limit;
-  const type = req.query.type || null;
+  // A repeated `?type=` arrives as an array, which the driver would try to
+  // send as an array parameter for a scalar comparison. take only a string,
+  // and cap it to the column's width.
+  const type =
+    typeof req.query.type === 'string' && req.query.type.trim()
+      ? req.query.type.trim().slice(0, 50)
+      : null;
 
   try {
     const whereClause = type ? 'WHERE event_type = $1' : '';

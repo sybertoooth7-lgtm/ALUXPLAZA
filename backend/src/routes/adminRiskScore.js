@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { param, body, validationResult } from 'express-validator';
 import db from '../db.js';
 import { recordAuditLog } from '../middleware/auditLog.js';
+import { parsePage, parseLimit } from '../lib/pagination.js';
 
 const router = Router({ mergeParams: true }); // mergeParams to access :id from the parent mount
 
@@ -74,8 +75,8 @@ router.get('/', [param('id').isInt().withMessage('Invalid client id.')], async (
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
+  const page = parsePage(req.query.page);
+  const limit = parseLimit(req.query.limit, 25, 100);
   const offset = (page - 1) * limit;
 
   try {

@@ -15,6 +15,7 @@ import { consumeTOTPStep } from '../lib/totpReplay.js';
 import { authCookieOptions, authCookieClearOptions } from '../lib/auth-cookie.js';
 import { computeComplianceOverview } from '../shield/riskScore.js';
 import { getQueueStats, isEmailQueueDisabled } from '../lib/email-queue.js';
+import { MAX_PAGE } from '../lib/pagination.js';
 
 const router = Router();
 
@@ -462,10 +463,12 @@ router.get(
   requireAuth,
   requireAdmin,
   [
-    query('page').optional().isInt({ min: 1 }).toInt(),
+    query('page').optional().isInt({ min: 1, max: MAX_PAGE }).toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
     query('status').optional().isIn(VALID_STATUSES),
-    query('search').optional().trim(),
+    // Free text that becomes a leading-wildcard ILIKE; a cap keeps one request
+    // from turning into a full scan with a very large pattern.
+    query('search').optional().trim().isLength({ max: 100 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);

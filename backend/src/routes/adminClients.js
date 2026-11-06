@@ -11,6 +11,7 @@ import { recordAuditLog } from '../middleware/auditLog.js';
 import { computeRiskScoreBulk } from '../shield/riskScore.js';
 import { revokeAllSessions } from './clientAuth.js';
 import { RETENTION } from '../jobs/retention.js';
+import { MAX_PAGE } from '../lib/pagination.js';
 
 const router = Router();
 
@@ -24,7 +25,10 @@ const VALID_STATUSES = ['pending', 'in_progress', 'passing', 'failing', 'not_app
  */
 router.post(
   '/',
-  [body('companyName').isString().trim().notEmpty(), body('email').isEmail().normalizeEmail()],
+  [
+    body('companyName').isString().trim().notEmpty().isLength({ max: 200 }),
+    body('email').isEmail().normalizeEmail(),
+  ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -79,7 +83,7 @@ router.post(
 router.get(
   '/',
   [
-    query('page').optional().isInt({ min: 1 }).toInt(),
+    query('page').optional().isInt({ min: 1, max: MAX_PAGE }).toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
     query('includeScore').optional().isBoolean().toBoolean(),
   ],
@@ -225,7 +229,7 @@ router.patch(
     param('id').isInt().withMessage('Invalid client id.'),
     param('itemId').isInt().withMessage('Invalid item id.'),
     body('status').isIn(VALID_STATUSES),
-    body('notes').optional().isString().trim(),
+    body('notes').optional().isString().trim().isLength({ max: 2000 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);

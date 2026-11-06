@@ -34,6 +34,8 @@ export default defineConfig({
       'test/log-redaction.test.js',
       // Pure request-path predicate used by the general API limiter.
       'test/rate-limit-path.test.js',
+      // Pure query-string parsers used before pagination reaches SQL.
+      'test/pagination.test.js',
     ],
     fileParallelism: false,
   },

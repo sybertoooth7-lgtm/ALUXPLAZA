@@ -8,6 +8,7 @@ import db from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireSuperAdmin } from '../middleware/rbac.js';
 import { recordAuditLog } from '../middleware/auditLog.js';
+import { MAX_PAGE } from '../lib/pagination.js';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.get(
   requireAuth,
   requireSuperAdmin,
   [
-    query('page').optional().isInt({ min: 1 }).toInt(),
+    query('page').optional().isInt({ min: 1, max: MAX_PAGE }).toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
   ],
   async (req, res) => {

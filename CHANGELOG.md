@@ -12,6 +12,15 @@ version number.
 
 ### Security
 
+- Paginated endpoints clamp `page` before it reaches SQL. A 40-digit page
+  number became a JavaScript float larger than Postgres's bigint `OFFSET`
+  and failed the request with a 500, so anyone who could call a listing route
+  could generate error noise; the shared parser now caps the value (and
+  `limit`) instead. The security-events list also accepts `?type=` only as a
+  single string of the column's width, and the admin text inputs are capped:
+  submission `search`, client `companyName` and compliance `notes`. The
+  validators still reject malformed values; these caps only bound the size.
+
 - Data-subject erasure now also redacts the address from `security_events`.
   The shield event log stores the attempted email inside its snippet when it
   reports a credential-stuffing attack, so an erased person's address survived
