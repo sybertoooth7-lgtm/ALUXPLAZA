@@ -158,7 +158,7 @@ router.post(
  */
 router.post(
   '/mfa/verify',
-  [body('mfaToken').isString().trim().notEmpty(), body('code').isString().trim().notEmpty()],
+  [body('mfaToken').isString().trim().notEmpty(), body('code').isString().trim().isLength({ max: 64 }).notEmpty()],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -187,12 +187,35 @@ router.post(
       }
 
       const { rows } = await db.query(
-        'SELECT id, email, role, mfa_secret, mfa_enabled, mfa_backup_codes FROM admin_users WHERE id = $1',
+        `SELECT id, email, role, mfa_secret, mfa_enabled, mfa_backup_codes,
+                failed_login_count, locked_until, disabled_at
+           FROM admin_users WHERE id = $1`,
         [mfaPayload.sub]
       );
       const user = rows[0];
       if (!user?.mfa_enabled) {
         return res.status(400).json({ error: 'MFA is not enabled for this account.' });
+      }
+
+      // A disabled account must not be able to finish a challenge issued
+      // before it was disabled. Without this the mfaToken alone (which the
+      // holder obtained with the password) would mint a fresh session cookie;
+      // middleware/auth.js would then reject every request made with it.
+      if (user.disabled_at) {
+        return res.status(401).json({ error: 'Invalid or expired MFA token. Please log in again.' });
+      }
+
+      // Guessing the 6-digit code was previously bounded only by the per-IP
+      // limiter, so a distributed attacker with the password could keep
+      // trying. Count failures on the account with the same escalating
+      // lockout as password login. This is safe to disclose because the
+      // mfaToken proves the password was already correct.
+      if (user.locked_until && new Date(user.locked_until) > new Date()) {
+        const retryAfter = Math.ceil((new Date(user.locked_until) - new Date()) / 1000);
+        return res.status(423).json({
+          error: 'Account temporarily locked due to repeated failed login attempts.',
+          retryAfter,
+        });
       }
 
       const secret = decryptSecret(user.mfa_secret);
@@ -217,8 +240,26 @@ router.post(
       }
 
       if (!codeValid) {
+        // Same escalation as a wrong password. A challenge that keeps being
+        // guessed is indistinguishable from an attacker holding the password.
+        const newCount = (user.failed_login_count || 0) + 1;
+        const lockoutMinutes = computeLockoutMinutes(newCount);
+        const lockedUntil =
+          lockoutMinutes > 0 ? new Date(Date.now() + lockoutMinutes * 60 * 1000) : null;
+        await db.query(
+          'UPDATE admin_users SET failed_login_count = $1, locked_until = $2 WHERE id = $3',
+          [newCount, lockedUntil, user.id]
+        );
+
         // Log failed MFA attempt
         await recordFailedLogin(req.ip);
+
+        if (lockedUntil) {
+          return res.status(423).json({
+            error: 'Account temporarily locked due to repeated failed login attempts.',
+            retryAfter: Math.ceil((lockedUntil - new Date()) / 1000),
+          });
+        }
         return res.status(401).json({ error: 'Invalid MFA code.' });
       }
 
@@ -241,6 +282,12 @@ router.post(
           : new Date(Date.now() + 5 * 60 * 1000);
         await blocklistToken(mfaPayload.jti, expiresAt);
       }
+
+      // Clear any failures recorded while this challenge was being solved.
+      await db.query(
+        'UPDATE admin_users SET failed_login_count = 0, locked_until = NULL WHERE id = $1',
+        [user.id]
+      );
 
       // Issue full session
       const jti = crypto.randomUUID();

@@ -73,8 +73,17 @@ router.post(
         return res.status(400).json({ error: 'No enrollment in progress.' });
 
       const secret = decryptSecret(rows[0].mfa_secret);
-      if (matchTOTPStep(secret, req.body.code) === null) {
+      const totpStep = matchTOTPStep(secret, req.body.code);
+      if (totpStep === null) {
         return res.status(400).json({ error: 'Invalid code.' });
+      }
+      // Enrolment must consume the step too: otherwise the same code stays
+      // usable for the remainder of its +/-1-step window, including for a
+      // login or a backup-code regeneration.
+      if (!(await consumeTOTPStep(req.user.sub, totpStep))) {
+        return res
+          .status(400)
+          .json({ error: 'This code has already been used. Wait for the next code.' });
       }
 
       const { plaintextCodes, hashedCodes } = await generateBackupCodes();
@@ -200,8 +209,16 @@ router.post(
       if (!rows[0]?.mfa_enabled) return res.status(400).json({ error: 'MFA is not enabled.' });
 
       const secret = decryptSecret(rows[0].mfa_secret);
-      if (matchTOTPStep(secret, req.body.code) === null) {
+      const totpStep = matchTOTPStep(secret, req.body.code);
+      if (totpStep === null) {
         return res.status(401).json({ error: 'Invalid MFA code.' });
+      }
+      // Regenerating replaces every backup code, so the TOTP code authorising
+      // it must be single-use like the login and disable flows.
+      if (!(await consumeTOTPStep(req.user.sub, totpStep))) {
+        return res
+          .status(401)
+          .json({ error: 'This code has already been used. Wait for the next code.' });
       }
 
       const { plaintextCodes, hashedCodes } = await generateBackupCodes();

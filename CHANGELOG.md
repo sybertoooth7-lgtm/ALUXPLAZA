@@ -12,6 +12,13 @@ version number.
 
 ### Security
 
+- Failed TOTP guesses now count toward the account's lockout: five wrong codes
+  lock the account with the same escalating delay as five wrong passwords,
+  instead of leaving the 6-digit space protected only by a per-IP limiter.
+  A challenge issued before a disable or a lockout can no longer be completed.
+- TOTP codes are single-use for MFA enrolment and backup-code regeneration as
+  well as login and disable, closing the window where a code observed once
+  could authorise a second sensitive action.
 - Trusted browser origins no longer include a hardcoded Vercel preview
   wildcard: it named a team slug the project does not control, and any origin
   matching it was allowed to read the CSRF token and send the session cookie
