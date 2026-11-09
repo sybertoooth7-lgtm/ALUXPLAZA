@@ -107,9 +107,12 @@ export function verifyCsrfToken(req, res, next) {
   next();
 }
 
-// Refresh CSRF token on sensitive operations (login, password reset) to invalidate
-// any tokens leaked before the operation completed
-export function refreshCsrfToken(req, res, next) {
+/**
+ * Issues a fresh CSRF token and sets the cookie. Call this when a privilege
+ * boundary is crossed (login, MFA completion) so a token exposed before the
+ * boundary cannot be replayed after it.
+ */
+export function rotateCsrfToken(res) {
   const token = generateToken();
   res.cookie(CSRF_COOKIE, token, {
     httpOnly: true,
@@ -118,6 +121,12 @@ export function refreshCsrfToken(req, res, next) {
     maxAge: 24 * 60 * 60 * 1000,
     path: '/',
   });
-  req.csrfToken = token;
+  return token;
+}
+
+// Refresh CSRF token on sensitive operations (login, password reset) to invalidate
+// any tokens leaked before the operation completed
+export function refreshCsrfToken(req, res, next) {
+  req.csrfToken = rotateCsrfToken(res);
   next();
 }

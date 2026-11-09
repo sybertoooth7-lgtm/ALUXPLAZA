@@ -199,7 +199,9 @@ export async function verifyBackupCode(code, hashedCodes) {
 }
 
 export function generateMfaToken(userId, email) {
-  return jwt.sign({ sub: userId, email, type: 'mfa_challenge' }, config.jwtSecret, {
+  // A dedicated signing key keeps a leaked session key from minting a
+  // challenge token, and vice versa.
+  return jwt.sign({ sub: userId, email, type: 'mfa_challenge' }, config.mfaTokenSecret, {
     expiresIn: '5m',
     jwtid: crypto.randomUUID(),
   });
@@ -207,7 +209,7 @@ export function generateMfaToken(userId, email) {
 
 export function verifyMfaToken(token) {
   try {
-    const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
+    const decoded = jwt.verify(token, config.mfaTokenSecret, { algorithms: ['HS256'] });
     if (decoded.type !== 'mfa_challenge') return null;
     return decoded;
   } catch {

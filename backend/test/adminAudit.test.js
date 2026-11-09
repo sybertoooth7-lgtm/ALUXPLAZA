@@ -26,8 +26,8 @@ async function makeAdmin(role = 'admin') {
     [email, hash, role]
   );
   const token = jwt.sign(
-    { sub: result.rows[0].id, email, role, jti: crypto.randomUUID() },
-    process.env.JWT_SECRET,
+    { sub: result.rows[0].id, email, role, jti: crypto.randomUUID(), type: 'admin_access' },
+    process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET,
     { expiresIn: '1h' }
   );
   return { email, token };

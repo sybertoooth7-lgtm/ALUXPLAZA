@@ -4,22 +4,27 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - '3001:3001'
+      # Bound to loopback on purpose. This file has no TLS terminator, and
+      # production session cookies are Secure, so exposing 3001 directly would
+      # both break login and put credentials on the wire in cleartext. Put
+      # nginx/Caddy (or a cloud load balancer) on the host and proxy to this
+      # address over HTTPS.
+      - '127.0.0.1:3001:3001'
     environment:
       - NODE_ENV=production
       - PORT=3001
-      # This file publishes port 3001 directly, with no reverse proxy in front
-      # of the app, so no forwarded hop may be trusted. The config default is 1
-      # (correct for Render/Vercel); leaving it at 1 here would let a visitor
-      # send their own X-Forwarded-For and forge the IP that rate limits, IP
-      # blocks, login alerts and the Shield all key on. If you put a load
-      # balancer or nginx in front, raise this to the real hop count and verify
-      # it with GET /api/admin/diagnostics/client-ip.
-      - TRUST_PROXY_HOPS=0
+      # Exactly one host-level TLS reverse proxy sits in front of the app.
+      # If you add another hop, raise this; if you expose the app directly,
+      # set it to 0. Verify with GET /api/admin/diagnostics/client-ip.
+      - TRUST_PROXY_HOPS=${TRUST_PROXY_HOPS:-1}
       - DATABASE_URL=postgresql://alux:${DB_PASSWORD}@postgres:5432/alux_plaza
       - DB_SSL=false
       - CORS_ORIGIN=${CORS_ORIGIN}
       - JWT_SECRET=${JWT_SECRET}
+      # Optional per-plane keys; each falls back to JWT_SECRET when empty.
+      - JWT_ADMIN_SECRET=${JWT_ADMIN_SECRET:-}
+      - JWT_CLIENT_SECRET=${JWT_CLIENT_SECRET:-}
+      - MFA_TOKEN_SECRET=${MFA_TOKEN_SECRET:-}
       - JWT_EXPIRES_IN=8h
       - CONTACT_RATE_LIMIT_WINDOW_MINUTES=15
       - CONTACT_RATE_LIMIT_MAX=5

@@ -6,6 +6,7 @@ A real, working scanner for the "Access Control & Authentication Audit" service.
 """
 
 import argparse
+import os
 import base64
 import io
 import json
@@ -15,6 +16,10 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 import urllib3
+
+# TLS verification is on by default. Set ALUX_INSECURE_TLS=1 only for a
+# target whose certificate you cannot validate (self-signed lab host).
+VERIFY_TLS = os.environ.get("ALUX_INSECURE_TLS") != "1"
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -67,7 +72,7 @@ def check_transport_security(session, base_url, report):
 
     try:
         http_url = "http://" + parsed.netloc + parsed.path
-        resp = session.get(http_url, allow_redirects=False, timeout=8, verify=False)
+        resp = session.get(http_url, allow_redirects=False, timeout=8, verify=VERIFY_TLS)
         if resp.status_code in (301, 302, 307, 308) and resp.headers.get("Location", "").startswith("https"):
             report.add("transport", "PASS", "HTTP requests are redirected to HTTPS.")
         else:
@@ -84,7 +89,7 @@ def check_transport_security(session, base_url, report):
 def check_security_headers(session, base_url, report):
     print(f"\n{INFO}== 2. Security Headers =={END}")
     try:
-        resp = session.get(base_url, timeout=8, verify=False)
+        resp = session.get(base_url, timeout=8, verify=VERIFY_TLS)
     except requests.exceptions.RequestException as e:
         report.add("headers", "FAIL", f"Could not fetch target: {e}")
         return
@@ -114,7 +119,7 @@ def check_security_headers(session, base_url, report):
 def check_cookies(session, base_url, report):
     print(f"\n{INFO}== 3. Cookie Security =={END}")
     try:
-        resp = session.get(base_url, timeout=8, verify=False)
+        resp = session.get(base_url, timeout=8, verify=VERIFY_TLS)
     except requests.exceptions.RequestException as e:
         report.add("cookies", "FAIL", f"Could not fetch target: {e}")
         return
@@ -203,7 +208,7 @@ def check_login_hardening(session, base_url, login_path, report, attempts=5):
             resp = session.post(
                 login_url,
                 json={"username": "audit_test_user_do_not_use", "password": "audit_test_invalid"},
-                timeout=8, verify=False
+                timeout=8, verify=VERIFY_TLS
             )
             statuses.append(resp.status_code)
             time.sleep(0.5)

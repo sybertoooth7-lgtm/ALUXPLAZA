@@ -8,13 +8,14 @@ import { config } from '../config.js';
 import { getClientIp } from '../lib/ip.js';
 import { isBlocked, blockIp } from '../shield/blocklist.js';
 import { scanRequest } from '../shield/detector.js';
-import { recordRequest } from '../shield/bruteForceGuard.js';
+import { corroborateSignatureMatch, recordRequest } from '../shield/bruteForceGuard.js';
 import { logSecurityEvent } from '../shield/eventLogger.js';
 
 // detector.js scans the ENTIRE request body/query as one blob — it can't
 // tell "SELECT * FROM" apart from someone typing "we need to select a
-// union representative" in a free-text field. A single match blocks that
-// visitor's IP for 6+ hours.
+// union representative" in a free-text field. A single match denies the
+// request but no longer persists an IP block; repeated matches are required
+// before the address is blocked (see corroborateSignatureMatch).
 //
 // Paths listed here skip signature scanning (step 3 below) but still go
 // through isBlocked() and recordRequest() — so volume-based abuse and
@@ -57,16 +58,34 @@ const SIGNATURE_SCAN_EXEMPT_PATHS = [
 // requests. admin_users and clients are separate tables with independently
 // numbered ids, so the prefix keeps an admin id=5 and a client id=5 from
 // colliding into the same counter bucket.
-function getSessionIdentity(req) {
-  const token = req.cookies?.adminToken || req.cookies?.clientToken;
-  if (!token) return null;
+function decodeSessionIdentity(token, secret, expectedType, kind) {
   try {
-    const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
-    const kind = decoded.role === 'client' ? 'client' : 'admin';
+    const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
+    if (decoded.type !== expectedType || !decoded.sub) return null;
     return `${kind}:${decoded.sub}`;
   } catch {
     return null;
   }
+}
+
+function getSessionIdentity(req) {
+  // Each cookie is verified against its own plane's key; a token signed for
+  // one plane must never be counted as an identity in another.
+  const adminToken = req.cookies?.adminToken;
+  if (adminToken) {
+    const identity = decodeSessionIdentity(
+      adminToken,
+      config.jwtAdminSecret,
+      'admin_access',
+      'admin'
+    );
+    if (identity) return identity;
+  }
+  const clientToken = req.cookies?.clientToken;
+  if (clientToken) {
+    return decodeSessionIdentity(clientToken, config.jwtClientSecret, 'client_access', 'client');
+  }
+  return null;
 }
 
 export async function shield(req, res, next) {
@@ -112,12 +131,13 @@ export async function shield(req, res, next) {
         snippet: detection.snippet,
         blocked: true,
       });
-      // Persisting the block is best-effort; denying the request is not. If
-      // blockIp throws (a database hiccup, or an address the column rejects),
-      // this used to fall into the catch below, which calls next() — letting
-      // through the very request that was just identified as an attack. A
-      // detection that cannot be recorded must still be refused.
-      if (attributable) {
+      // Denying the request is unconditional; persisting the block is not.
+      // A single match can be planted in a link, so an IP block requires
+      // repeated matches from the same address within the window (see
+      // corroborateSignatureMatch). Otherwise an attacker could get a victim
+      // — or everyone behind one NAT — banned with one crafted request.
+      const shouldPersistBlock = attributable && (await corroborateSignatureMatch(ip));
+      if (shouldPersistBlock) {
         try {
           await blockIp(
             ip,

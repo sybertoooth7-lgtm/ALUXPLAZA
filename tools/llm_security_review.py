@@ -52,12 +52,17 @@ underlying model provider's infrastructure.
 """
 
 import argparse
+import os
 import json
 import re
 import sys
 import time
 
 import requests
+
+# TLS verification is on by default. Set ALUX_INSECURE_TLS=1 only for a
+# target whose certificate you cannot validate (self-signed lab host).
+VERIFY_TLS = os.environ.get("ALUX_INSECURE_TLS") != "1"
 
 requests.packages.urllib3.disable_warnings()
 
@@ -123,7 +128,7 @@ def call_endpoint(session, url, message, input_field, extra_fields=None):
     if extra_fields:
         payload.update(extra_fields)
     try:
-        resp = session.post(url, json=payload, timeout=20, verify=False)
+        resp = session.post(url, json=payload, timeout=20, verify=VERIFY_TLS)
         return resp
     except requests.exceptions.RequestException as e:
         return e

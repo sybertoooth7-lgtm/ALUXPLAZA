@@ -23,6 +23,44 @@ if (jwtSecret === 'your-64-char-random-secret-here-change-me' || jwtSecret === '
   warnings.push('JWT_SECRET appears to be a default value. Please change it to a random string.');
 }
 
+// Per-plane signing secrets. One shared key means a leak in any token plane
+// (admin session, client session, or the short-lived MFA challenge) lets the
+// holder mint tokens for every other plane. The fallback preserves existing
+// deployments that only set JWT_SECRET, but production should set all three.
+const jwtAdminSecret = process.env.JWT_ADMIN_SECRET || jwtSecret;
+const jwtClientSecret = process.env.JWT_CLIENT_SECRET || jwtSecret;
+const mfaTokenSecret = process.env.MFA_TOKEN_SECRET || jwtSecret;
+
+if (isProduction) {
+  const missing = [
+    ['JWT_ADMIN_SECRET', process.env.JWT_ADMIN_SECRET],
+    ['JWT_CLIENT_SECRET', process.env.JWT_CLIENT_SECRET],
+    ['MFA_TOKEN_SECRET', process.env.MFA_TOKEN_SECRET],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+  if (missing.length > 0) {
+    warnings.push(
+      `${missing.join(', ')} not set: those token planes fall back to JWT_SECRET. Set distinct 32+ character secrets so one leaked key cannot mint tokens for another plane.`
+    );
+  }
+  const configured = [jwtAdminSecret, jwtClientSecret, mfaTokenSecret].filter(Boolean);
+  if (new Set(configured).size < configured.length) {
+    warnings.push(
+      'JWT_ADMIN_SECRET, JWT_CLIENT_SECRET, and MFA_TOKEN_SECRET must differ from each other; at least two planes share a signing key.'
+    );
+  }
+}
+if (process.env.JWT_ADMIN_SECRET && process.env.JWT_ADMIN_SECRET.length < 32) {
+  warnings.push('JWT_ADMIN_SECRET is too short. It should be at least 32 characters.');
+}
+if (process.env.JWT_CLIENT_SECRET && process.env.JWT_CLIENT_SECRET.length < 32) {
+  warnings.push('JWT_CLIENT_SECRET is too short. It should be at least 32 characters.');
+}
+if (process.env.MFA_TOKEN_SECRET && process.env.MFA_TOKEN_SECRET.length < 32) {
+  warnings.push('MFA_TOKEN_SECRET is too short. It should be at least 32 characters.');
+}
+
 // Cookie Secret validation
 const cookieSecret = process.env.COOKIE_SECRET || jwtSecret || '';
 if (cookieSecret && cookieSecret.length < 32) {
@@ -169,6 +207,9 @@ export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
   isProduction,
   jwtSecret,
+  jwtAdminSecret,
+  jwtClientSecret,
+  mfaTokenSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '2h',
   cookieSecret,
   mfaEncryptionKey,

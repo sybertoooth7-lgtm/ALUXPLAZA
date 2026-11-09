@@ -38,6 +38,15 @@ const REQUEST_RATE_WINDOW_MS = 60 * 1000; // within 1 minute
 // can't share a total.
 const METRIC_FAILED_LOGIN = 'failed_login';
 const METRIC_REQUEST = 'request_volume';
+const METRIC_SIGNATURE = 'signature_match';
+
+// A single signature match is not enough to persist an IP block. Query
+// strings are attacker-controlled and can be embedded in a link or an <img>
+// tag, so one crafted request would otherwise let an attacker block a
+// victim's address (or an entire NAT) for hours. The request that matched is
+// still denied; only the durable block waits for corroboration.
+const SIGNATURE_THRESHOLD = 3;
+const SIGNATURE_WINDOW_MS = 10 * 60 * 1000;
 
 // Bucket width. See migration 024 for why this is a fixed 60s rather than
 // tracking each metric's own window.
@@ -138,10 +147,11 @@ export async function trackedKeyCounts() {
   const result = await db.query(
     'SELECT metric, COUNT(DISTINCT counter_key)::int AS keys FROM shield_counters GROUP BY metric'
   );
-  const counts = { failedLogin: 0, requestVolume: 0 };
+  const counts = { failedLogin: 0, requestVolume: 0, signatureMatch: 0 };
   for (const row of result.rows) {
     if (row.metric === METRIC_FAILED_LOGIN) counts.failedLogin = row.keys;
     if (row.metric === METRIC_REQUEST) counts.requestVolume = row.keys;
+    if (row.metric === METRIC_SIGNATURE) counts.signatureMatch = row.keys;
   }
   return counts;
 }
@@ -209,6 +219,34 @@ export async function recordFailedLogin(ip) {
  * database hiccup into a total outage. A missed block is recoverable; a
  * downed app is not.
  */
+/**
+ * Records a signature detection and reports whether this address has produced
+ * enough recent detections to justify a persistent block.
+ *
+ * Fail-open (return false) on a counter error: the caller still denies the
+ * offending request, so an unavailable counter weakens only block durability,
+ * never request-level enforcement.
+ */
+export async function corroborateSignatureMatch(ip) {
+  const address = normalizeIp(ip);
+  if (!address) return false;
+
+  try {
+    const total = await incrementAndCount(METRIC_SIGNATURE, address, SIGNATURE_WINDOW_MS);
+    if (total >= SIGNATURE_THRESHOLD) {
+      await clearCounters(METRIC_SIGNATURE, address);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error(
+      '[bruteForceGuard] signature counter unavailable, not persisting block:',
+      err.message
+    );
+    return false;
+  }
+}
+
 export async function recordRequest(countKey, blockTargetIp) {
   try {
     const total = await incrementAndCount(METRIC_REQUEST, countKey, REQUEST_RATE_WINDOW_MS);

@@ -174,8 +174,10 @@ async function reportDistributedAttack({ eventType, severity, detail, ip, identi
  * slowdown turned into a login slowdown.
  */
 export async function alertNewDevice({ clientId, email, ip, userAgent }) {
+  // Deliberately no address here: this line goes to stdout, outside the
+  // pino redaction rules, and the alert email already carries the address.
   console.log(
-    `[SECURITY] New device login for client ${clientId} (${email}) from IP ${ip}, UA: ${userAgent}`
+    `[SECURITY] New device login for client ${clientId} from IP ${ip}, UA: ${userAgent}`
   );
   await enqueueEmail(
     'new-device-alert',

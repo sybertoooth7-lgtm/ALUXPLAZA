@@ -37,6 +37,7 @@ authorization to test.
 """
 
 import argparse
+import os
 import re
 import socket
 import ssl
@@ -45,6 +46,10 @@ import warnings
 from urllib.parse import urljoin, urlparse
 
 import requests
+
+# TLS verification is on by default. Set ALUX_INSECURE_TLS=1 only for a
+# target whose certificate you cannot validate (self-signed lab host).
+VERIFY_TLS = os.environ.get("ALUX_INSECURE_TLS") != "1"
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -126,7 +131,7 @@ def check_exposed_paths(session, base_url, report):
     baseline_content = None
     try:
         baseline_url = urljoin(base_url, "/definitely-nonexistent-path-audit-baseline-8f2k1")
-        baseline_resp = session.get(baseline_url, timeout=8, verify=False, allow_redirects=False)
+        baseline_resp = session.get(baseline_url, timeout=8, verify=VERIFY_TLS, allow_redirects=False)
         if baseline_resp.status_code == 200:
             baseline_content = baseline_resp.content
     except requests.exceptions.RequestException:
@@ -136,7 +141,7 @@ def check_exposed_paths(session, base_url, report):
     for path, description in SENSITIVE_PATHS.items():
         url = urljoin(base_url, path)
         try:
-            resp = session.get(url, timeout=8, verify=False, allow_redirects=False)
+            resp = session.get(url, timeout=8, verify=VERIFY_TLS, allow_redirects=False)
             if resp.status_code != 200 or len(resp.content) == 0:
                 continue
             if baseline_content is not None and resp.content == baseline_content:
@@ -159,7 +164,7 @@ def check_exposed_paths(session, base_url, report):
 def fingerprint_software(session, base_url, report):
     print(f"\n{INFO}== 2. Software Fingerprinting =={END}")
     try:
-        resp = session.get(base_url, timeout=8, verify=False)
+        resp = session.get(base_url, timeout=8, verify=VERIFY_TLS)
     except requests.exceptions.RequestException as e:
         report.add("fingerprint", "INFO", f"Could not fetch target: {e}")
         return
@@ -235,7 +240,7 @@ def check_security_txt(session, base_url, report):
     for path in ["/.well-known/security.txt", "/security.txt"]:
         url = urljoin(base_url, path)
         try:
-            resp = session.get(url, timeout=8, verify=False)
+            resp = session.get(url, timeout=8, verify=VERIFY_TLS)
             if resp.status_code == 200 and "contact" in resp.text.lower():
                 report.add("disclosure", "PASS", f"security.txt found at {path} with a contact field - good practice for coordinated vulnerability disclosure.")
                 return

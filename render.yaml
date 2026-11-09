@@ -50,6 +50,14 @@ services:
       # invalidates all existing sessions — acceptable, expected.
       - key: JWT_SECRET
         generateValue: true
+      # Separate keys per token plane. Without these, every plane falls back
+      # to JWT_SECRET; distilling them limits the blast radius of a leak.
+      - key: JWT_ADMIN_SECRET
+        generateValue: true
+      - key: JWT_CLIENT_SECRET
+        generateValue: true
+      - key: MFA_TOKEN_SECRET
+        generateValue: true
       # Paste your Neon (or other managed Postgres) connection string.
       # Must include ?sslmode=require.
       - key: DATABASE_URL

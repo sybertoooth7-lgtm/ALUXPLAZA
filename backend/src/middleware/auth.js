@@ -70,7 +70,7 @@ export async function requireAuth(req, res, next) {
 
   let decoded;
   try {
-    decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
+    decoded = jwt.verify(token, config.jwtAdminSecret, { algorithms: ['HS256'] });
   } catch (err) {
     logger.warn({ ip: req.ip, error: err.message }, '[auth] Token verification failed');
     return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
@@ -96,9 +96,13 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Unauthorized: Token too old' });
   }
 
-  // Wrong token type: client token on admin route
-  if (decoded.role === 'client') {
-    logger.warn({ ip: req.ip, sub: decoded.sub }, '[auth] Client token used on admin route');
+  // Only a full admin access token may pass. The explicit type check also
+  // rejects an MFA challenge token even if a future change gives it a role.
+  if (decoded.type !== 'admin_access' || decoded.role === 'client') {
+    logger.warn(
+      { ip: req.ip, sub: decoded.sub, type: decoded.type },
+      '[auth] Wrong token type used on admin route'
+    );
     return res.status(401).json({ error: 'Unauthorized: Wrong token type' });
   }
 

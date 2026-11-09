@@ -173,6 +173,8 @@ async function flushAlertQueue() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: summary, content: summary }),
+        // A hung webhook must not stall the alert queue indefinitely.
+        signal: AbortSignal.timeout(5000),
       });
     } catch (err) {
       logger.warn({ err }, 'Failed to send alert webhook');

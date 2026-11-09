@@ -56,8 +56,8 @@ async function insertClient({ verified = true, disabledSql = null, email = uniqu
 function clientToken(clientId, { issuedSecondsAgo = 0, jti = crypto.randomUUID() } = {}) {
   const iat = Math.floor(Date.now() / 1000) - issuedSecondsAgo;
   return jwt.sign(
-    { sub: clientId, email: 'x@example.com', role: 'client', jti, iat },
-    process.env.JWT_SECRET,
+    { sub: clientId, email: 'x@example.com', role: 'client', jti, iat, type: 'client_access' },
+    process.env.JWT_CLIENT_SECRET || process.env.JWT_SECRET,
     {
       expiresIn: '2h',
     }
@@ -77,8 +77,8 @@ async function insertAdmin(role) {
 function adminToken(admin, { issuedSecondsAgo = 0 } = {}) {
   const iat = Math.floor(Date.now() / 1000) - issuedSecondsAgo;
   return jwt.sign(
-    { sub: admin.id, email: admin.email, role: admin.role, jti: crypto.randomUUID(), iat },
-    process.env.JWT_SECRET,
+    { sub: admin.id, email: admin.email, role: admin.role, jti: crypto.randomUUID(), iat, type: 'admin_access' },
+    process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET,
     { expiresIn: '2h' }
   );
 }

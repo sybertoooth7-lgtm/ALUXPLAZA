@@ -20,6 +20,7 @@ import { parseExpiryToMs } from '../lib/parseExpiry.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../lib/email.js';
 import { enqueueEmail } from '../lib/email-queue.js';
 import { requireClientAuth } from '../middleware/clientAuth.js';
+import { rotateCsrfToken } from '../middleware/csrf.js';
 
 const router = Router();
 
@@ -577,8 +578,8 @@ router.post(
 
     const jti = crypto.randomUUID();
     const token = jwt.sign(
-      { sub: client.id, email: client.email, role: 'client', jti },
-      config.jwtSecret,
+      { sub: client.id, email: client.email, role: 'client', jti, type: 'client_access' },
+      config.jwtClientSecret,
       { expiresIn: config.jwtExpiresIn }
     );
 
@@ -591,6 +592,7 @@ router.post(
     });
 
     setAuthCookie(res, token);
+    rotateCsrfToken(res);
 
     res.json({
       success: true,
@@ -608,7 +610,8 @@ router.post(
     if (!token) return res.json({ success: true });
 
     try {
-      const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
+      const decoded = jwt.verify(token, config.jwtClientSecret, { algorithms: ['HS256'] });
+      if (decoded.type !== 'client_access') throw new Error('wrong token type');
       if (decoded.jti) {
         const expiresAt = decoded.exp
           ? new Date(decoded.exp * 1000)

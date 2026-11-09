@@ -13,10 +13,12 @@ const router = Router({ mergeParams: true }); // mergeParams to access :id from 
 
 // A share link is bearer-equivalent: anyone who has it can read the score.
 // "No expiry" turned every link into a permanent credential that outlives
-// the engagement and survives a leaked inbox or screenshot, so links now
-// default to 30 days and can never be minted for longer than two years.
+// the engagement and survives a leaked inbox or screenshot. The cap is kept
+// short because the token is still stored in plaintext at rest; hashing it
+// (and showing the link only once at creation) is the follow-up that would
+// let this window be longer safely.
 const DEFAULT_SHARE_EXPIRY_DAYS = 30;
-const MAX_SHARE_EXPIRY_DAYS = 730;
+const MAX_SHARE_EXPIRY_DAYS = 90;
 
 /**
  * POST /api/admin/clients/:id/risk-score-shares

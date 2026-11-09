@@ -14,6 +14,7 @@ import { parseExpiryToMs } from '../lib/parseExpiry.js';
 import { adminMfaRequired } from '../lib/mfa.js';
 import { consumeTOTPStep } from '../lib/totpReplay.js';
 import { authCookieOptions, authCookieClearOptions } from '../lib/auth-cookie.js';
+import { rotateCsrfToken } from '../middleware/csrf.js';
 import { computeComplianceOverview } from '../shield/riskScore.js';
 import { getQueueStats, isEmailQueueDisabled } from '../lib/email-queue.js';
 import { MAX_PAGE } from '../lib/pagination.js';
@@ -118,7 +119,17 @@ router.post(
       );
 
       // === MFA CHECK ===
-      if (user.mfa_enabled && user.mfa_secret) {
+      // An account marked MFA-enabled with no stored secret cannot complete a
+      // challenge. Refuse the login rather than falling through to a full
+      // session, which would silently bypass the second factor.
+      if (user.mfa_enabled && !user.mfa_secret) {
+        console.error(`[admin] MFA enabled but secret missing for user ${user.id}`);
+        return res.status(403).json({
+          error: 'Account MFA configuration is invalid. Contact a superadmin.',
+        });
+      }
+
+      if (user.mfa_enabled) {
         const { generateMfaToken } = await import('../lib/mfa.js');
         const mfaToken = generateMfaToken(user.id, user.email);
         return res.json({
@@ -132,12 +143,13 @@ router.post(
       // No MFA — issue full session immediately
       const jti = crypto.randomUUID();
       const token = jwt.sign(
-        { sub: user.id, email: user.email, jti, role: user.role },
-        config.jwtSecret,
+        { sub: user.id, email: user.email, jti, role: user.role, type: 'admin_access' },
+        config.jwtAdminSecret,
         { expiresIn: config.jwtExpiresIn }
       );
 
       res.cookie('adminToken', token, authCookieOptions(COOKIE_MAX_AGE_MS));
+      rotateCsrfToken(res);
 
       // MFA is mandatory and this admin has not enrolled: the session above can
       // only reach the enrolment endpoints (see middleware/auth.js). Tell the
@@ -217,6 +229,13 @@ router.post(
         return res.status(423).json({
           error: 'Account temporarily locked due to repeated failed login attempts.',
           retryAfter,
+        });
+      }
+
+      if (!user.mfa_secret) {
+        console.error(`[admin] MFA challenge for user ${user.id} but no secret is stored`);
+        return res.status(403).json({
+          error: 'Account MFA configuration is invalid. Contact a superadmin.',
         });
       }
 
@@ -301,12 +320,13 @@ router.post(
       // Issue full session
       const jti = crypto.randomUUID();
       const token = jwt.sign(
-        { sub: user.id, email: user.email, jti, role: user.role },
-        config.jwtSecret,
+        { sub: user.id, email: user.email, jti, role: user.role, type: 'admin_access' },
+        config.jwtAdminSecret,
         { expiresIn: config.jwtExpiresIn }
       );
 
       res.cookie('adminToken', token, authCookieOptions(COOKIE_MAX_AGE_MS));
+      rotateCsrfToken(res);
 
       res.json({
         success: true,

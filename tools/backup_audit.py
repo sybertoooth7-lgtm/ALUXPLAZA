@@ -46,6 +46,10 @@ from urllib.parse import urlparse
 
 import requests
 
+# TLS verification is on by default. Set ALUX_INSECURE_TLS=1 only for a
+# target whose certificate you cannot validate (self-signed lab host).
+VERIFY_TLS = os.environ.get("ALUX_INSECURE_TLS") != "1"
+
 requests.packages.urllib3.disable_warnings()
 
 GOOD = "\033[92m"
@@ -214,7 +218,7 @@ def check_s3_public_exposure(bucket, report):
 
     for url in candidate_urls:
         try:
-            resp = requests.get(url, timeout=8, verify=False)
+            resp = requests.get(url, timeout=8, verify=VERIFY_TLS)
         except requests.exceptions.RequestException as e:
             report.add("cloud", "INFO", f"Could not reach '{url}': {e}")
             continue

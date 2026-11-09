@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   isBlocked: vi.fn(),
   blockIp: vi.fn(),
   recordRequest: vi.fn(),
+  corroborateSignatureMatch: vi.fn(),
   scanRequest: vi.fn(),
   logSecurityEvent: vi.fn(),
 }));
@@ -15,7 +16,10 @@ vi.mock('../src/shield/blocklist.js', () => ({
   isBlocked: mocks.isBlocked,
   blockIp: mocks.blockIp,
 }));
-vi.mock('../src/shield/bruteForceGuard.js', () => ({ recordRequest: mocks.recordRequest }));
+vi.mock('../src/shield/bruteForceGuard.js', () => ({
+  recordRequest: mocks.recordRequest,
+  corroborateSignatureMatch: mocks.corroborateSignatureMatch,
+}));
 vi.mock('../src/shield/detector.js', () => ({ scanRequest: mocks.scanRequest }));
 vi.mock('../src/shield/eventLogger.js', () => ({ logSecurityEvent: mocks.logSecurityEvent }));
 
@@ -59,6 +63,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.isBlocked.mockResolvedValue(false);
   mocks.recordRequest.mockResolvedValue(false);
+  mocks.corroborateSignatureMatch.mockResolvedValue(true);
   mocks.blockIp.mockResolvedValue(undefined);
   mocks.logSecurityEvent.mockResolvedValue(undefined);
   mocks.scanRequest.mockReturnValue(null);
@@ -118,6 +123,21 @@ describe('shield fail-open guard', () => {
       'high',
       'sqli'
     );
+  });
+
+  it('denies the first match but does not persist a block until corroborated', async () => {
+    mocks.scanRequest.mockReturnValue(DETECTION);
+    mocks.corroborateSignatureMatch.mockResolvedValue(false);
+
+    const next = vi.fn();
+    const res = makeRes();
+    await shield(makeReq(), res, next);
+
+    expect(res.statusCode).toBe(403);
+    expect(next).not.toHaveBeenCalled();
+    // The request is refused, but a single planted match must not be enough
+    // to ban the address (or everyone behind its NAT).
+    expect(mocks.blockIp).not.toHaveBeenCalled();
   });
 
   it('lets a clean request through', async () => {

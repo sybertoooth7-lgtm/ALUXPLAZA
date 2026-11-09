@@ -8,6 +8,7 @@
 // failed action never gets logged as if it happened.
 
 import db from '../db.js';
+import { captureError } from '../monitoring.js';
 
 /**
  * @param {object} params
@@ -43,7 +44,9 @@ export async function recordAuditLog({
     );
   } catch (err) {
     // Fail open on logging — a write failure here should never block or
-    // roll back an admin action that already succeeded.
-    console.error('[auditLog] Failed to record audit log:', err.message);
+    // roll back an admin action that already succeeded. It must not be
+    // invisible either: surface it to error tracking so lost audit rows are
+    // detectable. Never include adminEmail in the context.
+    captureError(err, { area: 'auditLog', action, targetTable, targetId });
   }
 }

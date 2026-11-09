@@ -43,8 +43,8 @@ beforeAll(async () => {
 
 function adminCookie() {
   const token = jwt.sign(
-    { sub: adminId, email: 'admin@example.com', jti: crypto.randomUUID(), role: 'admin' },
-    config.jwtSecret,
+    { sub: adminId, email: 'admin@example.com', jti: crypto.randomUUID(), role: 'admin', type: 'admin_access' },
+    config.jwtAdminSecret,
     { expiresIn: '2h' }
   );
   return `adminToken=${token}`;

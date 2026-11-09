@@ -30,8 +30,8 @@ async function adminToken(role) {
     [email, bcrypt.hashSync('irrelevant', 4), role]
   );
   return jwt.sign(
-    { sub: rows[0].id, email, role, jti: crypto.randomUUID() },
-    process.env.JWT_SECRET,
+    { sub: rows[0].id, email, role, jti: crypto.randomUUID(), type: 'admin_access' },
+    process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET,
     { expiresIn: '2h' }
   );
 }
