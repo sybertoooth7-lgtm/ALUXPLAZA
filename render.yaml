@@ -58,6 +58,15 @@ services:
         generateValue: true
       - key: MFA_TOKEN_SECRET
         generateValue: true
+      # Cookie signing key, and the key that encrypts stored TOTP secrets.
+      # When unset they fall back to JWT_SECRET (the MFA key derived from it),
+      # which ties them to a value that can be rotated. Set these once, before
+      # any admin enrolls in MFA: changing MFA_ENCRYPTION_KEY later makes
+      # existing enrollments unreadable.
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: MFA_ENCRYPTION_KEY
+        generateValue: true
       # Paste your Neon (or other managed Postgres) connection string.
       # Must include ?sslmode=require.
       - key: DATABASE_URL

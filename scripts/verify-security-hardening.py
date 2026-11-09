@@ -217,6 +217,15 @@ def check_backend_headers(root):
     require(index, "res.set('Cache-Control', 'no-store')", "index.js")
 
 
+@check("Render blueprint generates stable cookie and MFA encryption keys")
+def check_render_secrets(root):
+    text = read(root, "render.yaml")
+    for key in ("COOKIE_SECRET", "MFA_ENCRYPTION_KEY"):
+        pattern = rf"- key: {key}\s*\n\s*generateValue: true"
+        if not re.search(pattern, text):
+            raise AssertionError(f"render.yaml: {key} must be generated, not left to a fallback")
+
+
 @check("GitHub Actions are pinned to full commit SHAs")
 def check_workflow_pinning(root):
     pattern = re.compile(r"uses:\s*[^@\s]+@([^\s#]+)")
