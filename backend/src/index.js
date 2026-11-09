@@ -21,7 +21,7 @@ import {
   sendNewDeviceAlert,
 } from './lib/email.js';
 
-import { attachCspNonce, helmetMiddleware } from './middleware/helmetConfig.js';
+import { attachCspNonce, helmetMiddleware, securityHeaders } from './middleware/helmetConfig.js';
 import { setCsrfCookie, verifyCsrfToken } from './middleware/csrf.js';
 import { isAllowedOrigin } from './lib/origins.js';
 import { shield } from './middleware/shieldMiddleware.js';
@@ -65,6 +65,7 @@ async function startServer() {
   // header for this response, so the nonce has to exist first.
   app.use(attachCspNonce);
   app.use(helmetMiddleware);
+  app.use(securityHeaders);
 
   // Every /api response is either personal data or a credential-bearing
   // answer (sessions, MFA state, compliance records), and none of it should

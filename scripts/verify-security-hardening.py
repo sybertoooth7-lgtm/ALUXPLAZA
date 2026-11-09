@@ -156,6 +156,67 @@ def check_compose(root):
     require(text, "JWT_ADMIN_SECRET=${JWT_ADMIN_SECRET:-}", "docker-compose.prod.yml")
 
 
+@check("Vercel frontend sends the full security header set")
+def check_vercel_headers(root):
+    import json
+
+    cfg = json.loads(read(root, "frontend/vercel.json"))
+    headers = {}
+    for rule in cfg.get("headers", []):
+        for header in rule.get("headers", []):
+            headers[header["key"].lower()] = header["value"]
+
+    expected = {
+        "content-security-policy": "default-src 'self'",
+        "x-frame-options": "DENY",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=()",
+        "x-xss-protection": "0",
+        "cache-control": "max-age=0",
+        "cross-origin-opener-policy": "same-origin",
+        "cross-origin-resource-policy": "same-origin",
+    }
+    for key, value in expected.items():
+        actual = headers.get(key)
+        if actual is None:
+            raise AssertionError(f"vercel.json: missing {key}")
+        if value not in actual:
+            raise AssertionError(f"vercel.json: {key} lacks {value!r} (got {actual!r})")
+
+
+@check("nginx frontend sends the same header set from the shared snippet")
+def check_nginx_headers(root):
+    snippet = read(root, "frontend/security-headers.conf")
+    for needle in (
+        "Content-Security-Policy",
+        'X-Frame-Options "DENY"',
+        'X-Content-Type-Options "nosniff"',
+        'Referrer-Policy "strict-origin-when-cross-origin"',
+        "Permissions-Policy",
+        'X-XSS-Protection "0"',
+    ):
+        require(snippet, needle, "security-headers.conf")
+
+    nginx = read(root, "frontend/nginx.conf")
+    require(nginx, "include /etc/nginx/security-headers.conf;", "nginx.conf")
+    require(nginx, 'Cache-Control "public, max-age=0, must-revalidate"', "nginx.conf")
+    require(read(root, "frontend/Dockerfile"), "security-headers.conf", "frontend/Dockerfile")
+
+
+@check("backend helmet sends frame denial, permissions policy and no-store")
+def check_backend_headers(root):
+    helmet = read(root, "backend/src/middleware/helmetConfig.js")
+    require(helmet, "frameguard: { action: 'deny' }", "helmetConfig.js")
+    require(helmet, "Permissions-Policy", "helmetConfig.js")
+    require(helmet, "X-Permitted-Cross-Domain-Policies", "helmetConfig.js")
+    require(helmet, "xssFilter: true", "helmetConfig.js")
+
+    index = read(root, "backend/src/index.js")
+    require(index, "app.use(securityHeaders)", "index.js")
+    require(index, "res.set('Cache-Control', 'no-store')", "index.js")
+
+
 @check("GitHub Actions are pinned to full commit SHAs")
 def check_workflow_pinning(root):
     pattern = re.compile(r"uses:\s*[^@\s]+@([^\s#]+)")

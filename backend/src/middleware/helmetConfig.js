@@ -39,4 +39,23 @@ export const helmetMiddleware = helmet({
     preload: true, // WARNING: irreversible once preloaded
   },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  // Matches frame-ancestors 'none' above for browsers that still read the
+  // legacy header. Helmet defaults to SAMEORIGIN.
+  frameguard: { action: 'deny' },
+  // Sends "X-XSS-Protection: 0": the legacy auditor is gone from current
+  // browsers and historically introduced XSS of its own. CSP replaces it.
+  xssFilter: true,
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
 });
+
+const PERMISSIONS_POLICY =
+  'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()';
+
+// Helmet has no Permissions-Policy middleware and no directive for
+// X-Permitted-Cross-Domain-Policies, so those two are set here.
+export function securityHeaders(_req, res, next) {
+  res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+  next();
+}
