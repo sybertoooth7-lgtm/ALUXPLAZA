@@ -1,0 +1,86 @@
+name: E2E (full stack)
+
+# Real browser -> real frontend build -> real backend -> real PostgreSQL, nothing
+# mocked. The mocked Playwright suite in frontend-ci.yml stays as the fast check;
+# this one proves the pieces actually work together.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - '.github/workflows/e2e-fullstack.yml'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+      - '.github/workflows/e2e-fullstack.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-fullstack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # The suite wipes and recreates this database on every run. Its name must
+    # end in "_e2e": backend/src/scripts/e2e-reset-db.js refuses anything else.
+    # Credentials match playwright.fullstack.config.ts's default DATABASE_URL.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: alux
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: alux_plaza_e2e
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      # Chromium plus the system libraries and ffmpeg it needs (the config
+      # records video on failure).
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      # The config boots the backend and the production frontend build itself.
+      - name: Run full-stack Playwright tests
+        run: npm run test:e2e:fullstack
+        working-directory: frontend
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: playwright-report-fullstack
+          path: |
+            frontend/playwright-report/fullstack/
+            frontend/test-results/fullstack/
+          retention-days: 7
+          if-no-files-found: ignore
